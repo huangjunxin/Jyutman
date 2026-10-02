@@ -36,11 +36,11 @@ const cards = corpora.map((corpus) => {
       </p>
 
       <form class="big-search" action="/search/" method="get" role="search">
-        <input type="search" name="q" aria-label="全站檢索" placeholder="搵字詞、書名或者葉碼" />
+        <input type="search" name="q" aria-label="全站檢索" placeholder="搵字詞、專名或者拼式" />
         <button type="submit" class="btn primary">檢索</button>
       </form>
 
-      <p class="try">檢索服務部署中，現時可以先睇書目同正文。</p>
+      <p class="try">全庫檢索已經開放，搵字詞即刻跳去命中嘅葉。</p>
     </section>
 
     <Yuwai />
@@ -107,7 +107,7 @@ const cards = corpora.map((corpus) => {
           <p>
             輸入簡體或異體字，都查得到底本嘅繁體原文。歸一只發生喺檢索層，展示層永遠保留原字，唔改寫、唔現代化。
           </p>
-          <span class="feat-state">檢索服務部署中，暫未開放。</span>
+          <span class="feat-state">已開放。</span>
         </div>
       </div>
     </section>

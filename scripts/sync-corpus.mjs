@@ -11,11 +11,24 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { normalize } from "../src/utils/normalize.ts";
+import { segmentNgrams } from "../src/utils/search-planner.ts";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const DEFAULT_DATA_ROOT = path.resolve(REPO_ROOT, "..", "JyutmanDataPipeline", "data");
 const OUT_ROOT = path.join(REPO_ROOT, "src", "data", "generated");
 const SQL_PATH = path.join(REPO_ROOT, "db", "import.sql");
+
+/** 派生數據目錄的說明檔；由本腳本一併生成，避免全量重建時被清走。 */
+const DATA_README = `# 派生數據
+
+本目錄全部係派生數據，可由 \`scripts/sync-corpus.mjs\` 重建（讀上游 \`JyutmanDataPipeline/data/<corpus>/*.jsonl\` 發佈層）：
+
+- \`manifest.json\`：語料級摘要（標題照錄底本原名、年代、葉數、篇數、校對進度、掃描來源）。
+- \`<corpus>/issues.json\`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
+- \`<corpus>/<issue>/pages.json\`：葉級頁面數據，每葉 \`{page, status, blocks}\`；\`blocks\` 由文章切分而來，\`type\` 為 \`article\`（\`id\` / \`title\` / \`seq\` / \`text\` / \`text_norm\`）或 \`marker\`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
+
+重建指令：\`node scripts/sync-corpus.mjs\`。請勿手改本目錄任何文件；上游字段語義與容錯見 \`docs/03-data-contract.md\`。
+`;
 
 /** 語料順序即站點展示順序；title 照錄底本原名，sourceLine 記掃描來源。 */
 export const CORPUS_META = {
@@ -41,7 +54,8 @@ export const CORPUS_ORDER = Object.keys(CORPUS_META);
 /** 整段版面標記（如 ［插圖］［空白頁］［現代襯頁］）由正文抽出為獨立塊。 */
 const MARKER_PATTERN = /^［[^］]+］$/u;
 
-const SQL_ROWS_PER_STATEMENT = 200;
+/** 單條 INSERT 的字節預算：D1 對單條語句限制 100 KB，取三分之一留足餘量。 */
+const SQL_STATEMENT_BUDGET = 32_000;
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -209,12 +223,37 @@ function insertStatement(table, columns, rows) {
   return `INSERT INTO ${table} (${columns.join(", ")}) VALUES\n${lines.join(",\n")};\n`;
 }
 
-/** 生成 D1 建表與灌數 SQL。FTS 兩套 DDL 都備好、默認註釋，待 trigram 複核結論定奪。 */
+/** 行內字段的 UTF-8 字節數加分隔符，用於分批。 */
+function rowCost(row) {
+  return row.reduce((total, value) => total + Buffer.byteLength(String(value), "utf8") + 4, 0);
+}
+
+/** 按行長把行分批，令每條 INSERT 落在預算之內。 */
+export function chunkRows(rows, budget = SQL_STATEMENT_BUDGET) {
+  const chunks = [];
+  let current = [];
+  let cost = 0;
+  for (const row of rows) {
+    const next = rowCost(row);
+    if (current.length > 0 && cost + next > budget) {
+      chunks.push(current);
+      current = [];
+      cost = 0;
+    }
+    current.push(row);
+    cost += next;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+/** 生成 D1 建表與灌數 SQL：trigram 主索引 + bigram / unigram 短查詢輔助表。 */
 export function buildImportSql({ articles, issues }) {
   const parts = [];
   parts.push(`-- 派生數據，可由 scripts/sync-corpus.mjs 重建。
--- 本檔只備用、尚未執行：等生產 D1 檢索方案敲定後由 wrangler d1 execute 匯入。
--- 檢索方案實測見 docs/spikes/0.1-d1-trigram.md；trigram 可用與否決定下面兩段 FTS DDL 開哪一段。
+-- 生產 D1（jyutman）建表與灌數用；檢索方案實測見 docs/spikes/0.1-d1-trigram.md：
+-- trigram 可用，故啟用 articles_fts；bigram / unigram 輔助表供 2 字與 1 字查詢降級。
+-- 執行：npx wrangler d1 execute jyutman --remote --file db/import.sql
 
 CREATE TABLE IF NOT EXISTS articles (
   id          TEXT PRIMARY KEY,
@@ -244,26 +283,18 @@ CREATE TABLE IF NOT EXISTS issues (
   PRIMARY KEY (corpus, issue)
 );
 
--- FTS 開關 A（trigram tokenizer 可用時採用；正文與標題同一索引表）
--- CREATE VIRTUAL TABLE articles_fts USING fts5(
---   title, text_norm,
---   content = 'articles',
---   content_rowid = 'rowid',
---   tokenize = 'trigram'
--- );
--- INSERT INTO articles_fts (rowid, title, text_norm)
---   SELECT rowid, title, text_norm FROM articles;
+-- 主索引：trigram（3 字及以上整串短語 MATCH）
+CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
+  id UNINDEXED, title, text_norm, tokenize = 'trigram'
+);
 
--- FTS 開關 B（trigram 不可用時改用 bigram 預切分輔助表：查詢前先在應用層切 bigram）
--- CREATE TABLE articles_bigram (
---   article_id TEXT NOT NULL,
---   gram       TEXT NOT NULL,
---   PRIMARY KEY (article_id, gram)
--- );
--- CREATE INDEX articles_bigram_gram ON articles_bigram (gram);
--- INSERT INTO articles_bigram (article_id, gram)
---   SELECT a.id, substr(a.text_norm, i, 2)
---   FROM articles AS a, generate_series(1, length(a.text_norm) - 1) AS i;
+-- 降級索引：bigram 供 2 字查詢，unigram 供 1 字查詢；seg 為構建期切好的空格分隔 n-gram 串
+CREATE VIRTUAL TABLE IF NOT EXISTS articles_bigram_fts USING fts5(
+  id UNINDEXED, seg, tokenize = 'unicode61'
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS articles_unigram_fts USING fts5(
+  id UNINDEXED, seg, tokenize = 'unicode61'
+);
 
 `);
 
@@ -279,14 +310,40 @@ CREATE TABLE IF NOT EXISTS issues (
     sqlText(a.text_norm),
     sqlText(a.status),
   ]);
-  for (let i = 0; i < articleRows.length; i += SQL_ROWS_PER_STATEMENT) {
-    parts.push(
-      insertStatement(
-        "articles",
-        ["id", "corpus", "issue", "issue_date", "page", "seq", "title", "text", "text_norm", "status"],
-        articleRows.slice(i, i + SQL_ROWS_PER_STATEMENT),
-      ),
-    );
+  const articleColumns = [
+    "id",
+    "corpus",
+    "issue",
+    "issue_date",
+    "page",
+    "seq",
+    "title",
+    "text",
+    "text_norm",
+    "status",
+  ];
+  for (const chunk of chunkRows(articleRows)) {
+    parts.push(insertStatement("articles", articleColumns, chunk));
+  }
+
+  // FTS 灌數必須排在 articles 之後（主索引由基表整批導入）。
+  parts.push(`INSERT INTO articles_fts (id, title, text_norm)
+  SELECT id, title, text_norm FROM articles;
+`);
+
+  const bigramRows = [];
+  const unigramRows = [];
+  for (const article of articles) {
+    const bigram = segmentNgrams(article.text_norm, 2);
+    if (bigram !== "") bigramRows.push([sqlText(article.id), sqlText(bigram)]);
+    const unigram = segmentNgrams(article.text_norm, 1);
+    if (unigram !== "") unigramRows.push([sqlText(article.id), sqlText(unigram)]);
+  }
+  for (const chunk of chunkRows(bigramRows)) {
+    parts.push(insertStatement("articles_bigram_fts", ["id", "seg"], chunk));
+  }
+  for (const chunk of chunkRows(unigramRows)) {
+    parts.push(insertStatement("articles_unigram_fts", ["id", "seg"], chunk));
   }
 
   const issueRows = issues.map((issue) => [
@@ -299,23 +356,18 @@ CREATE TABLE IF NOT EXISTS issues (
     sqlInteger(issue.verified_pages),
     sqlInteger(issue.needs_review_pages),
   ]);
-  for (let i = 0; i < issueRows.length; i += SQL_ROWS_PER_STATEMENT) {
-    parts.push(
-      insertStatement(
-        "issues",
-        [
-          "corpus",
-          "issue",
-          "issue_date",
-          "date_note",
-          "pages",
-          "articles",
-          "verified_pages",
-          "needs_review_pages",
-        ],
-        issueRows.slice(i, i + SQL_ROWS_PER_STATEMENT),
-      ),
-    );
+  const issueColumns = [
+    "corpus",
+    "issue",
+    "issue_date",
+    "date_note",
+    "pages",
+    "articles",
+    "verified_pages",
+    "needs_review_pages",
+  ];
+  for (const chunk of chunkRows(issueRows)) {
+    parts.push(insertStatement("issues", issueColumns, chunk));
   }
 
   return `${parts.join("\n")}`.replace(/\n{3,}/gu, "\n\n");
@@ -440,6 +492,7 @@ function main() {
   rmSync(OUT_ROOT, { recursive: true, force: true });
   mkdirSync(OUT_ROOT, { recursive: true });
   mkdirSync(path.dirname(SQL_PATH), { recursive: true });
+  writeFileSync(path.join(OUT_ROOT, "README.md"), DATA_README);
 
   const corpora = synced.map((corpus) => {
     const issueCount = corpus.issues.length;

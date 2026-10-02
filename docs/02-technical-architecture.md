@@ -121,7 +121,7 @@ JyutmanDataPipeline（上游：Python + GLM-OCR 远程服务 + PyMuPDF）
   2. 判定是否含罗马字（拉丁串或数字调）→ 切到 roman_norm 字段
   3. 汉字串与拉丁串 3 字及以上 → 整串短语 MATCH；1 至 2 字 → bigram / unigram 辅助表或 LIKE 降级
   4. FTS5 MATCH + bm25() 排序（可按 corpus / 年代 / status 分面过滤）
-  5. 返回 {corpus, issue, page, article_id, snippet}
+  5. 返回 {id, corpus, issue, page, title, snippet}（snippet 從命中葉原文截取）
 ```
 
 **已实测（本地 2026-10-02，生产 D1 2026-10-03）**：trigram 对 1 至 2 字查询返回 0 且不报错（无三元组可构造）；降级方案定为 bigram（2 字及以上）与 unigram（单字）辅助表，LIKE 全表扫描作兜底。见 `docs/spikes/0.1-d1-trigram.md`。

@@ -16,7 +16,7 @@
 | 0.2 | Pagefind 真实语料召回实验 | 用 866 篇文章实测；确认能否正确切分三语混排、是否需要前处理 |
 | 0.3 | 版权与许可逐件登记 | 9 个语料逐件记录底本年份、藏本、来源链接、版权判定；产出清单 |
 | 0.4 | 三个仓库脚手架、LICENSE 与发布身份 | `Jyutman`（MIT）/ `Jyutman-Corpus`（CC BY-SA 4.0）/ `Jyutman-Images`（CC BY-SA 4.0）建成，各自有 LICENSE 与 README；发布身份定为 GitHub 账号 huangjunxin、commit 邮箱 huang-junxin@qq.com；Cloudflare 独立账号与 Access 配置就绪 |
-| 0.5 | CI 最小门禁 | GitHub Actions 跑 test + lint + typecheck，全绿 |
+| 0.5 | CI 最小门禁 | GitHub Actions 跑 test + lint + typecheck + build，全绿 |
 
 **依赖**：无（起始阶段）。
 
@@ -34,9 +34,9 @@
 | 1.2 | 阅读器：纯文本阅读 | 分段正文、竖排/横排、校对注、缺字符号、来源信息栏；不含原书影像 |
 | 1.3 | 阅读器：竖排 / 横排 | 两种排版可即时切换；手机上竖排仍可读 |
 | 1.4 | 阅读器：翻页 | 页内翻页 + 跳页；URL 反映当前页 |
-| 1.5 | D1 检索上线 | 汉字查询可用；结果含语料、页码、高亮片段 |
-| 1.6 | 3 个语料上线 | `gd-vernacular-paper`（221 页 / 269 篇）、`canton-vernacular-handbook`（248 页 / 329 篇）、`readings-in-cantonese-colloquial`（220 页 / 268 篇）全部可读 |
-| 1.7 | jyutman.com 域名接入 | 域名解析到 Cloudflare，HTTPS 正常，手机可访问 |
+| 1.5 | D1 检索上线（已完成） | 汉字查询可用；结果含语料、页码、高亮片段 |
+| 1.6 | 3 个语料上线（已完成） | `gd-vernacular-paper`（221 页 / 269 篇）、`canton-vernacular-handbook`（248 页 / 329 篇）、`readings-in-cantonese-colloquial`（220 页 / 268 篇）全部可读 |
+| 1.7 | jyutman.com 域名接入（已完成，域名已接入） | 域名解析到 Cloudflare，HTTPS 正常，手机可访问 |
 
 **验收标准**：在手机上完成「检索 → 开文 → 查看书目来源 → 复制引用」全流程，无阻断性问题。
 
@@ -94,7 +94,7 @@ Phase 3 分两期：3a 为公开提交端（匿名提交＋Turnstile）＋ Cloud
 | 阶段 | 预计时长 | 核心交付 | 状态 |
 |---|---|---|---|
 | Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 已完成 |
-| Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 进行中：阅读器、书目库、数据同步层已落地；检索与域名未开始 |
+| Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 已完成（2026-10-03）：阅读器、书目库、D1 检索、域名均已上线 |
 | Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 未开始 |
 | Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 未开始 |
 | Phase 4 · 增长 | 待估 | 相似文本、多版本、AI 辅助 | 未开始 |
@@ -139,7 +139,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 全部完成。Phase 1 进行中。** 分项如下：
+**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）。** 分项如下：
 
 - 0.1 trigram 实测通过（本地 2026-10-02，生产 D1 复核 2026-10-03）：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；D1 上 trigram tokenizer 可用，召回与本地一致（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
@@ -151,9 +151,10 @@ Phase 1 进度：
 
 - 1.1 书目库页：已发布语料按 manifest 数据驱动列出（年代、叶数、篇数、校对进度）；未发布语料待进入上游发布层后自动出现，不写死常量。
 - 1.2 / 1.3 / 1.4 阅读器：分段正文、竖排与横排即时切换（状态存本机）、底部翻叶与叶级 URL 已上线；来源信息栏含语料、期号、叶序号、OCR 状态、底本来源与文本授权。
-- 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶静态生成通过，尚未部署。
-- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与备用 `db/import.sql`（未执行，两套 FTS DDL 均注释待定）。
-- 未开始：1.5 D1 检索上线、1.7 域名接入。
+- 1.5 D1 检索已上线（2026-10-03）：生产库 `jyutman` 灌入 866 篇，trigram 主索引加 bigram / unigram 辅助表；Worker `/api/search` 按归一后长度路由（3 字及以上 trigram 短语、2 字 bigram、1 字 unigram），bm25 排序、corpus 过滤、limit 20，命中片段在服务端从原文截取；线上复核：廣東 34、白話報 16、唔 426，与 spike 真值一致。
+- 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶已静态生成并随 Worker 上线（`jyutman.com` 与 `jyutman.huangjunxin.workers.dev` 均可访问）。
+- 1.7 域名接入：`jyutman.com` 由 Worker 路由服务，HTTPS 正常（Cloudflare SSL），apex 200；`www` 跳转与 canonical-host 中间件待补（见 `docs/05` 第 4 节）。
+- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）。
 
-下一步行动：接入 D1 检索（1.5），部署到 Cloudflare 并接 jyutman.com（1.7），按上方 Phase 1 任务表推进。
+下一步行动：按上方 Phase 2 任务表推进（繁简异体映射扩充、粤拼 ruby、历史拼式对齐），并在 Phase 2 开工前处理 `www` 跳转、`workers.dev` noindex 与 deploy workflow。
 

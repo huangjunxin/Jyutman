@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   buildImportSql,
   buildPageRecord,
+  chunkRows,
   parseJsonl,
   pickArticle,
   pickIssue,
@@ -161,7 +162,7 @@ test("pickYear：取最早年份，全空回退登記值", () => {
   assert.equal(pickYear([], null), null);
 });
 
-test("buildImportSql：建表、兩套 FTS DDL 皆註釋、單引號轉義", () => {
+test("buildImportSql：啟用 trigram 主索引與 bigram / unigram 輔助表，單引號轉義", () => {
   const sql = buildImportSql({
     articles: [
       {
@@ -194,7 +195,55 @@ test("buildImportSql：建表、兩套 FTS DDL 皆註釋、單引號轉義", () 
   assert.match(sql, /CREATE TABLE IF NOT EXISTS articles/u);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS issues/u);
   assert.match(sql, /'It''s not a tea-cup'/u);
-  assert.match(sql, /-- CREATE VIRTUAL TABLE articles_fts USING fts5/u);
-  assert.match(sql, /-- CREATE TABLE articles_bigram/u);
-  assert.doesNotMatch(sql, /^CREATE VIRTUAL TABLE/mu, "FTS DDL 默認不啟用");
+  assert.match(sql, /CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5\(\n  id UNINDEXED, title, text_norm, tokenize = 'trigram'/u);
+  assert.match(sql, /INSERT INTO articles_fts \(id, title, text_norm\)\n  SELECT id, title, text_norm FROM articles;/u);
+  assert.match(sql, /CREATE VIRTUAL TABLE IF NOT EXISTS articles_bigram_fts USING fts5/u);
+  assert.match(sql, /CREATE VIRTUAL TABLE IF NOT EXISTS articles_unigram_fts USING fts5/u);
+  assert.match(sql, /INSERT INTO articles_bigram_fts \(id, seg\) VALUES\n  \('rcc-021-01', 'It snotatea cup'\);/u);
+  assert.match(sql, /INSERT INTO articles_unigram_fts \(id, seg\) VALUES\n  \('rcc-021-01', 'It snotatea cup'\);/u);
+  assert.doesNotMatch(sql, /^-- CREATE VIRTUAL TABLE/mu, "註釋掉的備選 DDL 不再保留");
+});
+
+test("buildImportSql：漢字正文切出 bigram 與 unigram，短段略去空 seg 行", () => {
+  const sql = buildImportSql({
+    articles: [
+      {
+        id: "gdvp-01-001-01",
+        corpus: "gd-vernacular-paper",
+        issue: "issue-01",
+        issue_date: "1907-04-01",
+        page: 1,
+        seq: 1,
+        title: null,
+        text: "白話報就係喇",
+        text_norm: "白話報就係喇",
+        status: "verified",
+      },
+      {
+        id: "gdvp-01-001-02",
+        corpus: "gd-vernacular-paper",
+        issue: "issue-01",
+        issue_date: "1907-04-01",
+        page: 1,
+        seq: 2,
+        title: null,
+        text: "唔",
+        text_norm: "唔",
+        status: "verified",
+      },
+    ],
+    issues: [],
+  });
+
+  assert.match(sql, /'gdvp-01-001-01', '白話 話報 報就 就係 係喇'/u);
+  assert.match(sql, /'gdvp-01-001-01', '白 話 報 就 係 喇'/u);
+  assert.match(sql, /'唔', '唔'/u);
+  assert.doesNotMatch(sql, /'gdvp-01-001-02', ''/u, "空 seg 不佔行");
+});
+
+test("chunkRows：按行長分批，超預算即開新批", () => {
+  const rows = [["a".repeat(10)], ["b".repeat(10)], ["c".repeat(10)]];
+  assert.deepEqual(chunkRows(rows, 14), [[rows[0]], [rows[1]], [rows[2]]]);
+  assert.deepEqual(chunkRows(rows, 28), [[rows[0], rows[1]], [rows[2]]]);
+  assert.deepEqual(chunkRows([], 30), []);
 });

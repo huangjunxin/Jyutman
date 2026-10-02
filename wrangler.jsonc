@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jyutman",
+  "main": "server/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jyutman",
+      "database_id": "7c4ba286-7a32-408f-920e-d55d0d0bc0d9"
+    }
+  ],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "jyutman.com/*",
+      "zone_name": "jyutman.com"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

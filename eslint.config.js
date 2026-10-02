@@ -1,6 +1,6 @@
 export default [
   {
-    ignores: ["dist/**", ".astro/**", "node_modules/**"],
+    ignores: ["dist/**", ".astro/**", ".wrangler/**", "node_modules/**"],
   },
   {
     files: ["**/*.js", "**/*.mjs"],
@@ -9,6 +9,7 @@ export default [
       sourceType: "module",
       // 倉庫內 JS 只出現在 Node 腳本與測試（瀏覽器端代碼寫在 .astro 內，唔經本配置）。
       globals: {
+        Buffer: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",

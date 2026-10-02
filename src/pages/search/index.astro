@@ -8,7 +8,7 @@ const corpora = getCorpora();
 
 <Base
   title="檢索 · 粵語文叢"
-  description="粵語文叢全文檢索：繁簡異體歸一之後，逐葉命中底本原文。檢索服務部署中。"
+  description="粵語文叢全文檢索：繁簡異體歸一之後，逐葉命中底本原文，並顯示命中上下文。"
   current="search"
   noindex
 >
@@ -27,7 +27,7 @@ const corpora = getCorpora();
           name="q"
           id="search-input"
           aria-label="全站檢索"
-          placeholder="搵字詞、書名或者葉碼"
+          placeholder="搵字詞、專名或者拼式"
           autocomplete="off"
         />
         <button type="submit" class="btn primary">檢索</button>
@@ -38,21 +38,21 @@ const corpora = getCorpora();
         <div class="filter-list" role="group" aria-labelledby="filter-title">
           {
             corpora.map((corpus) => (
-              <label data-disabled="true">
-                <input type="checkbox" name="corpus" value={corpus.slug} disabled />
+              <label>
+                <input type="checkbox" name="corpus" value={corpus.slug} />
                 {corpus.title}
               </label>
             ))
           }
         </div>
-        <p class="hint">語料篩選隨檢索服務一併開放。</p>
+        <p class="hint">勾選語料即收窄範圍；唔勾就搜全庫。</p>
       </div>
     </div>
 
     <div class="results" id="results" aria-live="polite">
       <p class="state">
-        <b>檢索服務部署中</b>
-        全文索引鋪設好之後，呢度會顯示命中嘅葉同上下文。
+        <b>輸入字詞開始檢索</b>
+        可以搵漢字詞、專名或者傳教士拼式；命中會列出語料、期號同葉碼，並顯示上下文。
       </p>
     </div>
   </div>
@@ -71,10 +71,14 @@ const corpora = getCorpora();
     const results = document.getElementById("results");
     const input = document.getElementById("search-input");
     if (results instanceof HTMLElement) {
-      const idle = results.innerHTML;
       const params = new URLSearchParams(window.location.search);
       const query = params.get("q") ?? "";
       if (input instanceof HTMLInputElement && query !== "") input.value = query;
+
+      const selectedCorpora = params.getAll("corpus");
+      for (const box of document.querySelectorAll('input[name="corpus"]')) {
+        if (box instanceof HTMLInputElement) box.checked = selectedCorpora.includes(box.value);
+      }
 
       const stateNode = (title: string, body: string): HTMLElement => {
         const wrapper = document.createElement("p");
@@ -84,6 +88,10 @@ const corpora = getCorpora();
         wrapper.append(strong, document.createTextNode(body));
         return wrapper;
       };
+
+      /** 檢索服務未通（未部署、離線或者出錯）時先顯示呢段。 */
+      const unavailable = () =>
+        stateNode("檢索服務部署中", "全文索引暫時未通，可能正在部署或者維護，請稍後再試。");
 
       const renderHits = (hits: SearchHit[]) => {
         if (hits.length === 0) {
@@ -114,11 +122,11 @@ const corpora = getCorpora();
         results.replaceChildren(list);
       };
 
-      /** 檢索 API 由後續 Worker 提供；未部署（404）或離線時維持部署中提示。 */
+      /** 檢索 API 由 Worker 提供；離線或出錯時顯示部署提示。 */
       const runSearch = async (text: string) => {
         const url = new URL("/api/search", window.location.origin);
         url.searchParams.set("q", text);
-        for (const slug of params.getAll("corpus")) url.searchParams.append("corpus", slug);
+        for (const slug of selectedCorpora) url.searchParams.append("corpus", slug);
         try {
           const response = await fetch(url, { headers: { accept: "application/json" } });
           if (!response.ok) return false;
@@ -135,7 +143,7 @@ const corpora = getCorpora();
       if (query !== "") {
         results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
         void runSearch(query).then((served) => {
-          if (!served) results.innerHTML = idle;
+          if (!served) results.replaceChildren(unavailable());
         });
       }
     }

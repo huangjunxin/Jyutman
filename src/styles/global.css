@@ -1258,10 +1258,6 @@ a:hover {
   margin: 0;
 }
 
-.filter-list label[data-disabled="true"] {
-  opacity: 0.6;
-}
-
 .filters .hint {
   margin: 12px 0 0;
   font-family: var(--sans);

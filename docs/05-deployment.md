@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-02）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-03）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 部署方案
 
@@ -19,7 +19,7 @@ Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上�
 
 ```text
 GitHub 仓库 Jyutman
-   ├─ Actions: CI（test / lint / typecheck）
+   ├─ Actions: CI（test / lint / typecheck / build）
    ├─ Actions: deploy（push main → wrangler deploy）
    └─ Actions: sync-data（corpus release → D1 + R2）
                                    │
@@ -44,9 +44,9 @@ GitHub 仓库 Jyutman
 
 ## 4. 域名与 URL
 
-- 主域 `jyutman.com`（Cloudflare Registrar 注册）。
-- `www.jyutman.com` → apex 301 重定向。
-- canonical-host 中间件：请求 Host 非规范域时 301 到规范域（参考同类 Cloudflare 站点的做法）；preview 环境与 `*.workers.dev` 一律加 `X-Robots-Tag: noindex`，避免被搜索引擎收录。
+- 主域 `jyutman.com`（Cloudflare Registrar 注册）。已接入（2026-10-03）：apex 由 Worker 路由 `jyutman.com/*` 服务，SSL 由 Cloudflare 自动下发；`workers.dev` 地址保留可访问。
+- `www.jyutman.com` → apex 301 重定向：**未做**，待补。
+- canonical-host 中间件：请求 Host 非规范域时 301 到规范域（参考同类 Cloudflare 站点的做法）；preview 环境与 `*.workers.dev` 一律加 `X-Robots-Tag: noindex`，避免被搜索引擎收录：**未做**，待补。
 - URL 结构（与 04 §2.2 一致）：`/`、`/browse/:corpus`、`/read/:corpus/:issue/:page`、`/search`；每叶可索引 URL + sitemap + schema.org Book。
 
 ## 5. CI/CD
@@ -69,7 +69,9 @@ jobs:
       - wrangler deploy   # Workers + Static Assets
 ```
 
-workflow 已落地 `.github/workflows/ci.yml`（Node 24，`npm ci` / `npm test` / `npm run lint` / `npm run typecheck`），首个 run 已通过。
+工作流已落地 `.github/workflows/ci.yml`（Node 24，`npm ci` / `npm test` / `npm run lint` / `npm run typecheck` / `npm run build`），首个 run 已通过。
+
+部署目前由本机 `npx wrangler deploy` 手动执行（Worker + Static Assets + D1 绑定，配置见 `wrangler.jsonc`）；deploy workflow 待补。
 
 数据同步为独立 workflow `sync-data.yml`，不随代码部署触发（见 §9）。
 
