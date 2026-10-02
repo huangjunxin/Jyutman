@@ -253,7 +253,8 @@ export function buildImportSql({ articles, issues }) {
   parts.push(`-- 派生數據，可由 scripts/sync-corpus.mjs 重建。
 -- 生產 D1（jyutman）建表與灌數用；檢索方案實測見 docs/spikes/0.1-d1-trigram.md：
 -- trigram 可用，故啟用 articles_fts；bigram / unigram 輔助表供 2 字與 1 字查詢降級。
--- 執行：npx wrangler d1 execute jyutman --remote --file db/import.sql
+-- 一次性全量導入空庫：npx wrangler d1 execute jyutman --remote --file db/import.sql
+-- 重跑會撞 articles 主鍵（id 重複）而中途報錯，要先清庫或重建數據庫。
 
 CREATE TABLE IF NOT EXISTS articles (
   id          TEXT PRIMARY KEY,
