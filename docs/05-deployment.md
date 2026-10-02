@@ -18,7 +18,7 @@ Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上�
 ## 2. 部署拓扑
 
 ```text
-GitHub 仓库 jyutman
+GitHub 仓库 Jyutman
    ├─ Actions: CI（test / lint / typecheck）
    ├─ Actions: deploy（push main → wrangler deploy）
    └─ Actions: sync-data（corpus release → D1 + R2）

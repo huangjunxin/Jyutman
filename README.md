@@ -88,9 +88,9 @@ Phase 1 之後，一個普通讀者應該可以：
 
 | 倉庫 | 內容 | 授權 |
 |---|---|---|
-| `jyutman` | 本站點代碼（Astro + Cloudflare） | MIT |
-| `jyutman-corpus` | 文本數據（數據管道產出嘅 jsonl） | CC BY-SA 4.0 |
-| `jyutman-images` | 影像清單同來源登記 | 見該倉庫說明 |
+| `Jyutman` | 本站點代碼（Astro + Cloudflare） | MIT |
+| `Jyutman-Corpus` | 文本數據（數據管道產出嘅 jsonl） | CC BY-SA 4.0 |
+| `Jyutman-Images` | 影像清單同來源登記 | 見該倉庫說明 |
 
 三個倉庫各自獨立發佈，唔互相依賴構建；本站讀取另外兩個倉庫嘅公開產出。
 
@@ -122,9 +122,9 @@ Astro 靜態前端 + Cloudflare Workers API + D1（SQLite FTS5 trigram）全文�
 
 | 對象 | 授權 |
 |---|---|
-| 站點代碼（`jyutman`） | MIT |
-| 文本數據（`jyutman-corpus`） | CC BY-SA 4.0 |
-| 影像清單（`jyutman-images`） | 見該倉庫說明 |
+| 站點代碼（`Jyutman`） | MIT |
+| 文本數據（`Jyutman-Corpus`） | CC BY-SA 4.0 |
+| 影像清單（`Jyutman-Images`） | 見該倉庫說明 |
 | 底本文獻（1842–1907 出版物） | 公有領域 |
 
 掃描影像來自 Internet Archive，部分藏本來自 Cornell University Library；使用時請一併標明來源。

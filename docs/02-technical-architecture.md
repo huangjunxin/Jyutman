@@ -82,7 +82,7 @@ JyutmanDataPipeline（上游：Python + GLM-OCR 远程服务 + PyMuPDF）
   └─ data/<corpus>/{articles,pages,issues}.jsonl   ← 唯一消费点（见 03-data-contract.md）
         │  发布 release / 快照
         ▼
-  jyutman-corpus（语料快照仓，CC BY-SA 4.0）
+  Jyutman-Corpus（语料快照仓，CC BY-SA 4.0）
         │
         ▼
   scripts/sync-corpus.ts（sync-data workflow）
@@ -165,16 +165,16 @@ IIIF 值得采用，但第一版用静态形态：构建期预生成瓦片 / DZI
 
 | 仓库 | 内容 | 许可 |
 |---|---|---|
-| jyutman | 站点代码与模板 | MIT |
-| jyutman-corpus | OCR 文本 JSONL + 元数据 + 索引构建脚本 | CC BY-SA 4.0 |
-| jyutman-images | 只放 manifest：object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 | 待决策 |
+| Jyutman | 站点代码与模板 | MIT |
+| Jyutman-Corpus | OCR 文本 JSONL + 元数据 + 索引构建脚本 | CC BY-SA 4.0 |
+| Jyutman-Images | 只放 manifest：object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 | 待决策 |
 
 影像本体在 R2，不进 Git。语料快照定期推 Zenodo 拿 DOI。不用 git-annex。
 
-jyutman 仓库目录结构建议（Astro 约定，`src/` 等价于 Nuxt 的 `app/`）：
+Jyutman 仓库目录结构建议（Astro 约定，`src/` 等价于 Nuxt 的 `app/`）：
 
 ```text
-jyutman/
+Jyutman/
 ├─ astro.config.mjs
 ├─ wrangler.jsonc            # Workers + Static Assets + D1/R2 绑定
 ├─ package.json
@@ -193,7 +193,7 @@ jyutman/
 ├─ types/                    # 与 03 数据契约对齐的 Zod schema 与 TS 类型
 ├─ tests/                    # node:test（零依赖惯例）
 ├─ docs/                     # 本目录
-└─ data/                     # 构建期临时产物（.gitignore）；权威副本在 jyutman-corpus
+└─ data/                     # 构建期临时产物（.gitignore）；权威副本在 Jyutman-Corpus
 ```
 
 `types/` 中的 Zod schema 是数据形状的单一事实源：schema 变更必须同步更新 `docs/03-data-contract.md`。

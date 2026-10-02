@@ -82,10 +82,10 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 | 归一化检索文本 | 构建期产物（映射表版本化） | `scripts/normalize.ts` | 繁简 / 异体映射 + 罗马字归一，检索正确性的核心 |
 | FTS5 索引 | D1 虚拟表 | `scripts/build-fts.ts` → D1 import | trigram tokenizer，见 02 §6 |
 | corrections 表 | D1 | Workers API 接收用户提交 | 见 §7 |
-| 影像 manifest | jyutman-images 仓 | 同步脚本生成 | object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 |
+| 影像 manifest | Jyutman-Images 仓 | 同步脚本生成 | object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 |
 | 书本单页派生图 | R2 | 构建期渲染 | 书本类源为 PDF，派生单页图（见 02 §7，待决策） |
 
-**原则**：衍生层一律可重建：任何时候都能从上游 jsonl 重跑同步脚本恢复。因此衍生层不进 Git（例外：manifest 与映射表这类需要版本化的纯文本）。归一化映射表放在 jyutman-corpus 还是 jyutman 代码侧：**待决策**；无论哪种，索引构建时必须记录映射表版本号。
+**原则**：衍生层一律可重建：任何时候都能从上游 jsonl 重跑同步脚本恢复。因此衍生层不进 Git（例外：manifest 与映射表这类需要版本化的纯文本）。归一化映射表放在 Jyutman-Corpus 还是 Jyutman 代码侧：**待决策**；无论哪种，索引构建时必须记录映射表版本号。
 
 ## 7. corrections 回写流程
 
@@ -96,7 +96,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
   → 审阅（维护者经 Cloudflare Access 保护的审阅界面操作）→ accepted / rejected / deferred
   → GitHub Actions 定期把 accepted 整理成 PR：
        · 首选指向 JyutmanDataPipeline（上游）
-       · 若上游不再维护，则指向 jyutman-corpus
+       · 若上游不再维护，则指向 Jyutman-Corpus
   → 是否合并由上游/维护者决定；本站绝不直接改上游
 ```
 
@@ -137,7 +137,7 @@ CREATE TABLE corrections (
 | OCR 文本层许可 | CC BY-SA 4.0 |
 | 状态 | 已核 / 待核 / 有风险 |
 
-- 登记表落点已定：`Jyutman-corpus` 仓 `rights/` 目录（`0.3-rights-registry.csv` 主表与 `0.3-rights-summary.md` 说明，Phase 0 已产出首版：5 已核 / 4 待核）；站点 `/data` 页渲染摘要版本（页面结构见 04 §2.1）。
+- 登记表落点已定：`Jyutman-Corpus` 仓 `rights/` 目录（`0.3-rights-registry.csv` 主表与 `0.3-rights-summary.md` 说明，Phase 0 已产出首版：5 已核 / 4 待核）；站点 `/data` 页渲染摘要版本（页面结构见 04 §2.1）。
 - 影像政策：本站预设只公开 OCR 文本层；扫描影像在完成藏馆条款逐件核查前不公布。登记表的「扫描件条款」字段是日后开放影像的审批依据。
 - **待验证**：扫描件条款与 OCR 文本层许可的兼容性需逐件确认。
 - 研究语料库（HKUST / EdUHK / PolyU 等）：走**合作授权**，不下载转载。

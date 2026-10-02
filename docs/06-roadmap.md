@@ -15,7 +15,7 @@
 | 0.1 | D1 FTS5 trigram 可行性实测 | 将 3 个已发布语料全文入库，实测中文、中英混排、罗马字三类查询的召回与延迟；结论写入文档 |
 | 0.2 | Pagefind 真实语料召回实验 | 用 866 篇文章实测；确认能否正确切分三语混排、是否需要前处理 |
 | 0.3 | 版权与许可逐件登记 | 9 个语料逐件记录底本年份、藏本、来源链接、版权判定；产出清单 |
-| 0.4 | 三个仓库脚手架、LICENSE 与发布身份 | `jyutman`（MIT）/ `jyutman-corpus`（CC BY-SA 4.0）/ `jyutman-images`（CC BY-SA 4.0）建成，各自有 LICENSE 与 README；发布身份定为 GitHub 账号 huangjunxin、commit 邮箱 huang-junxin@qq.com；Cloudflare 独立账号与 Access 配置就绪 |
+| 0.4 | 三个仓库脚手架、LICENSE 与发布身份 | `Jyutman`（MIT）/ `Jyutman-Corpus`（CC BY-SA 4.0）/ `Jyutman-Images`（CC BY-SA 4.0）建成，各自有 LICENSE 与 README；发布身份定为 GitHub 账号 huangjunxin、commit 邮箱 huang-junxin@qq.com；Cloudflare 独立账号与 Access 配置就绪 |
 | 0.5 | CI 最小门禁 | GitHub Actions 跑 test + lint + typecheck，全绿 |
 
 **依赖**：无（起始阶段）。
@@ -143,8 +143,8 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 - 0.1 trigram 本地实测通过：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；生产 D1 复核待 Cloudflare 账号（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
-- 0.3 版权登记完成：5 已核 / 4 待核，清单移入 `Jyutman-corpus` 仓 `rights/`。
-- 0.4 三仓已建成并推送 GitHub（huangjunxin/jyutman、Jyutman-corpus、Jyutman-images）；Cloudflare 独立账号待注册，是当前唯一待办。
+- 0.3 版权登记完成：5 已核 / 4 待核，清单移入 `Jyutman-Corpus` 仓 `rights/`。
+- 0.4 三仓已建成并推送 GitHub（huangjunxin/Jyutman、Jyutman-Corpus、Jyutman-Images）；Cloudflare 独立账号待注册，是当前唯一待办。
 - 0.5 CI 已上线，首个 GitHub Actions run 通过。
 
 下一步行动：注册 Cloudflare 账号并提供 API Token，完成生产 D1 trigram 复核后即进入 Phase 1。
