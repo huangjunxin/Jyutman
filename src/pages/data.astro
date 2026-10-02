@@ -1,0 +1,115 @@
+---
+import Yuwai from "../components/Yuwai.astro";
+import Base from "../layouts/Base.astro";
+import { getCorpora, getSiteTotals } from "../utils/corpus.ts";
+
+const totals = getSiteTotals();
+const corpora = getCorpora();
+---
+
+<Base
+  title="數據開放 · 粵語文叢"
+  description="粵語文叢的授權安排：站點代碼 MIT、文本數據 CC BY-SA 4.0、底本屬公有領域；附版權登記摘要與下架聯絡。"
+  current="data"
+>
+  <div class="wrap">
+    <div class="prose">
+      <h1>數據開放</h1>
+      <p class="lead">
+        站點代碼、文本數據、影像清單三者分開發佈，各自有清楚嘅授權；底本全部屬公有領域，但來源義務唔會因此消失。
+      </p>
+
+      <h2>授權三件套</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">對象</th>
+            <th scope="col">倉庫</th>
+            <th scope="col">授權</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>站點代碼</td>
+            <td><a href="https://github.com/huangjunxin/Jyutman">Jyutman</a></td>
+            <td>MIT</td>
+          </tr>
+          <tr>
+            <td>文本數據</td>
+            <td><a href="https://github.com/huangjunxin/Jyutman-Corpus">Jyutman-Corpus</a></td>
+            <td>CC BY-SA 4.0</td>
+          </tr>
+          <tr>
+            <td>影像清單同來源登記</td>
+            <td><a href="https://github.com/huangjunxin/Jyutman-Images">Jyutman-Images</a></td>
+            <td>見該倉庫說明</td>
+          </tr>
+          <tr>
+            <td>底本文獻（1842 至 1907 年出版物）</td>
+            <td>圖書館特藏 / Internet Archive</td>
+            <td>公有領域</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>版權登記摘要</h2>
+      <p>
+        語料逐件登記底本年份、藏本、來源連結同版權判定，登記表放喺
+        <code>Jyutman-Corpus</code> 倉 <code>rights/</code> 目錄（主表
+        <code>0.3-rights-registry.csv</code>、說明 <code>0.3-rights-summary.md</code>）。首版登記結果：9 個語料中 5 件已核、4 件待核。
+      </p>
+      <ul>
+        <li>本站預設只公開 OCR 文本層；掃描影像要逐件核查藏館條款之後先會開放。</li>
+        <li>研究語料庫（HKUST / EdUHK / PolyU 等）走合作授權，唔下載轉載。</li>
+        <li>展示層逐葉標明底本來源同文本授權；現時 {totals.corpusCount} 個已發佈語料每葉都可追溯到來源。</li>
+      </ul>
+
+      <h2>引用本站</h2>
+      <p>
+        葉級 URL 係引用主鍵，形如
+        <code>/read/gd-vernacular-paper/issue-01/001/</code>，路徑唔會隨校對狀態改變。引用時請一併標明所引葉嘅底本、期號同年份（各葉「本葉來源」欄有齊）。
+        引用格式導出屬後續功能，未開放。
+      </p>
+
+      <h2>數據下載與 API</h2>
+      <p>
+        全量數據下載、開放 API 同 DOI 都未有；文本數據可以喺
+        <a href="https://github.com/huangjunxin/Jyutman-Corpus">Jyutman-Corpus</a> 倉取得，授權 CC BY-SA 4.0。
+      </p>
+
+      <h2>下架與更正</h2>
+      <p>
+        如認為本站內容涉及版權、私隱或其他權益問題，請電郵
+        <a href="mailto:huang-junxin@qq.com">huang-junxin@qq.com</a>。收到通知後會先下架相關內容，再核證並記錄處理結果。
+      </p>
+
+      <h2>現時已發佈語料</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">語料</th>
+            <th scope="col">年代</th>
+            <th scope="col">葉數</th>
+            <th scope="col">篇數</th>
+            <th scope="col">底本來源</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            corpora.map((corpus) => (
+              <tr>
+                <td><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></td>
+                <td>{corpus.year ?? "待考"}</td>
+                <td>{corpus.pageCount}</td>
+                <td>{corpus.articleCount}</td>
+                <td>{corpus.sourceLine}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <Yuwai size="sm" />
+</Base>

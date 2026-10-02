@@ -1,0 +1,143 @@
+---
+import Yuwai from "../../components/Yuwai.astro";
+import Base from "../../layouts/Base.astro";
+import { getCorpora } from "../../utils/corpus.ts";
+
+const corpora = getCorpora();
+---
+
+<Base
+  title="檢索 · 粵語文叢"
+  description="粵語文叢全文檢索：繁簡異體歸一之後，逐葉命中底本原文。檢索服務部署中。"
+  current="search"
+  noindex
+>
+  <div class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>檢索</h1>
+        <p>全庫或單一語料範圍 · 命中定位到葉 · 展示層保留底本原字</p>
+      </div>
+    </div>
+
+    <div class="search-panel">
+      <form action="/search/" method="get" role="search">
+        <input
+          type="search"
+          name="q"
+          id="search-input"
+          aria-label="全站檢索"
+          placeholder="搵字詞、書名或者葉碼"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn primary">檢索</button>
+      </form>
+
+      <div class="filters">
+        <h2 id="filter-title">範圍</h2>
+        <div class="filter-list" role="group" aria-labelledby="filter-title">
+          {
+            corpora.map((corpus) => (
+              <label data-disabled="true">
+                <input type="checkbox" name="corpus" value={corpus.slug} disabled />
+                {corpus.title}
+              </label>
+            ))
+          }
+        </div>
+        <p class="hint">語料篩選隨檢索服務一併開放。</p>
+      </div>
+    </div>
+
+    <div class="results" id="results" aria-live="polite">
+      <p class="state">
+        <b>檢索服務部署中</b>
+        全文索引鋪設好之後，呢度會顯示命中嘅葉同上下文。
+      </p>
+    </div>
+  </div>
+
+  <Yuwai size="sm" />
+
+  <script>
+    interface SearchHit {
+      corpus?: string;
+      issue?: string;
+      page?: number;
+      title?: string | null;
+      snippet?: string;
+    }
+
+    const results = document.getElementById("results");
+    const input = document.getElementById("search-input");
+    if (results instanceof HTMLElement) {
+      const idle = results.innerHTML;
+      const params = new URLSearchParams(window.location.search);
+      const query = params.get("q") ?? "";
+      if (input instanceof HTMLInputElement && query !== "") input.value = query;
+
+      const stateNode = (title: string, body: string): HTMLElement => {
+        const wrapper = document.createElement("p");
+        wrapper.className = "state";
+        const strong = document.createElement("b");
+        strong.textContent = title;
+        wrapper.append(strong, document.createTextNode(body));
+        return wrapper;
+      };
+
+      const renderHits = (hits: SearchHit[]) => {
+        if (hits.length === 0) {
+          results.replaceChildren(stateNode("冇符合嘅結果", "試下換個寫法，簡體字都會歸一到繁體。"));
+          return;
+        }
+        const list = document.createElement("ul");
+        list.className = "hits";
+        for (const hit of hits) {
+          if (!hit.corpus || !hit.issue || typeof hit.page !== "number") continue;
+          const page = String(hit.page).padStart(3, "0");
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = `/read/${hit.corpus}/${hit.issue}/${page}/`;
+          link.textContent = hit.title ?? "（無題）";
+          const meta = document.createElement("span");
+          meta.className = "hit-meta";
+          meta.textContent = `${hit.corpus} · ${hit.issue} · 第 ${page} 葉`;
+          item.append(link, meta);
+          if (hit.snippet) {
+            const snippet = document.createElement("p");
+            snippet.className = "hit-snippet";
+            snippet.textContent = hit.snippet;
+            item.append(snippet);
+          }
+          list.append(item);
+        }
+        results.replaceChildren(list);
+      };
+
+      /** 檢索 API 由後續 Worker 提供；未部署（404）或離線時維持部署中提示。 */
+      const runSearch = async (text: string) => {
+        const url = new URL("/api/search", window.location.origin);
+        url.searchParams.set("q", text);
+        for (const slug of params.getAll("corpus")) url.searchParams.append("corpus", slug);
+        try {
+          const response = await fetch(url, { headers: { accept: "application/json" } });
+          if (!response.ok) return false;
+          const payload: unknown = await response.json();
+          const hits = (payload as { results?: SearchHit[] })?.results;
+          if (!Array.isArray(hits)) return false;
+          renderHits(hits);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      if (query !== "") {
+        results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
+        void runSearch(query).then((served) => {
+          if (!served) results.innerHTML = idle;
+        });
+      }
+    }
+  </script>
+</Base>

@@ -1,0 +1,11 @@
+---
+import { statusBadge } from "../utils/reader.ts";
+
+interface Props {
+  status: string;
+}
+
+const badge = statusBadge(Astro.props.status);
+---
+
+<span class:list={["badge", badge.tone]}>{badge.label}</span>

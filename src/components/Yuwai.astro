@@ -1,0 +1,11 @@
+---
+interface Props {
+  size?: "sm";
+}
+
+const { size } = Astro.props;
+---
+
+<div class:list={["yuwai", size === "sm" && "sm"]} aria-hidden="true">
+  <span></span><i></i><span></span>
+</div>

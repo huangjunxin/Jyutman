@@ -1,0 +1,65 @@
+---
+import Yuwai from "../components/Yuwai.astro";
+import Base from "../layouts/Base.astro";
+import { getSiteTotals } from "../utils/corpus.ts";
+
+const totals = getSiteTotals();
+---
+
+<Base
+  title="關於 · 粵語文叢"
+  description="粵語文叢的項目緣起、數據來源、設計參考與現階段範圍：將 1842 至 1907 年的粵語白話文獻由掃描影像變成可讀、可查、可引用的文本。"
+  current="about"
+>
+  <div class="wrap">
+    <div class="prose">
+      <h1>關於粵語文叢</h1>
+      <p class="lead">
+        將 1842 至 1907 年間出版嘅粵語白話文獻（傳教士教科書、方言報紙、讀本）由掃描影像變成可檢索、可對照、可引用嘅網頁文本。
+      </p>
+
+      <h2>點解要做呢件事</h2>
+      <p>
+        1842 至 1907 年係粵語白話書面文獻嘅一個特殊時期：傳教士用粵語寫教科書同讀本，報人用粵語辦報，句式同今日口語相當接近，但寫法混雜漢字、19
+        世紀羅馬字同英文。呢批材料對語言史、社會史同粵語教學都有價值，但長期停留喺圖書館特藏同掃描影像層面。
+      </p>
+      <p>
+        古籍閱讀器已經示範咗圖文對照、段落對齊、穩定標識可以做到幾好；粵語文獻欠缺嘅唔係技術想像力，而係一個將
+        OCR 產出整理成可讀、可查、可引用嘅展示層。本站就係補呢一層。
+      </p>
+
+      <h2>數據來源</h2>
+      <p>
+        本站只讀數據管道 <code>JyutmanDataPipeline</code> 嘅公開發佈層
+        <code>data/&lt;corpus&gt;/&#123;articles,pages,issues&#125;.jsonl</code>，唔會回寫上游。文章（article）係主要展示單元，頁面層嘅校對狀態會傳播到文章層。
+      </p>
+      <ul>
+        <li>欄位語義、已知坑與容錯策略：見倉庫文檔 <code>docs/03-data-contract.md</code>。</li>
+        <li>
+          已發佈語料：{totals.corpusCount} 個，共 {totals.pageCount} 葉 / {totals.articleCount} 篇；其餘底本仍喺管道整理，未進入發佈層。
+        </li>
+        <li>正文逐字保留原貌，含未辨識字符號 □ 同 19 世紀傳教士拼式；展示層唔改寫、唔現代化。</li>
+      </ul>
+
+      <h2>設計參考</h2>
+      <p>
+        資訊組織方式參考識典古籍同 ctext.org 等古籍閱讀站，僅作 UX 參照，唔複製其內容或數據（ctext.org
+        明確禁止爬取）。本站獨立開發、獨立發佈，唔隸屬於任何其他項目。
+      </p>
+
+      <h2>現階段範圍</h2>
+      <p>
+        現時開放嘅係閱讀層：書目庫、葉級閱讀器（分段正文、豎排／橫排切換、翻葉、每葉來源信息）。
+        粵拼標註、今譯、字典釋義、文字更正通道、影像對照都未開放；檢索服務亦喺部署中。
+      </p>
+
+      <h2>聯絡</h2>
+      <p>
+        專案、數據、校對或者授權問題，可以電郵 <a href="mailto:huang-junxin@qq.com">huang-junxin@qq.com</a>。
+        授權與下架安排見<a href="/data/">數據開放</a>頁。
+      </p>
+    </div>
+  </div>
+
+  <Yuwai size="sm" />
+</Base>

@@ -1,0 +1,123 @@
+---
+import type { GetStaticPaths } from "astro";
+
+import Progress from "../../components/Progress.astro";
+import Yuwai from "../../components/Yuwai.astro";
+import Base from "../../layouts/Base.astro";
+import { getCorpora, getCorpus, getIssues, getPages } from "../../utils/corpus.ts";
+import { pageParam } from "../../utils/reader.ts";
+
+export const getStaticPaths = (() => {
+  return getCorpora().map((corpus) => ({
+    params: { corpus: corpus.slug },
+    props: { slug: corpus.slug },
+  }));
+}) satisfies GetStaticPaths;
+
+const { slug } = Astro.props;
+const corpus = getCorpus(slug);
+if (!corpus) {
+  throw new Error(`manifest 冇語料 ${slug}`);
+}
+
+const issues = getIssues(slug).map((issue) => {
+  const pages = getPages(slug, issue.issue);
+  const first = pages[0];
+  return {
+    issue,
+    href: first ? `/read/${slug}/${issue.issue}/${pageParam(first.page)}/` : undefined,
+  };
+});
+---
+
+<Base
+  title={`${corpus.title} · 書目庫 · 粵語文叢`}
+  description={`${corpus.title}（${corpus.year ?? "年代待考"}）：${corpus.pageCount} 葉 / ${corpus.articleCount} 篇，逐期列出葉數與校對進度，可進入閱讀器。`}
+  current="browse"
+>
+  <div class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>{corpus.title}</h1>
+        <p>
+          {corpus.year ?? "年代待考"} · {corpus.sourceLine}
+        </p>
+      </div>
+      <p class="stat">
+        <b>{corpus.pageCount}</b> 葉　·　{corpus.articleCount} 篇
+      </p>
+    </div>
+
+    <table class="issue-table">
+      <caption>
+        共 {corpus.issueCount} {corpus.issueCount > 1 ? "期" : "冊"} · 已核驗 {corpus.verifiedPages} 葉 · 待校 {corpus.needsReviewPages} 葉
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">期號</th>
+          <th scope="col">出版日期</th>
+          <th scope="col">葉數</th>
+          <th scope="col">篇數</th>
+          <th scope="col">校對進度</th>
+          <th scope="col">閱讀</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          issues.map(({ issue, href }) => (
+            <tr>
+              <td>
+                {href ? (
+                  <a class="issue-name" href={href}>
+                    {issue.issue}
+                  </a>
+                ) : (
+                  <span class="issue-name">{issue.issue}</span>
+                )}
+              </td>
+              <td>
+                {issue.issue_date ? (
+                  <span class="num">{issue.issue_date}</span>
+                ) : (
+                  <span class="date-missing">日期待考</span>
+                )}
+                {issue.date_note && (
+                  <details class="date-note">
+                    <summary>日期考證</summary>
+                    <p>{issue.date_note}</p>
+                  </details>
+                )}
+              </td>
+              <td class="num">{issue.pages}</td>
+              <td class="num">{issue.articles}</td>
+              <td class="cell-prog">
+                <Progress
+                  verified={issue.verified_pages}
+                  total={issue.pages}
+                  label={`已核驗 ${issue.verified_pages} / ${issue.pages} 葉`}
+                />
+              </td>
+              <td>
+                {href ? (
+                  <a class="btn secondary" href={href}>
+                    第一葉 →
+                  </a>
+                ) : (
+                  <span class="badge wip">未開放</span>
+                )}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+
+    <p class="note" style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-top:22px">
+      頁數、篇數、校對進度均取自上游發佈層 <code>issues.jsonl</code>；葉碼用掃描序號，永遠連續。
+    </p>
+
+    <p style="margin-top:26px"><a href="/browse/">← 返書目庫</a></p>
+  </div>
+
+  <Yuwai size="sm" />
+</Base>

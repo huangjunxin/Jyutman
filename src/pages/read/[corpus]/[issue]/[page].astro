@@ -1,0 +1,182 @@
+---
+import type { GetStaticPaths } from "astro";
+
+import StatusBadge from "../../../../components/StatusBadge.astro";
+import Base from "../../../../layouts/Base.astro";
+import { getCorpus, getIssue, getPage, getPageRoutes, getPages } from "../../../../utils/corpus.ts";
+import {
+  isLatinDominant,
+  markerNote,
+  pageParam,
+  splitParagraphs,
+} from "../../../../utils/reader.ts";
+
+export const getStaticPaths = (() =>
+  getPageRoutes().map((route) => ({
+    params: { corpus: route.corpus, issue: route.issue, page: pageParam(route.page) },
+    props: { route },
+  }))) satisfies GetStaticPaths;
+
+const { route } = Astro.props;
+const { corpus: corpusSlug, issue: issueSlug, page: pageNumber } = route;
+
+const corpus = getCorpus(corpusSlug);
+const issue = getIssue(corpusSlug, issueSlug);
+const leaf = getPage(corpusSlug, issueSlug, pageNumber);
+if (!corpus || !issue || !leaf) {
+  throw new Error(`找唔到葉：${corpusSlug}/${issueSlug}/${pageNumber}`);
+}
+
+const pages = getPages(corpusSlug, issueSlug);
+const index = pages.findIndex((record) => record.page === pageNumber);
+const previous = index > 0 ? pages[index - 1] : undefined;
+const next = index >= 0 && index < pages.length - 1 ? pages[index + 1] : undefined;
+
+const readUrl = (page: number) => `/read/${corpusSlug}/${issueSlug}/${pageParam(page)}/`;
+
+/** □ 為原葉未辨識字：照錄原符號，只加樣式，不改字。 */
+function renderParagraph(text: string): string {
+  const escaped = text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  return escaped.replaceAll("□", '<span class="miss" title="未辨識字">□</span>');
+}
+
+/** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
+const firstArticle = leaf.blocks.find((block) => block.type === "article");
+const leafTitle = firstArticle?.type === "article" ? firstArticle.title : null;
+const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle} · ${corpus.title}` : corpus.title;
+---
+
+<Base
+  title={`${pageName} · 第 ${pageParam(pageNumber)} 葉 · 粵語文叢`}
+  description={`${corpus.title}${issue.issue_date ? `（${issue.issue_date}）` : ""}第 ${pageParam(pageNumber)} 葉的 OCR 文本，附底本來源、OCR 狀態與文本授權。`}
+>
+  <Fragment slot="head">
+    <script is:inline>
+      (function () {
+        try {
+          if (window.localStorage.getItem("jm-dir") === "vertical") {
+            document.documentElement.classList.add("dir-vertical");
+          }
+        } catch (error) {
+          /* 本機儲存唔可用時按橫排顯示 */
+        }
+      })();
+    </script>
+  </Fragment>
+
+  <div class="toolbar">
+    <div class="inner">
+      <nav class="crumb" aria-label="位置">
+        <a href="/browse/">書目庫</a><span class="sep">›</span>
+        <a href={`/browse/${corpus.slug}/`}>{corpus.title}</a><span class="sep">›</span>
+        <span class="cur">{issue.issue}{issue.issue_date ? `（${issue.issue_date}）` : ""}</span>
+      </nav>
+
+      <StatusBadge status={leaf.status} />
+      <span class="tb-spacer"></span>
+
+      <div class="tb-group">
+        <span>行款</span>
+        <div class="seg" role="group" aria-label="行款方向">
+          <button type="button" data-dir="vertical" aria-pressed="false">豎排</button>
+          <button type="button" data-dir="horizontal" aria-pressed="true">橫排</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reader">
+    <section class="pane-text">
+      <div class="doc">
+        {
+          leaf.blocks.map((block) =>
+            block.type === "article" ? (
+              <article class="art" id={block.id}>
+                {block.title !== null && <h2>{block.title}</h2>}
+                {splitParagraphs(block.text).map((paragraph) => (
+                  <p class:list={["para", isLatinDominant(paragraph) && "rom"]} set:html={renderParagraph(paragraph)} />
+                ))}
+              </article>
+            ) : (
+              <div class="ph">
+                <b>{block.text}</b>
+                {markerNote(block.text) !== null && <span>{markerNote(block.text)}</span>}
+              </div>
+            ),
+          )
+        }
+      </div>
+    </section>
+
+    <aside class="pane-source">
+      <div class="source-card">
+        <h2>本葉來源</h2>
+        <dl>
+          <dt>語料</dt>
+          <dd><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></dd>
+          <dt>期號</dt>
+          <dd>{issue.issue}{issue.issue_date ? `（${issue.issue_date}）` : "（日期待考）"}</dd>
+          <dt>葉序號</dt>
+          <dd>{pageParam(pageNumber)}</dd>
+          <dt>OCR 狀態</dt>
+          <dd><StatusBadge status={leaf.status} /></dd>
+          <dt>底本來源</dt>
+          <dd>{corpus.sourceLine}</dd>
+          <dt>文本授權</dt>
+          <dd>CC BY-SA 4.0</dd>
+        </dl>
+      </div>
+    </aside>
+  </div>
+
+  <nav class="pager" aria-label="翻葉">
+    <div class="inner">
+      {
+        previous ? (
+          <a class="pg" href={readUrl(previous.page)}>‹ 上一葉</a>
+        ) : (
+          <span class="pg is-disabled" aria-disabled="true">‹ 上一葉</span>
+        )
+      }
+      <span class="pg-info">
+        掃描序號 <b>{pageParam(pageNumber)}</b> · 第 {index + 1} / {pages.length} 葉
+      </span>
+      {
+        next ? (
+          <a class="pg" href={readUrl(next.page)}>下一葉 ›</a>
+        ) : (
+          <span class="pg is-disabled" aria-disabled="true">下一葉 ›</span>
+        )
+      }
+    </div>
+  </nav>
+
+  <script>
+    const buttons = document.querySelectorAll<HTMLButtonElement>(".seg button[data-dir]");
+    const root = document.documentElement;
+
+    const applyDirection = (direction: string) => {
+      root.classList.toggle("dir-vertical", direction === "vertical");
+      for (const button of buttons) {
+        button.setAttribute("aria-pressed", String(button.dataset.dir === direction));
+      }
+    };
+
+    applyDirection(root.classList.contains("dir-vertical") ? "vertical" : "horizontal");
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        const direction = button.dataset.dir ?? "horizontal";
+        applyDirection(direction);
+        try {
+          window.localStorage.setItem("jm-dir", direction);
+        } catch (error) {
+          /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
+        }
+      });
+    }
+  </script>
+</Base>

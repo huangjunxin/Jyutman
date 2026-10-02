@@ -1,0 +1,42 @@
+[
+  {
+    "corpus": "gd-vernacular-paper",
+    "issue": "issue-01",
+    "issue_date": "1907-04-01",
+    "date_note": "filename marker 19070401",
+    "pages": 41,
+    "articles": 44,
+    "verified_pages": 9,
+    "needs_review_pages": 32
+  },
+  {
+    "corpus": "gd-vernacular-paper",
+    "issue": "issue-02",
+    "issue_date": "1907-06-10",
+    "date_note": "masthead 丁未年四月三十日出版 (p002) = 1907-06-10; filename marker 19070310 conflicts, masthead wins; ads dated 丁未年四月廿六/吉日 corroborate",
+    "pages": 57,
+    "articles": 71,
+    "verified_pages": 1,
+    "needs_review_pages": 56
+  },
+  {
+    "corpus": "gd-vernacular-paper",
+    "issue": "issue-05",
+    "issue_date": null,
+    "date_note": "no masthead date line found; ads dated 丁未年四月廿六日 (p056, ad plate reused from issue-02 p54 -> lower bound 1907-06-06) and 丁未年四月吉日 (p054/p059); 黄冈起事 news (p051, event 1907-05-22); cover/TOC/most running heads self-identify 第五期 (TOC prints 旬報), but p056 running head and p058 subscription notice say 第四期 — see review_checklist 跨批次衝突待裁",
+    "pages": 59,
+    "articles": 73,
+    "verified_pages": 2,
+    "needs_review_pages": 57
+  },
+  {
+    "corpus": "gd-vernacular-paper",
+    "issue": "issue-07",
+    "issue_date": "1907-08-18",
+    "date_note": "masthead 丁未年七月初十日出版 (p002) = 1907-08-18, a Sunday, matching p3 notice 從第七期起改逢禮拜日出版; filename marker 19070707 conflicts, masthead wins",
+    "pages": 64,
+    "articles": 81,
+    "verified_pages": 2,
+    "needs_review_pages": 62
+  }
+]

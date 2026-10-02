@@ -1,74 +1,117 @@
 ---
-const siteName = "粵語文叢";
+import Progress from "../components/Progress.astro";
+import Yuwai from "../components/Yuwai.astro";
+import Base from "../layouts/Base.astro";
+import { getCorpora, getIssues, getPages, getSiteTotals } from "../utils/corpus.ts";
+import { pageParam } from "../utils/reader.ts";
+
+const corpora = getCorpora();
+const totals = getSiteTotals();
+
+const cards = corpora.map((corpus) => {
+  const issues = getIssues(corpus.slug);
+  const first = issues[0];
+  const firstPage = first ? getPages(corpus.slug, first.issue)[0] : undefined;
+  return {
+    corpus,
+    issueLabel: corpus.issueCount > 1 ? `${corpus.issueCount} 期` : "單冊",
+    href:
+      first && firstPage
+        ? `/read/${corpus.slug}/${first.issue}/${pageParam(firstPage.page)}/`
+        : `/browse/${corpus.slug}/`,
+  };
+});
 ---
 
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="歷史粵語文獻的 OCR 閱讀站，規劃建設中。" />
-    <title>{siteName} Jyutman</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f4ede1;
-        --surface: #fbf7ef;
-        --rule: #d9cbb6;
-        --text: #2a211c;
-        --muted: #6e6257;
-        --primary: #6e4b33;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #15120e;
-          --surface: #1e1a15;
-          --rule: #3a3128;
-          --text: #e8dfd2;
-          --muted: #a69786;
-          --primary: #c79a6e;
+<Base
+  title="粵語文叢 · 讀返十九世紀嘅粵語"
+  description="1842 至 1907 年粵語白話文獻的閱讀平台：方言報紙、傳教士讀本與識字課本，逐葉展示底本來源與校對狀態。"
+  current={undefined}
+>
+  <div class="wrap">
+    <section class="hero">
+      <h1>讀返十九世紀嘅粵語</h1>
+      <p class="lede">
+        1842 至 1907 年嘅粵語白話文獻：傳教士讀本、方言報紙、識字課本，而家可以檢索、閱讀、引用。
+      </p>
+
+      <form class="big-search" action="/search/" method="get" role="search">
+        <input type="search" name="q" aria-label="全站檢索" placeholder="搵字詞、書名或者葉碼" />
+        <button type="submit" class="btn primary">檢索</button>
+      </form>
+
+      <p class="try">檢索服務部署中，現時可以先睇書目同正文。</p>
+    </section>
+
+    <Yuwai />
+
+    <section>
+      <div class="sec-head">
+        <h2>語料</h2>
+        <p>
+          已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 葉 · {totals.articleCount} 篇　<a
+            href="/browse/">全部書目 →</a
+          >
+        </p>
+      </div>
+
+      <div class="grid">
+        {
+          cards.map(({ corpus, issueLabel, href }) => (
+            <article class="card">
+              <div class="card-body">
+                <h3><a href={href}>{corpus.title}</a></h3>
+                <p class="sub">
+                  {corpus.year ?? "年代待考"} · {issueLabel} · {corpus.pageCount} 葉
+                </p>
+                <Progress
+                  verified={corpus.verifiedPages}
+                  total={corpus.pageCount}
+                  label={`葉級校對進度 · 已核驗 ${corpus.verifiedPages} / ${corpus.pageCount}`}
+                />
+                <p class="meta">
+                  <span class="badge pub">已發佈</span>
+                  <span>{corpus.articleCount} 篇</span>
+                  <a href={href}>閱讀 →</a>
+                </p>
+              </div>
+            </article>
+          ))
         }
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 2rem;
-        background: var(--bg);
-        color: var(--text);
-        font-family: "Noto Serif HK", "Source Han Serif", "Songti TC", serif;
-        text-align: center;
-      }
-      main {
-        padding: 3rem 4rem;
-        border: 1px solid var(--rule);
-        border-radius: 4px;
-        background: var(--surface);
-      }
-      h1 {
-        margin: 0 0 1rem;
-        font-size: clamp(2rem, 6vw, 3rem);
-        font-weight: 500;
-        letter-spacing: 0.15em;
-        text-indent: 0.15em;
-        color: var(--primary);
-      }
-      p {
-        margin: 0;
-        color: var(--muted);
-        letter-spacing: 0.35em;
-        text-indent: 0.35em;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>{siteName}</h1>
-      <p>規劃建設中</p>
-    </main>
-  </body>
-</html>
+      </div>
+    </section>
+
+    <Yuwai />
+
+    <section>
+      <div class="sec-head">
+        <h2>點樣讀</h2>
+        <p>三個動作：閱讀、豎排、檢索</p>
+      </div>
+      <div class="feats">
+        <div class="feat">
+          <span class="no">其一</span>
+          <h3>文本閱讀＋來源信息</h3>
+          <p>分段 OCR 文本配豎排閱讀，逐葉展示底本、藏館、葉碼同校對狀態。</p>
+        </div>
+        <div class="feat">
+          <span class="no">其二</span>
+          <h3>豎排閱讀</h3>
+          <p>
+            跟底本方向排印，右起豎排、標點用豎排字形；亦可即時切換橫排。正文一律用襯線，豎排時行氣唔會斷。
+          </p>
+        </div>
+        <div class="feat">
+          <span class="no">其三</span>
+          <h3>繁簡異體歸一檢索</h3>
+          <p>
+            輸入簡體或異體字，都查得到底本嘅繁體原文。歸一只發生喺檢索層，展示層永遠保留原字，唔改寫、唔現代化。
+          </p>
+          <span class="feat-state">檢索服務部署中，暫未開放。</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <Yuwai size="sm" />
+</Base>

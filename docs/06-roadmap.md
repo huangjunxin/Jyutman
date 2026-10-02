@@ -94,7 +94,7 @@ Phase 3 分两期：3a 为公开提交端（匿名提交＋Turnstile）＋ Cloud
 | 阶段 | 预计时长 | 核心交付 | 状态 |
 |---|---|---|---|
 | Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 已完成 |
-| Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 未开始 |
+| Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 进行中：阅读器、书目库、数据同步层已落地；检索与域名未开始 |
 | Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 未开始 |
 | Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 未开始 |
 | Phase 4 · 增长 | 待估 | 相似文本、多版本、AI 辅助 | 未开始 |
@@ -139,7 +139,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 全部完成。** 分项如下：
+**Phase 0 全部完成。Phase 1 进行中。** 分项如下：
 
 - 0.1 trigram 实测通过（本地 2026-10-02，生产 D1 复核 2026-10-03）：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；D1 上 trigram tokenizer 可用，召回与本地一致（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
@@ -147,4 +147,13 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 - 0.4 三仓已建成并推送 GitHub（huangjunxin/Jyutman、Jyutman-Corpus、Jyutman-Images）；Cloudflare 账号已就绪（wrangler OAuth 登录，D1 可用）。
 - 0.5 CI 已上线，首个 GitHub Actions run 通过。
 
-下一步行动：启动 Phase 1（MVP），从书目库页与阅读器开始，按上方 Phase 1 任务表推进。
+Phase 1 进度：
+
+- 1.1 书目库页：已发布语料按 manifest 数据驱动列出（年代、叶数、篇数、校对进度）；未发布语料待进入上游发布层后自动出现，不写死常量。
+- 1.2 / 1.3 / 1.4 阅读器：分段正文、竖排与横排即时切换（状态存本机）、底部翻叶与叶级 URL 已上线；来源信息栏含语料、期号、叶序号、OCR 状态、底本来源与文本授权。
+- 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶静态生成通过，尚未部署。
+- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与备用 `db/import.sql`（未执行，两套 FTS DDL 均注释待定）。
+- 未开始：1.5 D1 检索上线、1.7 域名接入。
+
+下一步行动：接入 D1 检索（1.5），部署到 Cloudflare 并接 jyutman.com（1.7），按上方 Phase 1 任务表推进。
+

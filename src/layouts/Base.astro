@@ -1,0 +1,77 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  /** 完整 title 文字（含站名），由頁面自行決定。 */
+  title: string;
+  description: string;
+  /** 當前導覽項，用於高亮。 */
+  current?: "browse" | "search" | "about" | "data";
+  /** 檢索結果等頁面標記 noindex。 */
+  noindex?: boolean;
+}
+
+const { title, description, current, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
+
+const navItems = [
+  { key: "browse", href: "/browse/", label: "書目庫" },
+  { key: "search", href: "/search/", label: "檢索" },
+  { key: "about", href: "/about/", label: "關於" },
+  { key: "data", href: "/data/", label: "數據開放" },
+] as const;
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳去正文</a>
+
+    <header class="site-head">
+      <div class="inner">
+        <a class="brand" href="/">
+          <b>粵語文叢</b>
+          <small>歷史粵語文獻數碼閱讀</small>
+        </a>
+        <nav class="nav" aria-label="主導覽">
+          {
+            navItems.map((item) => (
+              <a href={item.href} aria-current={current === item.key ? "page" : undefined}>
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-foot">
+      <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
+      <p class="foot-copy">
+        粵語文叢 · 歷史粵語文獻數碼閱讀<br />
+        底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0
+      </p>
+      <nav class="foot-nav" aria-label="頁腳導覽">
+        {
+          navItems.map((item) => (
+            <a href={item.href}>{item.label}</a>
+          ))
+        }
+      </nav>
+    </footer>
+  </body>
+</html>

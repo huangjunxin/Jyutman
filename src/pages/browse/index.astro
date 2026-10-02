@@ -1,0 +1,91 @@
+---
+import Progress from "../../components/Progress.astro";
+import Yuwai from "../../components/Yuwai.astro";
+import Base from "../../layouts/Base.astro";
+import { getCorpora, getIssues, getPages, getSiteTotals } from "../../utils/corpus.ts";
+import { pageParam } from "../../utils/reader.ts";
+
+const corpora = getCorpora();
+const totals = getSiteTotals();
+
+const rows = corpora.map((corpus) => {
+  const issues = getIssues(corpus.slug);
+  const first = issues[0];
+  const firstPage = first ? getPages(corpus.slug, first.issue)[0] : undefined;
+  return {
+    corpus,
+    href:
+      first && firstPage
+        ? `/read/${corpus.slug}/${first.issue}/${pageParam(firstPage.page)}/`
+        : undefined,
+  };
+});
+---
+
+<Base
+  title="書目庫 · 粵語文叢"
+  description={`已發佈 ${totals.corpusCount} 個粵語語料，共 ${totals.pageCount} 葉 / ${totals.articleCount} 篇；逐葉列出底本年代、葉數與校對進度。`}
+  current="browse"
+>
+  <div class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>書目庫</h1>
+        <p>1842 至 1907 年粵語白話文獻 · 底本屬公有領域 · 掃描影像來自 Internet Archive</p>
+      </div>
+      <p class="stat">
+        <b>{totals.corpusCount}</b> 個語料　·　已發佈 {totals.pageCount} 葉 / {totals.articleCount} 篇
+      </p>
+    </div>
+
+    <div class="list">
+      {
+        rows.map(({ corpus, href }) => (
+          <article class="row">
+            <div class="row-body">
+              <div class="row-top">
+                <h2><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></h2>
+                <span class="yr">{corpus.year ?? "年代待考"}</span>
+              </div>
+              <p class="slug">
+                {corpus.slug}
+                {corpus.issueCount > 1 ? ` · ${corpus.issueCount} 期` : " · 單冊"}
+              </p>
+
+              <div class="facts">
+                <div class="fact"><b>{corpus.pageCount}</b>葉（掃描）</div>
+                <div class="fact"><b>{corpus.articleCount}</b>篇</div>
+                <div class="fact"><b>{corpus.issueCount}</b>{corpus.issueCount > 1 ? "期" : "冊"}</div>
+                <div class="fact"><b>{corpus.verifiedPages}</b>葉已核驗</div>
+              </div>
+
+              <Progress
+                verified={corpus.verifiedPages}
+                total={corpus.pageCount}
+                label={`葉級校對進度 · 已核驗 ${corpus.verifiedPages} / ${corpus.pageCount} 葉（另 ${corpus.needsReviewPages} 葉待校）`}
+              />
+
+              <div class="row-foot">
+                <span class="badge pub">已發佈</span>
+                <span class="note">底本來源：{corpus.sourceLine}</span>
+                <a class="btn secondary" href={`/browse/${corpus.slug}/`}>期號目錄 →</a>
+                {href && <a class="btn secondary" href={href}>進入閱讀 →</a>}
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <div class="legend" style="margin-top:22px">
+      <span><i style="background:var(--ok)"></i>已核驗（上游 status 為 verified）</span>
+      <span><i style="background:var(--placeholder);border:1px solid var(--rule)"></i>待校葉</span>
+    </div>
+
+    <p class="note" style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-top:22px">
+      只列上游已發佈嘅語料；其餘底本仍喺資料管道整理，未進入發佈層，故此處唔顯示。
+    </p>
+  </div>
+
+  <Yuwai size="sm" />
+</Base>

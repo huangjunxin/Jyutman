@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-10-02T17:28:23.676Z",
+  "corpora": [
+    {
+      "slug": "gd-vernacular-paper",
+      "title": "廣東白話報",
+      "year": 1907,
+      "issueCount": 4,
+      "pageCount": 221,
+      "articleCount": 269,
+      "verifiedPages": 14,
+      "needsReviewPages": 207,
+      "sourceLine": "底本影像為網絡流傳之數碼副本（原始掃描機構待考）"
+    },
+    {
+      "slug": "canton-vernacular-handbook",
+      "title": "A Handbook of the Canton Vernacular of the Chinese Language",
+      "year": 1874,
+      "issueCount": 1,
+      "pageCount": 248,
+      "articleCount": 329,
+      "verifiedPages": 170,
+      "needsReviewPages": 78,
+      "sourceLine": "Internet Archive · Cornell University Library 藏"
+    },
+    {
+      "slug": "readings-in-cantonese-colloquial",
+      "title": "Readings in Cantonese Colloquial",
+      "year": 1894,
+      "issueCount": 1,
+      "pageCount": 220,
+      "articleCount": 268,
+      "verifiedPages": 80,
+      "needsReviewPages": 140,
+      "sourceLine": "Internet Archive · Cornell University Library 藏"
+    }
+  ]
+}
