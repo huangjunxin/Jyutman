@@ -69,6 +69,8 @@ jobs:
       - wrangler deploy   # Workers + Static Assets
 ```
 
+workflow 已落地 `.github/workflows/ci.yml`（Node 24，`npm ci` / `npm test` / `npm run lint` / `npm run typecheck`），首个 run 已通过。
+
 数据同步为独立 workflow `sync-data.yml`，不随代码部署触发（见 §9）。
 
 **流程教训（必须执行）**：同类站点早期无 CI、文档与实现脱节的教训。本仓库从第一天起：CI 门禁 + 文档与代码的单一事实源约定：02 / 03 / 本文档的描述若与代码冲突，以代码为准并立即回改文档。

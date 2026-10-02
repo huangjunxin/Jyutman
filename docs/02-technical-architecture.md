@@ -202,12 +202,12 @@ jyutman/
 
 | # | 待验证项 | 方法 | 失败退路 |
 |---|---|---|---|
-| 1 | D1 是否启用 FTS5 trigram tokenizer（官方只确认支持 FTS5，tokenizer 选项未逐一确认） | 实跑 `CREATE VIRTUAL TABLE t USING fts5(x, tokenize='trigram')` | 退回 unicode61 + 应用层自建 n-gram 列（普通表存三元组） |
-| 2 | Pagefind 在真实古籍语料上的召回 | 从 gdvp 抽 20–50 篇构造查询集，人工判召回 | 站内即时搜索降级为「只搜标题」 |
+| 1 | D1 是否启用 FTS5 trigram tokenizer（官方只确认支持 FTS5，tokenizer 选项未逐一确认）；本地已通过（`docs/spikes/0.1-d1-trigram.md`），生产 D1 复核待 Cloudflare 账号 | 实跑 `CREATE VIRTUAL TABLE t USING fts5(x, tokenize='trigram')` | 退回 unicode61 + 应用层自建 n-gram 列（普通表存三元组） |
+| 2 | Pagefind 在真实古籍语料上的召回；已实测：不宜承担正文检索，仅作标题与罗马字辅助（`docs/spikes/0.2-pagefind.md`） | 从 gdvp 抽 20–50 篇构造查询集，人工判召回 | 站内即时搜索降级为「只搜标题」 |
 | 3 | 静态文件数测算 | 按「按卷/章合并出页」估算文件数 vs 免费 2 万上限 | 升付费档，或叶级内容改为客户端按 JSON 渲染 |
 | 4 | 历史拼式 → 粤拼映射工作量 | 抽样传教士罗马字，人工标注映射覆盖率 | 第一版只做罗马字归一（去变音符 / 统一调号），不做严格粤拼对齐 |
 | 5 | 生僻字字形来源 | 统计语料字符集，核对候选字体的覆盖与授权 | 扩大回退字体链；必要时按语料现算子集 |
-| 6 | trigram 下的短查询（1–2 字） | 见 §6.3 降级方案 | unigram/bigram 辅助表，或 LIKE + 结果缓存 |
+| 6 | trigram 下的短查询（1–2 字）；已实测：bigram/unigram 辅助表方案可行（`docs/spikes/0.1-d1-trigram.md`） | 见 §6.3 降级方案 | unigram/bigram 辅助表，或 LIKE + 结果缓存 |
 
 ## 11. 演进路径
 

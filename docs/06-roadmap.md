@@ -93,7 +93,7 @@ Phase 3 分两期：3a 为公开提交端（匿名提交＋Turnstile）＋ Cloud
 
 | 阶段 | 预计时长 | 核心交付 | 状态 |
 |---|---|---|---|
-| Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 未开始 |
+| Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 本地项已完成，待 Cloudflare 账号 |
 | Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 未开始 |
 | Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 未开始 |
 | Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 未开始 |
@@ -139,6 +139,12 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 未开始。** 三个仓库尚未初始化；本路线图的门槛数字（除语料页数、篇数外）均属建议，待 Phase 0 实测后确定。
+**Phase 0 本地项全部完成。** 分项如下：
 
-下一步行动：Phase 0 任务 0.1（D1 FTS5 trigram 可行性实测）。
+- 0.1 trigram 本地实测通过：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；生产 D1 复核待 Cloudflare 账号（见 `docs/spikes/0.1-d1-trigram.md`）。
+- 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
+- 0.3 版权登记完成：5 已核 / 4 待核，清单移入 `Jyutman-corpus` 仓 `rights/`。
+- 0.4 三仓已建成并推送 GitHub（huangjunxin/jyutman、Jyutman-corpus、Jyutman-images）；Cloudflare 独立账号待注册，是当前唯一待办。
+- 0.5 CI 已上线，首个 GitHub Actions run 通过。
+
+下一步行动：注册 Cloudflare 账号并提供 API Token，完成生产 D1 trigram 复核后即进入 Phase 1。
