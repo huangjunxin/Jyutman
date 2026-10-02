@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-02）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-03）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 粤语文丛 Jyutman 技术架构
 
@@ -99,7 +99,7 @@ JyutmanDataPipeline（上游：Python + GLM-OCR 远程服务 + PyMuPDF）
 ### 6.1 为什么不能依赖分词
 
 - SQLite FTS5 的 `unicode61` 不切中文：一整段连续汉字会被当作单个 token，只能从头前缀匹配，子串检索失效。
-- 正确姿势是 trigram tokenizer（SQLite ≥ 3.34）：天然子串匹配；但**不能再用前缀 `*` 语法**，查询需用 OR 组合三元组构造 `MATCH` 表达式。
+- 正确姿势是 trigram tokenizer（SQLite ≥ 3.34）：天然子串匹配，3 字及以上直接对整串做短语 `MATCH`；**不能再用前缀 `*` 语法**。1 至 2 字查询无三元组可构造，需降级到 bigram / unigram 辅助表或 LIKE，见 `docs/spikes/0.1-d1-trigram.md`。
 - 中文 IR 学界结论：词索引与 n-gram 索引检索效果相当。不要指望 jieba 类分词覆盖粤语口语词（唔係 / 乜嘢 / 冇）与古籍异体字。
 - Pagefind 官方支持 CJK 分词，但曾出现索引端与查询端分词不一致的问题；本站只把它作为站内即时搜索的补充，不作主检索。
 
@@ -119,12 +119,12 @@ JyutmanDataPipeline（上游：Python + GLM-OCR 远程服务 + PyMuPDF）
 用户输入（"nei5 hou2" / "唔係" / 单字）
   1. 繁简 / 异体归一
   2. 判定是否含罗马字（拉丁串或数字调）→ 切到 roman_norm 字段
-  3. 汉字串 → 拆三元组构造 OR MATCH；拉丁串 → 归一后前缀匹配
+  3. 汉字串与拉丁串 3 字及以上 → 整串短语 MATCH；1 至 2 字 → bigram / unigram 辅助表或 LIKE 降级
   4. FTS5 MATCH + bm25() 排序（可按 corpus / 年代 / status 分面过滤）
   5. 返回 {corpus, issue, page, article_id, snippet}
 ```
 
-**待决策（重要）**：trigram 最短匹配长度为 3 个字符，1–2 字的查询（如单字「冇」）无法走 trigram 索引。需要降级方案：额外维护 unigram/bigram 辅助表，或对短查询走 LIKE 扫描 + 结果缓存。此项列入 §10 实测清单。
+**已实测（本地 2026-10-02，生产 D1 2026-10-03）**：trigram 对 1 至 2 字查询返回 0 且不报错（无三元组可构造）；降级方案定为 bigram（2 字及以上）与 unigram（单字）辅助表，LIKE 全表扫描作兜底。见 `docs/spikes/0.1-d1-trigram.md`。
 
 ## 7. 影像与 IIIF
 
@@ -202,7 +202,7 @@ Jyutman/
 
 | # | 待验证项 | 方法 | 失败退路 |
 |---|---|---|---|
-| 1 | D1 是否启用 FTS5 trigram tokenizer（官方只确认支持 FTS5，tokenizer 选项未逐一确认）；本地已通过（`docs/spikes/0.1-d1-trigram.md`），生产 D1 复核待 Cloudflare 账号 | 实跑 `CREATE VIRTUAL TABLE t USING fts5(x, tokenize='trigram')` | 退回 unicode61 + 应用层自建 n-gram 列（普通表存三元组） |
+| 1 | D1 是否启用 FTS5 trigram tokenizer（官方只确认支持 FTS5，tokenizer 选项未逐一确认）；已通过（本地 + 生产 D1 复核，`docs/spikes/0.1-d1-trigram.md`） | 实跑 `CREATE VIRTUAL TABLE t USING fts5(x, tokenize='trigram')` | 退回 unicode61 + 应用层自建 n-gram 列（普通表存三元组） |
 | 2 | Pagefind 在真实古籍语料上的召回；已实测：不宜承担正文检索，仅作标题与罗马字辅助（`docs/spikes/0.2-pagefind.md`） | 从 gdvp 抽 20–50 篇构造查询集，人工判召回 | 站内即时搜索降级为「只搜标题」 |
 | 3 | 静态文件数测算 | 按「按卷/章合并出页」估算文件数 vs 免费 2 万上限 | 升付费档，或叶级内容改为客户端按 JSON 渲染 |
 | 4 | 历史拼式 → 粤拼映射工作量 | 抽样传教士罗马字，人工标注映射覆盖率 | 第一版只做罗马字归一（去变音符 / 统一调号），不做严格粤拼对齐 |
