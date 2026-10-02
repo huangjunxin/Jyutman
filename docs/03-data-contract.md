@@ -137,7 +137,7 @@ CREATE TABLE corrections (
 | OCR 文本层许可 | CC BY-SA 4.0 |
 | 状态 | 已核 / 待核 / 有风险 |
 
-- 登记表落点：`jyutman-corpus` 仓（`rights.csv` 或同仓文档），**待决策**具体路径；站点 `/data` 页渲染摘要版本（页面结构见 04 §2.1）。
+- 登记表落点已定：`Jyutman-corpus` 仓 `rights/` 目录（`0.3-rights-registry.csv` 主表与 `0.3-rights-summary.md` 说明，Phase 0 已产出首版：5 已核 / 4 待核）；站点 `/data` 页渲染摘要版本（页面结构见 04 §2.1）。
 - 影像政策：本站预设只公开 OCR 文本层；扫描影像在完成藏馆条款逐件核查前不公布。登记表的「扫描件条款」字段是日后开放影像的审批依据。
 - **待验证**：扫描件条款与 OCR 文本层许可的兼容性需逐件确认。
 - 研究语料库（HKUST / EdUHK / PolyU 等）：走**合作授权**，不下载转载。
