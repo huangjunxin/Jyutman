@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>校對工作台 · 粵語文叢</title>
+<style>
+:root{
+  --bg:#F4EDE1; --surface:#FBF7EF; --rule:#D9CBB6;
+  --text:#2A211C; --muted:#6E6257; --primary:#6E4B33;
+  --primary-strong:#533823; --accent:#C0392B; --highlight:#F3E0A8;
+  --placeholder:#EDE3D3;
+  --ok:#3F6B4F; --ok-bg:#E7EFE6;
+  --done:#6E6257; --done-bg:#EAE1D3;
+  --ocr:#A67C00; --ocr-bg:#F6EBC6;
+  --serif:"Songti TC","Noto Serif CJK TC","Source Han Serif TC",serif;
+  --sans:"PingFang TC","Noto Sans CJK TC",sans-serif;
+  --mono:"SF Mono",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--serif);font-size:17px;line-height:1.9}
+a{color:var(--primary)}
+a:hover{color:var(--primary-strong)}
+.mono{font-family:var(--mono);font-size:.92em}
+
+.demo-bar{background:var(--placeholder);border-bottom:1px solid var(--rule);
+  font-family:var(--sans);font-size:13px;color:var(--muted);
+  padding:7px 24px;letter-spacing:.02em;text-align:center}
+.demo-bar b{color:var(--primary);font-weight:600;letter-spacing:.08em}
+
+.site-head{height:56px;background:var(--surface);border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;position:sticky;top:0;z-index:30}
+.site-head .inner{width:100%;max-width:1180px;margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none;color:var(--text)}
+.brand b{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:.14em}
+.brand small{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.nav{display:flex;gap:2px}
+.nav a{font-family:var(--sans);font-size:14px;color:var(--muted);text-decoration:none;
+  padding:6px 12px;border-radius:4px;white-space:nowrap}
+.nav a:hover{color:var(--primary-strong);background:var(--placeholder)}
+.nav a[aria-current="page"]{color:var(--primary);background:var(--placeholder)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* 魚尾分隔 */
+.yuwai{display:flex;align-items:center;justify-content:center;gap:16px;
+  margin:52px auto;max-width:1180px}
+.yuwai span{display:block;width:88px;height:1px;background:var(--rule)}
+.yuwai i{display:block;width:9px;height:9px;background:var(--primary);transform:rotate(45deg)}
+.yuwai.sm{margin:30px auto}
+.yuwai.sm span{width:56px}
+
+/* 標題區 */
+.page-head{padding:46px 0 28px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:24px;flex-wrap:wrap}
+.page-head h1{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.14em;
+  margin:0 0 6px}
+.page-head p{margin:0;font-family:var(--sans);font-size:13px;color:var(--muted);
+  max-width:44em;line-height:1.9}
+.page-head .stat{font-family:var(--sans);font-size:13px;color:var(--muted);text-align:right}
+.page-head .stat b{font-family:var(--serif);font-size:22px;font-weight:400;color:var(--text);
+  letter-spacing:.06em}
+
+/* 總覽三卡 */
+.overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(274px,1fr));gap:16px}
+.ov{background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+  padding:20px 22px;display:flex;flex-direction:column}
+.ov h2{margin:0 0 12px;font-family:var(--sans);font-size:12px;font-weight:600;
+  letter-spacing:.16em;color:var(--primary)}
+.ov .big{margin:0;font-family:var(--serif);font-size:34px;font-weight:400;line-height:1.25;
+  letter-spacing:.04em}
+.ov .big small{font-family:var(--sans);font-size:12px;color:var(--muted);
+  margin-left:8px;letter-spacing:0}
+.ov ul{list-style:none;margin:12px 0 0;padding:0}
+.ov li{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  font-family:var(--sans);font-size:12.5px;line-height:1.8;color:var(--muted);
+  padding:6px 0;border-top:1px solid var(--rule)}
+.ov li b{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--text)}
+.ov .note{margin:auto 0 0;padding-top:12px;font-family:var(--sans);font-size:12px;
+  line-height:1.85;color:var(--muted)}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 0}
+.flow .arw{font-family:var(--sans);font-size:13px;color:var(--muted)}
+.tag{display:inline-block;font-family:var(--sans);font-size:11px;line-height:1;
+  padding:3px 7px;border-radius:3px;border:1px solid var(--rule);
+  background:var(--bg);color:var(--muted);white-space:nowrap;letter-spacing:0}
+
+/* 徽章 */
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);font-size:12px;
+  line-height:1;padding:5px 9px;border-radius:4px;white-space:nowrap;border:1px solid transparent}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge.ocr{background:var(--ocr-bg);color:var(--ocr);border-color:rgba(166,124,0,.3)}
+.badge.done{background:var(--done-bg);color:var(--done);border-color:rgba(110,98,87,.28)}
+.badge.ok{background:var(--ok-bg);color:var(--ok);border-color:rgba(63,107,79,.28)}
+.badge.bt-proof{background:var(--ocr-bg);color:var(--ocr);border-color:rgba(166,124,0,.3)}
+.badge.bt-check{background:var(--done-bg);color:var(--done);border-color:rgba(110,98,87,.28)}
+.badge.bt-trans{background:var(--ok-bg);color:var(--ok);border-color:rgba(63,107,79,.28)}
+.badge.bt-report{background:rgba(192,57,43,.09);color:var(--accent);
+  border-color:rgba(192,57,43,.3)}
+
+/* 狀態藥丸 */
+.st{display:inline-flex;align-items:center;font-family:var(--sans);font-size:12px;line-height:1;
+  padding:5px 10px;border-radius:999px;white-space:nowrap;border:1px solid var(--rule);
+  background:var(--bg);color:var(--muted)}
+.st.pend{background:var(--placeholder);color:var(--primary);border-color:var(--rule)}
+.st.hold{background:var(--done-bg);color:var(--done);border-color:rgba(110,98,87,.28)}
+.st.accept{background:var(--ok-bg);color:var(--ok);border-color:rgba(63,107,79,.28)}
+.st.reject{background:rgba(192,57,43,.09);color:var(--accent);border-color:rgba(192,57,43,.3)}
+
+/* 隊列標題 */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
+  flex-wrap:wrap;margin:36px 0 0}
+.sec-head h2{margin:0;font-family:var(--serif);font-weight:400;font-size:24px;
+  letter-spacing:.12em}
+.sec-head p{margin:0;font-family:var(--sans);font-size:12.5px;color:var(--muted)}
+
+/* 篩選 */
+.filters{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  margin:16px 0 0;padding:14px 0;display:flex;flex-direction:column;gap:10px}
+.frow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.flabel{font-family:var(--sans);font-size:12px;color:var(--muted);min-width:44px;
+  letter-spacing:.06em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--sans);font-size:13px;line-height:1;padding:8px 13px;
+  border:1px solid var(--rule);border-radius:4px;background:var(--surface);
+  color:var(--muted);cursor:pointer}
+.chip em{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted);
+  margin-left:6px;opacity:.85}
+.chip:hover{border-color:var(--primary);color:var(--primary-strong)}
+.chip.is-on{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip.is-on em{color:rgba(255,255,255,.78)}
+.chip.zero{color:var(--muted);opacity:.7}
+.q-hint{margin:0;font-family:var(--sans);font-size:12px;line-height:1.85;color:var(--muted)}
+
+/* 裁定隊列 */
+.queue{display:flex;flex-direction:column;gap:10px;margin:22px 0 0}
+.q{background:var(--surface);border:1px solid var(--rule);border-radius:4px}
+.q[hidden]{display:none}
+.q[open]{border-color:rgba(110,75,51,.45)}
+.q.is-decided{background:var(--bg)}
+.q-sum{display:grid;grid-template-columns:14px auto 176px minmax(0,1fr) auto;
+  grid-template-areas:"caret type src body act";gap:4px 16px;align-items:start;
+  padding:15px 16px 15px 14px;cursor:pointer;list-style:none;border-radius:4px}
+.q-sum::-webkit-details-marker{display:none}
+.q-sum:hover{background:rgba(110,75,51,.05)}
+.q-sum:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.q-caret{grid-area:caret;padding-top:7px}
+.q-caret i{display:block;width:0;height:0;border-left:5px solid var(--muted);
+  border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+.q[open] .q-caret i{transform:rotate(90deg)}
+.q-type{grid-area:type;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.q-src{grid-area:src;font-family:var(--sans);font-size:12.5px;line-height:1.75;
+  color:var(--muted);min-width:0}
+.q-src b{display:block;font-family:var(--serif);font-size:15px;font-weight:400;
+  color:var(--text);letter-spacing:.02em}
+.q-body{grid-area:body;min-width:0}
+.q-ctx{display:block;font-family:var(--serif);font-size:16px;line-height:1.75;color:var(--text)}
+.q-doubt{display:block;margin-top:4px;font-family:var(--sans);font-size:12.5px;
+  line-height:1.8;color:var(--muted)}
+.q-doubt b{font-weight:400;color:var(--text)}
+.q-act{grid-area:act;display:flex;align-items:center;justify-content:flex-end;
+  gap:6px;flex-wrap:wrap}
+.mini{font-family:var(--sans);font-size:12px;line-height:1;padding:6px 10px;border-radius:4px;
+  border:1px solid var(--rule);background:transparent;color:var(--muted);cursor:pointer}
+.mini:hover{border-color:var(--primary);color:var(--primary-strong)}
+.mini.ok:hover{border-color:var(--ok);color:var(--ok)}
+.mini.no:hover{border-color:var(--accent);color:var(--accent)}
+.q-full{border-top:1px dashed var(--rule);margin:0 16px;padding:14px 0 18px;
+  font-family:var(--sans);font-size:13px;line-height:1.9;color:var(--muted)}
+.q-full dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px}
+.q-full dt{color:var(--muted);white-space:nowrap}
+.q-full dd{margin:0;color:var(--text);min-width:0}
+.q-full dd.quote{font-family:var(--serif);font-size:15px;line-height:1.95}
+.q-empty{margin:22px 0 0;padding:22px;border:1px dashed var(--rule);border-radius:4px;
+  font-family:var(--sans);font-size:13px;line-height:1.9;color:var(--muted);text-align:center}
+.q-empty[hidden]{display:none}
+.miss{color:var(--accent);background:var(--placeholder);border-radius:2px;
+  border-bottom:1px dashed var(--accent);padding:0 .14em}
+
+/* 本機回報（閱讀器 到 校對工作台嘅示範資料流）*/
+.local-banner{margin:14px 0 0;padding:10px 14px;border:1px dashed var(--rule);
+  border-radius:4px;background:var(--placeholder);font-family:var(--sans);
+  font-size:12.5px;line-height:1.8;color:var(--muted)}
+.local-banner[hidden]{display:none}
+.local-banner b{font-family:var(--mono);font-weight:400;color:var(--text)}
+.q-full dd.is-note{color:var(--muted)}
+
+.demo-note{margin:30px 0 0;font-family:var(--sans);font-size:12.5px;line-height:1.9;
+  color:var(--muted);text-align:center}
+
+.site-foot{border-top:1px solid var(--rule);margin-top:44px;padding:40px 0 60px;
+  background:var(--surface)}
+.foot-yin{width:52px;height:52px;margin:0 auto 16px;background:var(--accent);
+  opacity:.94;display:flex;align-items:center;justify-content:center}
+.foot-yin span{font-family:var(--serif);font-size:42px;line-height:1;color:#fff;
+  transform:translateY(-2px)}
+.foot-copy{text-align:center;font-family:var(--sans);font-size:13px;color:var(--muted);
+  line-height:2;margin:0 auto;max-width:56em;padding:0 24px}
+
+@media (max-width:1024px){
+  .q-sum{grid-template-columns:14px minmax(0,1fr) auto;
+    grid-template-areas:"caret type act" "caret src src" "caret body body"}
+}
+@media (max-width:760px){
+  .brand small{display:none}
+  .nav a{padding:6px 8px;font-size:13px}
+  .wrap{padding:0 18px}
+  .page-head{padding:32px 0 22px}
+  .page-head h1{font-size:24px}
+  .page-head .stat{text-align:left}
+  .q-sum{padding:14px 14px 14px 12px;gap:4px 12px}
+  .q-full{margin:0 14px}
+  .q-full dl{grid-template-columns:minmax(0,1fr);gap:2px 0}
+  .q-full dt{margin-top:8px}
+}
+@media (max-width:560px){
+  .q-sum{grid-template-columns:14px minmax(0,1fr);
+    grid-template-areas:"caret type" "caret src" "body body" "act act"}
+  .q-act{justify-content:flex-start}
+  .flabel{min-width:0}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-bar"><b>設計演示稿</b>　本頁非正式頁面，僅供設計評審；隊列照錄上游真實存疑記錄（缺字上報項為示範）</div>
+
+<header class="site-head">
+  <div class="inner">
+    <a class="brand" href="index.html"><b>粵語文叢</b><small>歷史粵語文獻數碼閱讀</small></a>
+    <nav class="nav">
+      <a href="browse.html">書目庫</a>
+      <a href="search.html">檢索</a>
+      <a href="proofread.html" aria-current="page">校對工作台</a>
+      <a href="#">關於</a>
+      <a href="#">數據開放</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>校對工作台</h1>
+      <p>逐葉核對 OCR 文本同譯文；讀者上報嘅疑問同編輯存疑，喺呢度排隊等裁決。</p>
+    </div>
+    <p class="stat">隊列 <b id="q-total">11</b> 條　·　待裁 <b id="q-pend">11</b> 條</p>
+  </div>
+
+  <p class="local-banner" id="localBanner" hidden>偵測到 <b id="localCount">0</b> 條本機回報（示範資料流：閱讀器 → 校對工作台）</p>
+
+  <div class="overview">
+
+    <section class="ov">
+      <h2>待核對葉</h2>
+      <p class="big">425<small>葉</small></p>
+      <ul>
+        <li><span>廣東白話報（4 期）</span><b>207</b></li>
+        <li><span>A Handbook of the Canton Vernacular</span><b>78</b></li>
+        <li><span>Readings in Cantonese Colloquial</span><b>140</b></li>
+      </ul>
+      <p class="note">上游發佈層 <span class="mono">issues.jsonl</span> 嘅 <span class="mono">needs_review_pages</span> 合計，三語料求和。</p>
+    </section>
+
+    <section class="ov">
+      <h2>校對狀態機</h2>
+      <div class="flow">
+        <span class="badge ocr">未校</span>
+        <span class="arw" aria-hidden="true">→</span>
+        <span class="badge done">已校</span>
+        <span class="arw" aria-hidden="true">→</span>
+        <span class="badge ok">已核驗</span>
+      </div>
+      <p class="note">未校＝上游 draft／needs_review（閱讀器顯示「OCR 未校」）。第二位校對者確認後轉「已核驗」；葉內存疑就落到下面條隊列。</p>
+    </section>
+
+    <section class="ov">
+      <h2>已裁定 <span class="tag">示範數據</span></h2>
+      <p class="big">38<small>條</small></p>
+      <ul>
+        <li><span>採用</span><b>29</b></li>
+        <li><span>駁回</span><b>9</b></li>
+      </ul>
+      <p class="note">示範數字；正式版由裁決記錄統計。本頁隊列只載入待裁項，所以「已採用／已駁回」兩個篩選一開始係空嘅。</p>
+    </section>
+
+  </div>
+
+  <div class="sec-head">
+    <h2>裁定隊列</h2>
+    <p>點一行展開完整上下文同底本原句；右邊可以直接採用／駁回／暫緩</p>
+  </div>
+
+  <div class="filters">
+    <div class="frow">
+      <span class="flabel">語料</span>
+      <div class="chips" data-filter="corpus" role="group" aria-label="語料篩選">
+        <button type="button" class="chip is-on" data-value="all">全部<em>11</em></button>
+        <button type="button" class="chip" data-value="gd">廣東白話報<em>11</em></button>
+        <button type="button" class="chip zero" data-value="cvh" title="A Handbook of the Canton Vernacular（1874）">Handbook<em>0</em></button>
+        <button type="button" class="chip zero" data-value="rcc" title="Readings in Cantonese Colloquial（1894）">Readings<em>0</em></button>
+      </div>
+    </div>
+    <div class="frow">
+      <span class="flabel">類型</span>
+      <div class="chips" data-filter="type" role="group" aria-label="類型篩選">
+        <button type="button" class="chip is-on" data-value="all">全部<em>11</em></button>
+        <button type="button" class="chip" data-value="report">缺字上報<em>1</em></button>
+        <button type="button" class="chip" data-value="proof">校對注<em>5</em></button>
+        <button type="button" class="chip" data-value="trans">今譯校訂<em>5</em></button>
+      </div>
+    </div>
+    <div class="frow">
+      <span class="flabel">狀態</span>
+      <div class="chips" data-filter="status" role="group" aria-label="狀態篩選">
+        <button type="button" class="chip is-on" data-value="all">全部<em>11</em></button>
+        <button type="button" class="chip" data-value="pend">待裁<em>11</em></button>
+        <button type="button" class="chip zero" data-value="hold">待覆核<em>0</em></button>
+        <button type="button" class="chip zero" data-value="accept">已採用<em>0</em></button>
+        <button type="button" class="chip zero" data-value="reject">已駁回<em>0</em></button>
+      </div>
+    </div>
+    <p class="q-hint">「校對注」＝正文已標〔注〕嘅存疑；「checklist 存疑」＝只喺核對表登記嘅存疑。兩者共用同一裁決通道，「校對注」篩選會一併帶出。</p>
+  </div>
+
+  <div class="queue">
+
+    <details class="q" data-corpus="gd" data-type="proof" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-check">checklist 存疑</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第八葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">你地肯出力唔肯呢。唔駛<span class="miss">□</span>十分用力個。</span>
+          <span class="q-doubt">疑點：字漫漶，疑為「點」或「咁」　·　建議「<b>□</b>」　備選「點」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">佢箍咗咁耐。呢個箍上下爛嘅咯。出力一掬。佢就爆開嘅咯。你地肯出力唔肯呢。唔駛<span class="miss">□</span>十分用力個。大衆齊心。一逼就破嘅咯。</dd>
+          <dt>底本原句</dt><dd class="quote">唔駛<span class="miss">□</span>十分用力個。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 008 · 葉狀態 needs_review　·　文章《解明漢人慘狀圖》（亞拙）</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="proof" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-proof">校對注</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">個個都病咁樣。有<span class="miss">□</span>精神。擺出個病樣</span>
+          <span class="q-doubt">疑點：字形喺「有」「冇」之間，文義偏「冇」　·　建議「<b>冇</b>」　備選「有」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">有乜好嬲好掉忌啫。嗱。四萬萬人。個個都病咁樣。有<span class="miss">□</span>精神。擺出個病樣晌處。重想唔認咩。</dd>
+          <dt>底本原句</dt><dd class="quote">個個都病咁樣。有<span class="miss">□</span>精神。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七 · 葉狀態 needs_review　·　正文已標〔注〕　·　文章《白話報係中國人嘅聖藥》（盧亞）</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="proof" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-proof">校對注</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">依住去<span class="miss">□</span>。自然百病銷除。重靈過午時符。</span>
+          <span class="q-doubt">疑點：字漫漶，疑為「飲」或「歛」　·　建議「<b>□</b>」　備選「飲」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">一五一十數俾列位聽吓。列位聽過。咪當我空口講白話。依住去<span class="miss">□</span>。自然百病銷除。重靈過午時符。嗱。靜耳聽嚀。</dd>
+          <dt>底本原句</dt><dd class="quote">依住去<span class="miss">□</span>。自然百病銷除。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七 · 葉狀態 needs_review　·　正文已標〔注〕　·　文章《白話報係中國人嘅聖藥》（盧亞）</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="proof" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-proof">校對注</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">唔駛同亞平。都應該惡到開項喇。</span>
+          <span class="q-doubt">疑點：「項」疑為「顎」或「頸」　·　建議「<b>項</b>」（照錄）　備選「顎」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">中國地方有四百萬里咁多。人民有四百兆咁衆。物産又豐富。氣候又溫和。算係通天下至好嘅地位。唔駛同亞平。都應該惡到開項喇。到轉今日病成咁樣。</dd>
+          <dt>底本原句</dt><dd class="quote">都應該惡到開項喇。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七 · 葉狀態 needs_review　·　正文已標〔注〕　·　文章《白話報係中國人嘅聖藥》（盧亞）</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="trans" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-trans">今譯校訂</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">開聲佢病君。佢一時唔嬲唔掉忌。啋溫你。</span>
+          <span class="q-doubt">疑點：兩讀並陳，反問讀（點會唔嬲）同字面讀（一時不怒不忌）　·　建議「<b>反問讀</b>」　備選「字面讀」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">晌街碰着個人。開聲佢病君。佢一時唔嬲唔掉忌。啋溫你。連忙鬧番轉頭都唔得之。唔怪得嬲。唔怪得掉忌嘅。</dd>
+          <dt>底本原句</dt><dd class="quote">佢一時唔嬲唔掉忌。</dd>
+          <dt>現行今譯</dt><dd>佢一時之間點會唔嬲、點會唔忌諱。（現取反問讀；示範譯文）</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　今譯見閱讀器示範葉</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="trans" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-trans">今譯校訂</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">啋溫你。連忙鬧番轉頭都唔得之。唔怪得嬲。</span>
+          <span class="q-doubt">疑點：「唔得之」讀法待校（或作「唔得止」）　·　建議「<b>唔得之</b>」（照錄）　備選「唔得止」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">開聲佢病君。佢一時唔嬲唔掉忌。啋溫你。連忙鬧番轉頭都唔得之。唔怪得嬲。唔怪得掉忌嘅。好地地話人病。</dd>
+          <dt>底本原句</dt><dd class="quote">連忙鬧番轉頭都唔得之。</dd>
+          <dt>現行今譯</dt><dd>連忙鬧返轉頭都嚟唔切。（暫按「嚟唔切」意譯；示範譯文）</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　今譯見閱讀器示範葉</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="trans" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-trans">今譯校訂</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">算係通天下至好嘅地位。唔駛同亞平。都應該惡到開項喇。</span>
+          <span class="q-doubt">疑點：「亞平」疑為人名（阿平），或即「同人比」　·　建議「<b>同人比</b>」　備選「人名：阿平」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">中國地方有四百萬里咁多。人民有四百兆咁衆。物産又豐富。氣候又溫和。算係通天下至好嘅地位。唔駛同亞平。都應該惡到開項喇。</dd>
+          <dt>底本原句</dt><dd class="quote">唔駛同亞平。</dd>
+          <dt>現行今譯</dt><dd>唔使同人比。（兩讀未定；示範譯文）</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　今譯見閱讀器示範葉</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="trans" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-trans">今譯校訂</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">都應該惡到開項喇。到轉今日病成咁樣。有乜生氣。</span>
+          <span class="q-doubt">疑點：今譯暫保留原字，同 checklist 第 15 行同一疑點（顎／頸）　·　建議「<b>保留原字</b>」　備選「開顎」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">唔駛同亞平。都應該惡到開項喇。到轉今日病成咁樣。有乜生氣。因乜事呢。唉。想唔講出嚟。</dd>
+          <dt>底本原句</dt><dd class="quote">都應該惡到開項喇。</dd>
+          <dt>現行今譯</dt><dd>都應該惡到開項喇。（原字未定，暫不意譯；示範譯文）</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　今譯見閱讀器示範葉</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="trans" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-trans">今譯校訂</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">嗱。靜耳聽嚀。有皮官冇舌底嘅亞。</span>
+          <span class="q-doubt">疑點：語義未定，疑為俗語；今譯只現代化語氣詞　·　建議「<b>照錄＋現代化語氣詞</b>」　備選「待考」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">咪當我空口講白話。依住去<span class="miss">□</span>。自然百病銷除。重靈過午時符。嗱。靜耳聽嚀。有皮官冇舌底嘅亞。</dd>
+          <dt>底本原句</dt><dd class="quote">有皮官冇舌底嘅亞。</dd>
+          <dt>現行今譯</dt><dd>有皮官冇舌底嘅呀。（只將「亞」作「呀」；示範譯文）</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　今譯見閱讀器示範葉</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="report" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type">
+          <span class="badge bt-report">缺字上報</span>
+          <span class="tag">示範</span>
+        </span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第九葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">個個都病咁樣。有<span class="miss">□</span>精神。擺出個病樣</span>
+          <span class="q-doubt">上報：讀者喺正文點擊 <span class="miss">□</span>，指呢個位缺字，未見字形線索　·　建議「<b>讀者填：冇</b>」　備選「有」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">嗱。四萬萬人。個個都病咁樣。有<span class="miss">□</span>精神。擺出個病樣晌處。</dd>
+          <dt>底本原句</dt><dd class="quote">個個都病咁樣。有<span class="miss">□</span>精神。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 009 · 原書葉碼 七　·　上報形態：閱讀器正文點擊 □（示範）</dd>
+          <dt>備註</dt><dd>上報位置同 checklist 第 13 行重疊，正式版會提示合併裁決。</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="q" data-corpus="gd" data-type="proof" data-status="pend">
+      <summary class="q-sum">
+        <span class="q-caret" aria-hidden="true"><i></i></span>
+        <span class="q-type"><span class="badge bt-check">checklist 存疑</span></span>
+        <span class="q-src"><b>廣東白話報</b><small>第一期 · 第十葉</small></span>
+        <span class="q-body">
+          <span class="q-ctx">亦任得佢搶割。閱佬唔拘。當作好閑。</span>
+          <span class="q-doubt">疑點：「閱」疑為「闊」　·　建議「<b>閱</b>」（照錄）　備選「闊」</span>
+        </span>
+        <span class="q-act">
+          <span class="st pend">待裁</span>
+          <button type="button" class="mini ok" data-act="accept">採用</button>
+          <button type="button" class="mini no" data-act="reject">駁回</button>
+          <button type="button" class="mini hold" data-act="hold">暫緩</button>
+        </span>
+      </summary>
+      <div class="q-full">
+        <dl>
+          <dt>完整上下文</dt><dd class="quote">今日搶呢塊。明日割個臼。個哋乜野王親國戚。亦任得佢搶割。閱佬唔拘。當作好閑。唔止閑添。重話寧可送左過朋友。</dd>
+          <dt>底本原句</dt><dd class="quote">亦任得佢搶割。閱佬唔拘。</dd>
+          <dt>位置</dt><dd>廣東白話報 · 第一期 · 掃描序號 010 · 葉狀態 needs_review　·　文章《白話報係中國人嘅聖藥》（盧亞，續前葉）</dd>
+        </dl>
+      </div>
+    </details>
+
+  </div>
+
+  <p class="q-empty" id="q-empty" hidden>呢個篩選組合暫無項目。本示範只載入廣東白話報第一期嘅待裁隊列。</p>
+
+  <p class="demo-note">示範頁面；正式版嘅提交與回寫流程見 docs/03 §7。</p>
+
+</main>
+
+<div class="yuwai" aria-hidden="true"><span></span><i></i><span></span></div>
+
+<footer class="site-foot">
+  <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
+  <p class="foot-copy">
+    粵語文叢 · 校對工作台<br>
+    待核對葉數字取自上游發佈層 <span class="mono">issues.jsonl</span>；隊列存疑逐條照錄 <span class="mono">review_checklist.md</span>。<br>
+    底本屬公有領域 · 掃描影像來自 Internet Archive · 文本數據 CC BY-SA 4.0
+  </p>
+</footer>
+
+<script>
+(function () {
+  var KEY = 'jm-reports';
+  var CORPUS = {
+    gdvp: { name: '廣東白話報', chip: 'gd' },
+    cvh: { name: 'A Handbook of the Canton Vernacular', chip: 'cvh' },
+    rcc: { name: 'Readings in Cantonese Colloquial', chip: 'rcc' }
+  };
+  var TYPES = {
+    '缺字': { cls: 'bt-report', label: '缺字上報', bucket: 'report' },
+    '錯字': { cls: 'bt-proof', label: '校對注', bucket: 'proof' },
+    '標點分段': { cls: 'bt-proof', label: '校對注', bucket: 'proof' },
+    '今譯疑問': { cls: 'bt-trans', label: '今譯校訂', bucket: 'trans' },
+    '其他': { cls: 'bt-proof', label: '校對注', bucket: 'proof' }
+  };
+  var FALLBACK_TYPE = TYPES['缺字'];
+  var DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+  function readReports() {
+    try {
+      var raw = window.localStorage.getItem(KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Object.prototype.toString.call(list) === '[object Array]' ? list : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function cnNum(str) {
+    var n = parseInt(str, 10);
+    if (!n || n < 1 || n > 999) { return String(str); }
+    var h = Math.floor(n / 100), t = Math.floor(n % 100 / 10), o = n % 10;
+    var out = '';
+    if (h) { out += DIGITS[h] + '百'; }
+    if (t === 1 && !h) { out += '十'; }
+    else if (t) { out += DIGITS[t] + '十'; }
+    else if (h && o) { out += '零'; }
+    if (o) { out += DIGITS[o]; }
+    return out;
+  }
+
+  function sourceOf(id) {
+    var parts = String(id || '').split('-');
+    var meta = CORPUS[parts[0]];
+    if (!meta || parts.length < 3) {
+      return { name: String(id || '未知來源'), detail: '', chip: 'other' };
+    }
+    return {
+      name: meta.name,
+      detail: '第' + cnNum(parts[1]) + '期 · 第' + cnNum(parts[2]) + '葉',
+      chip: meta.chip
+    };
+  }
+
+  function withMiss(text) {
+    var frag = document.createDocumentFragment();
+    var parts = String(text).split('□');
+    for (var i = 0; i < parts.length; i++) {
+      if (i) {
+        var miss = document.createElement('span');
+        miss.className = 'miss';
+        miss.textContent = '□';
+        frag.appendChild(miss);
+      }
+      if (parts[i]) { frag.appendChild(document.createTextNode(parts[i])); }
+    }
+    return frag;
+  }
+
+  function staticContexts() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll('details.q .q-ctx'), function (el) {
+      out.push((el.textContent || '').replace(/\s+/g, ''));
+    });
+    return out;
+  }
+
+  function overlaps(contexts, flat) {
+    if (!flat) { return false; }
+    for (var i = 0; i < contexts.length; i++) {
+      if (contexts[i] && (contexts[i].indexOf(flat) >= 0 || flat.indexOf(contexts[i]) >= 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function buildRow(rec, contexts) {
+    var type = TYPES[rec.type] || FALLBACK_TYPE;
+    var src = sourceOf(rec.article);
+    var text = String(rec.text || '');
+    var note = rec.note ? String(rec.note) : '';
+    var rid = String(rec.rid || '');
+    var isOverlap = overlaps(contexts, text.replace(/\s+/g, ''));
+
+    var row = document.createElement('details');
+    row.className = 'q';
+    row.setAttribute('data-corpus', src.chip);
+    row.setAttribute('data-type', type.bucket);
+    row.setAttribute('data-status', 'pend');
+
+    var sum = document.createElement('summary');
+    sum.className = 'q-sum';
+
+    var caret = document.createElement('span');
+    caret.className = 'q-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.appendChild(document.createElement('i'));
+
+    var typeCell = document.createElement('span');
+    typeCell.className = 'q-type';
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + type.cls;
+    badge.textContent = type.label;
+    typeCell.appendChild(badge);
+
+    var srcCell = document.createElement('span');
+    srcCell.className = 'q-src';
+    var srcName = document.createElement('b');
+    srcName.textContent = src.name;
+    var srcDetail = document.createElement('small');
+    srcDetail.textContent = src.detail || '來源未能解析';
+    srcCell.appendChild(srcName);
+    srcCell.appendChild(srcDetail);
+
+    var body = document.createElement('span');
+    body.className = 'q-body';
+    var ctx = document.createElement('span');
+    ctx.className = 'q-ctx';
+    ctx.appendChild(withMiss(text));
+    var doubt = document.createElement('span');
+    doubt.className = 'q-doubt';
+    doubt.appendChild(document.createTextNode('讀者上報　·　建議／說明「'));
+    var noteEl = document.createElement('b');
+    noteEl.textContent = note || '未填';
+    doubt.appendChild(noteEl);
+    doubt.appendChild(document.createTextNode('」'));
+    body.appendChild(ctx);
+    body.appendChild(doubt);
+
+    var act = document.createElement('span');
+    act.className = 'q-act';
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '本機示範';
+    var st = document.createElement('span');
+    st.className = 'st pend';
+    st.textContent = '待裁';
+    act.appendChild(tag);
+    act.appendChild(st);
+    [['accept', 'ok', '採用'], ['reject', 'no', '駁回'], ['hold', 'hold', '暫緩']].forEach(function (b) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mini ' + b[1];
+      btn.setAttribute('data-act', b[0]);
+      btn.textContent = b[2];
+      act.appendChild(btn);
+    });
+
+    sum.appendChild(caret);
+    sum.appendChild(typeCell);
+    sum.appendChild(srcCell);
+    sum.appendChild(body);
+    sum.appendChild(act);
+
+    var full = document.createElement('div');
+    full.className = 'q-full';
+    var dl = document.createElement('dl');
+    var pair = function (term, content, cls) {
+      var dt = document.createElement('dt');
+      dt.textContent = term;
+      var dd = document.createElement('dd');
+      if (cls) { dd.className = cls; }
+      if (typeof content === 'string') { dd.textContent = content; } else { dd.appendChild(content); }
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    };
+    var quote = document.createElement('span');
+    quote.appendChild(withMiss(text));
+    pair('完整所選文字', quote, 'quote');
+    pair('回報編號', rid ? '#' + rid : '未提供');
+    pair('問題類型', rec.type ? String(rec.type) : '未填（舊記錄）');
+    pair('本機說明', '本機提交，尚未進入正式 corrections 表。', 'is-note');
+    if (isOverlap) {
+      pair('備註', '與校對注既有疑點重疊，正式版會自動合併處理。');
+    }
+    full.appendChild(dl);
+
+    row.appendChild(sum);
+    row.appendChild(full);
+    return row;
+  }
+
+  var list = readReports();
+  if (!list.length) { return; }
+  var queue = document.querySelector('.queue');
+  if (!queue) { return; }
+  var contexts = staticContexts();
+  var frag = document.createDocumentFragment();
+  var made = 0;
+  list.forEach(function (rec) {
+    if (!rec || !rec.text) { return; }
+    frag.appendChild(buildRow(rec, contexts));
+    made++;
+  });
+  if (!made) { return; }
+  queue.insertBefore(frag, queue.firstElementChild);
+  var banner = document.getElementById('localBanner');
+  if (banner) {
+    document.getElementById('localCount').textContent = made;
+    banner.hidden = false;
+  }
+})();
+</script>
+
+<script>
+(function () {
+  var rows = Array.prototype.slice.call(document.querySelectorAll('details.q'));
+  var groups = ['corpus', 'type', 'status'];
+  var filter = { corpus: 'all', type: 'all', status: 'all' };
+  var empty = document.getElementById('q-empty');
+  var total = document.getElementById('q-total');
+  var pend = document.getElementById('q-pend');
+  var LABELS = { pend: '待裁', hold: '待覆核', accept: '已採用', reject: '已駁回' };
+
+  function chipBox(g) {
+    return document.querySelector('.chips[data-filter="' + g + '"]');
+  }
+
+  function matches(row, g, value) {
+    return value === 'all' || row.getAttribute('data-' + g) === value;
+  }
+
+  function apply() {
+    var shown = 0;
+    rows.forEach(function (row) {
+      var ok = groups.every(function (g) { return matches(row, g, filter[g]); });
+      row.hidden = !ok;
+      if (ok) { shown++; }
+    });
+    empty.hidden = shown > 0;
+    total.textContent = rows.length;
+    pend.textContent = rows.filter(function (r) {
+      return r.getAttribute('data-status') === 'pend';
+    }).length;
+  }
+
+  function recount() {
+    groups.forEach(function (g) {
+      Array.prototype.forEach.call(chipBox(g).querySelectorAll('.chip'), function (chip) {
+        var value = chip.getAttribute('data-value');
+        var n = rows.filter(function (row) { return matches(row, g, value); }).length;
+        chip.querySelector('em').textContent = n;
+        chip.classList.toggle('zero', n === 0);
+      });
+    });
+  }
+
+  groups.forEach(function (g) {
+    var box = chipBox(g);
+    Array.prototype.forEach.call(box.querySelectorAll('.chip'), function (chip) {
+      chip.addEventListener('click', function () {
+        filter[g] = chip.getAttribute('data-value');
+        Array.prototype.forEach.call(box.querySelectorAll('.chip'), function (c) {
+          c.classList.toggle('is-on', c === chip);
+        });
+        apply();
+      });
+    });
+  });
+
+  function setStatus(row, st) {
+    row.setAttribute('data-status', st);
+    var badge = row.querySelector('.st');
+    badge.className = 'st ' + st;
+    badge.textContent = LABELS[st];
+    row.classList.toggle('is-decided', st === 'accept' || st === 'reject');
+  }
+
+  rows.forEach(function (row) {
+    Array.prototype.forEach.call(row.querySelectorAll('.mini'), function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setStatus(row, btn.getAttribute('data-act'));
+        recount();
+        apply();
+      });
+    });
+  });
+
+  recount();
+  apply();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>檢索「廣東」 · 粵語文叢</title>
+<style>
+:root{
+  --bg:#F4EDE1; --surface:#FBF7EF; --rule:#D9CBB6;
+  --text:#2A211C; --muted:#6E6257; --primary:#6E4B33;
+  --primary-strong:#533823; --accent:#C0392B; --highlight:#F3E0A8;
+  --placeholder:#EDE3D3;
+  --ok:#3F6B4F; --ok-bg:#E7EFE6;
+  --done:#6E6257; --done-bg:#EAE1D3;
+  --ocr:#A67C00; --ocr-bg:#F6EBC6;
+  --serif:"Songti TC","Noto Serif CJK TC","Source Han Serif TC",serif;
+  --sans:"PingFang TC","Noto Sans CJK TC",sans-serif;
+  --mono:"SF Mono",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--serif);font-size:17px;line-height:1.9}
+a{color:var(--primary)}
+a:hover{color:var(--primary-strong)}
+
+.demo-bar{background:var(--placeholder);border-bottom:1px solid var(--rule);
+  font-family:var(--sans);font-size:13px;color:var(--muted);
+  padding:7px 24px;letter-spacing:.02em;text-align:center}
+.demo-bar b{color:var(--primary);font-weight:600;letter-spacing:.08em}
+
+.site-head{height:56px;background:var(--surface);border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;position:sticky;top:0;z-index:20}
+.site-head .inner{width:100%;max-width:1180px;margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none;color:var(--text)}
+.brand b{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:.14em}
+.brand small{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.nav{display:flex;gap:2px}
+.nav a{font-family:var(--sans);font-size:14px;color:var(--muted);text-decoration:none;
+  padding:6px 12px;border-radius:4px}
+.nav a:hover{color:var(--primary-strong);background:var(--placeholder)}
+.nav a[aria-current="page"]{color:var(--primary);background:var(--placeholder)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+.yuwai{display:flex;align-items:center;justify-content:center;gap:16px;
+  margin:52px auto;max-width:1180px}
+.yuwai span{display:block;width:88px;height:1px;background:var(--rule)}
+.yuwai i{display:block;width:9px;height:9px;background:var(--primary);transform:rotate(45deg)}
+
+/* ── 檢索列 ─────────────────────────────── */
+.search-bar{padding:40px 0 0}
+.search-bar h1{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.14em;
+  margin:0 0 20px}
+.search-form{display:flex;gap:10px;max-width:760px}
+.search-form input{flex:1;height:52px;padding:0 18px;font-family:var(--serif);
+  font-size:19px;letter-spacing:.06em;color:var(--text);background:var(--surface);
+  border:1px solid var(--rule);border-radius:4px;outline:none}
+.search-form input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(110,75,51,.14)}
+.btn{font-family:var(--sans);font-size:15px;line-height:1;padding:0 22px;height:52px;
+  border-radius:4px;border:1px solid transparent;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.primary:hover{background:var(--primary-strong);border-color:var(--primary-strong);color:#fff}
+.btn.secondary{background:transparent;color:var(--primary);border-color:var(--rule)}
+.btn.secondary:hover{border-color:var(--primary);color:var(--primary-strong)}
+.scope{margin:14px 0 0;font-family:var(--sans);font-size:13px;color:var(--muted);
+  display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.scope b{font-family:var(--serif);font-size:16px;font-weight:400;color:var(--text)}
+
+.layout{display:grid;grid-template-columns:238px 1fr;gap:34px;padding:26px 0 0;
+  border-top:1px solid var(--rule);margin-top:24px}
+
+/* ── 側欄 ───────────────────────────────── */
+.side{position:sticky;top:80px;align-self:start}
+.facet{margin:0 0 26px}
+.facet h2{margin:0 0 10px;font-family:var(--sans);font-size:12px;font-weight:600;
+  letter-spacing:.16em;color:var(--muted)}
+.facet ul{list-style:none;margin:0;padding:0}
+.facet li{margin:0 0 2px}
+.facet label{display:flex;align-items:center;gap:9px;font-family:var(--sans);font-size:13px;
+  color:var(--text);padding:6px 8px;border-radius:4px;cursor:pointer;line-height:1.5}
+.facet label:hover{background:var(--placeholder)}
+.facet input{appearance:none;width:15px;height:15px;margin:0;border:1px solid var(--rule);
+  border-radius:3px;background:var(--surface);cursor:pointer;position:relative;flex:none}
+.facet input:checked{background:var(--primary);border-color:var(--primary)}
+.facet input:checked::after{content:"";position:absolute;left:4px;top:1px;width:5px;height:9px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.facet .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.facet .zero{color:var(--muted);opacity:.7}
+.facet .zero .cnt{opacity:1}
+
+/* ── 結果 ───────────────────────────────── */
+.results-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin:0 0 6px}
+.results-head p{margin:0;font-family:var(--sans);font-size:13px;color:var(--muted)}
+.results-head p b{font-family:var(--serif);font-size:18px;font-weight:400;color:var(--text)}
+.results-head .sortby{font-family:var(--sans);font-size:13px;color:var(--muted)}
+
+.hit{display:block;padding:22px 0 24px;border-bottom:1px solid var(--rule);
+  text-decoration:none;color:inherit}
+.hit:hover h3{color:var(--primary-strong)}
+.hit-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font-family:var(--sans);font-size:12px;color:var(--muted);margin-bottom:8px}
+.hit-top .corpus{color:var(--primary);text-decoration:none}
+.hit-top .sep{color:var(--rule)}
+.hit h3{margin:0 0 10px;font-family:var(--serif);font-weight:400;font-size:20px;
+  letter-spacing:.04em;line-height:1.55;transition:color .12s}
+.hit h3.untitled{color:var(--muted);font-size:17px;letter-spacing:.08em}
+.hit .snip{margin:0;font-family:var(--serif);font-size:17px;line-height:1.95;
+  color:var(--text);text-align:justify}
+.hit .snip .cut{color:var(--rule)}
+mark{background:var(--highlight);color:var(--accent);border-radius:2px;padding:0 .05em}
+.hit .rom{font-family:var(--mono);font-size:.88em;color:var(--muted)}
+.hit .miss{color:var(--accent);background:var(--placeholder);border-radius:2px;
+  border-bottom:1px dashed var(--accent);padding:0 .14em}
+.hit-foot{margin:12px 0 0;font-family:var(--sans);font-size:12px;color:var(--muted);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hit-foot .id{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.hit-foot a{text-decoration:none}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);font-size:12px;
+  line-height:1;padding:5px 9px;border-radius:4px;white-space:nowrap;border:1px solid transparent}
+.badge.pub{background:var(--ok-bg);color:var(--ok);border-color:rgba(63,107,79,.28)}
+.badge.wip{background:var(--done-bg);color:var(--done);border-color:rgba(110,98,87,.28)}
+.badge.ocr{background:var(--ocr-bg);color:var(--ocr);border-color:rgba(166,124,0,.3)}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+
+.more{margin:26px 0 0;text-align:center}
+.tip{margin:34px 0 0;border:1px solid var(--rule);border-radius:4px;background:var(--surface);
+  padding:18px 20px}
+.tip h2{margin:0 0 8px;font-family:var(--sans);font-size:12px;font-weight:600;
+  letter-spacing:.16em;color:var(--accent)}
+.tip p{margin:0 0 8px;font-family:var(--sans);font-size:13px;line-height:1.9;color:var(--muted)}
+.tip p:last-child{margin-bottom:0}
+.tip b{color:var(--text);font-weight:600}
+
+.site-foot{border-top:1px solid var(--rule);margin-top:20px;padding:40px 0 60px;
+  background:var(--surface)}
+.foot-yin{width:52px;height:52px;margin:0 auto 16px;background:var(--accent);
+  opacity:.94;display:flex;align-items:center;justify-content:center}
+.foot-yin span{font-family:var(--serif);font-size:42px;line-height:1;color:#fff;
+  transform:translateY(-2px)}
+.foot-copy{text-align:center;font-family:var(--sans);font-size:13px;color:var(--muted);
+  line-height:2;margin:0 auto;max-width:56em;padding:0 24px}
+
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr;gap:20px}
+  .side{position:static}
+  .brand small{display:none}
+  .nav a{padding:6px 8px;font-size:13px}
+  .wrap{padding:0 18px}
+  .search-form{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-bar"><b>設計演示稿</b>　本頁非正式頁面，僅供設計評審；命中片段為上游已發佈真實文本</div>
+
+<header class="site-head">
+  <div class="inner">
+    <a class="brand" href="index.html"><b>粵語文叢</b><small>歷史粵語文獻數碼閱讀</small></a>
+    <nav class="nav">
+      <a href="browse.html">書目庫</a>
+      <a href="search.html" aria-current="page">檢索</a>
+      <a href="#">關於</a>
+      <a href="#">數據開放</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="search-bar">
+    <h1>檢索</h1>
+    <form class="search-form" onsubmit="return false">
+      <input type="search" value="廣東" aria-label="檢索字詞">
+      <button type="submit" class="btn primary">檢索</button>
+    </form>
+    <p class="scope">
+      全庫檢索　·　命中 <b>34</b> 篇　·　本頁顯示 <b>8</b> 條
+      <span>檢索層已歸一：繁簡 · 異體 · 19 世紀拼式</span>
+    </p>
+  </div>
+
+  <div class="layout">
+
+    <aside class="side">
+      <div class="facet">
+        <h2>語料</h2>
+        <ul>
+          <li><label><input type="checkbox" checked>廣東白話報<span class="cnt">33</span></label></li>
+          <li><label><input type="checkbox" checked>A Handbook of the Canton Vernacular<span class="cnt">1</span></label></li>
+          <li><label class="zero"><input type="checkbox">Readings in Cantonese Colloquial<span class="cnt">0</span></label></li>
+        </ul>
+      </div>
+
+      <div class="facet">
+        <h2>年代</h2>
+        <ul>
+          <li><label><input type="checkbox" checked>1907<span class="cnt">33</span></label></li>
+          <li><label><input type="checkbox" checked>1874<span class="cnt">1</span></label></li>
+          <li><label class="zero"><input type="checkbox">1894<span class="cnt">0</span></label></li>
+        </ul>
+      </div>
+
+      <div class="facet">
+        <h2>狀態</h2>
+        <ul>
+          <li><label><input type="checkbox" checked>OCR 未校<span class="cnt">33</span></label></li>
+          <li><label><input type="checkbox" checked>已核驗<span class="cnt">1</span></label></li>
+          <li><label class="zero"><input type="checkbox">已校<span class="cnt">0</span></label></li>
+        </ul>
+      </div>
+    </aside>
+
+    <section>
+      <div class="results-head">
+        <p>「<b>廣東</b>」嘅命中</p>
+        <span class="sortby">排序：相關度</span>
+      </div>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第一期 · 葉 003</span><span class="sep">·</span>
+          <span>1907-04-01</span>
+        </div>
+        <h3>廣東白話旬報內容淺說</h3>
+        <p class="snip"><span class="cut">…</span>發刊期也。試將內容名義。說與諸君聽聽。諸君諸君。（亦知立言之各有當乎。）<mark>廣東</mark>地面。時事大難。觸目驚心。圖畫非閒。當場傀儡。繪影繪聲。若影相館。無可遁<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-01-003-01</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第一期 · 葉 014</span><span class="sep">·</span>
+          <span>1907-04-01</span>
+        </div>
+        <h3>哭廣東</h3>
+        <p class="snip">噗。白話報個主筆顛都唔定咯。幾多好哭哭<mark>廣東</mark>窩。通十八省地方。人物。出產。食息。<mark>廣東</mark>洞起手公頭。就有人敢認第二嘅咯。<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-01-014-01</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第二期 · 葉 017</span><span class="sep">·</span>
+          <span>1907-06-10</span>
+        </div>
+        <h3 class="untitled">（無題 · 承上葉）</h3>
+        <p class="snip"><span class="cut">…</span>頭乜路。後來行到西門口。見有枝鹹菜咁嘅旗。寫住駐防滿漢八旗幾个字。然後至省起<mark>廣東</mark>已經唔係<mark>廣東</mark>人嘅<mark>廣東</mark>。<mark>廣東</mark>省城地方。更兼俾的着顏色背心嘅旗下滿洲佬。霸佔<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-02-017-01</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第二期 · 葉 010</span><span class="sep">·</span>
+          <span>1907-06-10</span>
+        </div>
+        <h3 class="untitled">（無題 · 承上葉）</h3>
+        <p class="snip"><span class="cut">…</span>人。知到呢件野帶爭的<span class="miss">□</span>。咁就攪白話報<span class="miss">□</span>。佢都好苦心喺處旣。但係可惜佢唔係駛正<mark>廣東</mark>話。又唔係駛正<mark>廣東</mark>省城話。所以又係帶爭的。細佬處想吓爭的啫。咁都唔做成佢<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-02-010-01</span>
+          <span>葉內含 2 處缺字</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第二期 · 葉 016</span><span class="sep">·</span>
+          <span>1907-06-10</span>
+        </div>
+        <h3>哭廣東（續第一期稿）</h3>
+        <p class="snip">（續第一期稿）（公趾）第二件提起<mark>廣東</mark>嘅地方要哭。我舊時睇過一部新書。名叫新<mark>廣東</mark>。一自睇對眼就一自滴淚。你估佢<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-02-016-02</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第五期 · 葉 016</span><span class="sep">·</span>
+          <span>出版日期待考</span>
+        </div>
+        <h3 class="untitled">（無題 · 承上葉）</h3>
+        <p class="snip"><span class="cut">…</span>保皇黨。就冇頭目囉噃。唔係。有。有就邊個正係亞。係邊處人亞。糊糊塗塗都係<mark>廣東</mark>人咯。惟是佢唔敢認係<mark>廣東</mark>人。雖係<mark>廣東</mark>人。我哋<mark>廣東</mark>人又唔肯認佢係呀。因<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-05-016-01</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">廣東白話報</span><span class="sep">·</span>
+          <span>第七期 · 葉 034</span><span class="sep">·</span>
+          <span>1907-08-18</span>
+        </div>
+        <h3>至散得無謂錢多係呢個七月</h3>
+        <p class="snip">通中國十八省嘅人。迷信神權。散無謂錢。算我地<mark>廣東</mark>爲第一。一年三百六十日。無一日唔係敢樣散法。計起佢條數嚟。怕攞去賠洋欵都<span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge ocr">OCR 未校</span>
+          <span class="id">gdvp-07-034-01</span>
+        </div>
+      </a>
+
+      <a class="hit" href="reader.html">
+        <div class="hit-top">
+          <span class="corpus">A Handbook of the Canton Vernacular</span><span class="sep">·</span>
+          <span>第 198 葉</span><span class="sep">·</span>
+          <span>1874</span>
+        </div>
+        <h3 class="untitled">（無題 · 會話課文）</h3>
+        <p class="snip"><span class="cut">…</span>It is nearly as large as the 差不多好似<mark>廣東</mark>省 <span class="rom">ch'a-pat-to ho ts'z Kwong-tung-</span><span class="cut">…</span></p>
+        <div class="hit-foot">
+          <span class="badge pub">已核驗</span>
+          <span class="id">cvh-198-01</span>
+          <span>三語混排葉（漢字 · 羅馬字 · 英文）</span>
+        </div>
+      </a>
+
+      <p class="more"><a class="btn secondary" href="#">載入其餘 26 條</a></p>
+
+      <div class="tip">
+        <h2>改進檢索提示</h2>
+        <p><b>繁簡異體歸一（待上線）</b>：檢索層會將簡體、異體與通行寫法映射到同一組詞，例如輸入「广东」都查到「廣東」；展示層永遠保留底本原字。</p>
+        <p>本查詢「廣東」在 Readings in Cantonese Colloquial 暫無命中（該語料含口語字「唔」的文章有 80 篇），故結果只覆蓋兩個語料。</p>
+      </div>
+
+    </section>
+  </div>
+
+</main>
+
+<div class="yuwai" aria-hidden="true"><span></span><i></i><span></span></div>
+
+<footer class="site-foot">
+  <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
+  <p class="foot-copy">
+    粵語文叢 · 檢索結果（查詢參數不參與搜尋引擎索引）<br>
+    命中片段為底本 OCR 原文，未經改寫；缺字以 <span class="miss">□</span> 顯示，可提交補字。<br>
+    底本屬公有領域 · 文本數據 CC BY-SA 4.0
+  </p>
+</footer>
+
+</body>
+</html>

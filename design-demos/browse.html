@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>書目庫 · 粵語文叢</title>
+<style>
+:root{
+  --bg:#F4EDE1; --surface:#FBF7EF; --rule:#D9CBB6;
+  --text:#2A211C; --muted:#6E6257; --primary:#6E4B33;
+  --primary-strong:#533823; --accent:#C0392B; --highlight:#F3E0A8;
+  --placeholder:#EDE3D3;
+  --ok:#3F6B4F; --ok-bg:#E7EFE6;
+  --done:#6E6257; --done-bg:#EAE1D3;
+  --ocr:#A67C00; --ocr-bg:#F6EBC6;
+  --serif:"Songti TC","Noto Serif CJK TC","Source Han Serif TC",serif;
+  --sans:"PingFang TC","Noto Sans CJK TC",sans-serif;
+  --mono:"SF Mono",monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--serif);font-size:17px;line-height:1.9}
+a{color:var(--primary)}
+a:hover{color:var(--primary-strong)}
+
+.demo-bar{background:var(--placeholder);border-bottom:1px solid var(--rule);
+  font-family:var(--sans);font-size:13px;color:var(--muted);
+  padding:7px 24px;letter-spacing:.02em;text-align:center}
+.demo-bar b{color:var(--primary);font-weight:600;letter-spacing:.08em}
+
+.site-head{height:56px;background:var(--surface);border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;position:sticky;top:0;z-index:20}
+.site-head .inner{width:100%;max-width:1180px;margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none;color:var(--text)}
+.brand b{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:.14em}
+.brand small{font-family:var(--sans);font-size:12px;color:var(--muted)}
+.nav{display:flex;gap:2px}
+.nav a{font-family:var(--sans);font-size:14px;color:var(--muted);text-decoration:none;
+  padding:6px 12px;border-radius:4px}
+.nav a:hover{color:var(--primary-strong);background:var(--placeholder)}
+.nav a[aria-current="page"]{color:var(--primary);background:var(--placeholder)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+.yuwai{display:flex;align-items:center;justify-content:center;gap:16px;
+  margin:56px auto;max-width:1180px}
+.yuwai span{display:block;width:88px;height:1px;background:var(--rule)}
+.yuwai i{display:block;width:9px;height:9px;background:var(--primary);transform:rotate(45deg)}
+.yuwai.sm{margin:30px auto}
+.yuwai.sm span{width:56px}
+
+.page-head{padding:46px 0 30px;display:flex;align-items:flex-end;
+  justify-content:space-between;gap:24px;flex-wrap:wrap}
+.page-head h1{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.14em;
+  margin:0 0 6px}
+.page-head p{margin:0;font-family:var(--sans);font-size:13px;color:var(--muted)}
+.page-head .stat{font-family:var(--sans);font-size:13px;color:var(--muted);text-align:right}
+.page-head .stat b{font-family:var(--serif);font-size:22px;font-weight:400;color:var(--text);
+  letter-spacing:.06em}
+
+/* ── 篩選列 ─────────────────────────────── */
+.filters{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--sans);font-size:13px;line-height:1;padding:8px 13px;
+  border:1px solid var(--rule);border-radius:4px;background:var(--surface);
+  color:var(--muted);cursor:pointer}
+.chip em{font-style:normal;font-size:12px;color:var(--muted);margin-left:6px;opacity:.85}
+.chip:hover{border-color:var(--primary);color:var(--primary-strong)}
+.chip.is-on{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip.is-on em{color:rgba(255,255,255,.78)}
+.filters .spacer{flex:1}
+.sort{display:flex;align-items:center;gap:9px;font-family:var(--sans);font-size:12px;
+  color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden;
+  background:var(--surface)}
+.seg button{font-family:var(--sans);font-size:13px;line-height:1;padding:8px 13px;border:0;
+  border-left:1px solid var(--rule);background:transparent;color:var(--muted);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.is-on{background:var(--primary);color:#fff}
+
+/* ── 語料清單 ───────────────────────────── */
+.list{display:flex;flex-direction:column;gap:16px;padding:26px 0 0}
+.row{display:flex;gap:22px;background:var(--surface);border:1px solid var(--rule);
+  border-radius:4px;padding:20px 24px;min-height:214px}
+.row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.row-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.row-top h2{margin:0;font-family:var(--serif);font-weight:400;font-size:21px;
+  letter-spacing:.03em;line-height:1.5}
+.row-top .yr{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.row-body .slug{font-family:var(--mono);font-size:12px;color:var(--muted);
+  letter-spacing:.01em}
+.row-body .desc{margin:6px 0 0;font-size:15px;line-height:1.9;color:var(--muted)}
+
+.facts{display:flex;gap:26px;flex-wrap:wrap;margin:14px 0 0;padding:12px 0 0;
+  border-top:1px solid var(--rule)}
+.fact{font-family:var(--sans);font-size:12px;color:var(--muted);line-height:1.7}
+.fact b{display:block;font-family:var(--serif);font-size:18px;font-weight:400;
+  color:var(--text);letter-spacing:.04em}
+.fact.mono b{font-family:var(--mono);font-size:14px;letter-spacing:0}
+
+.prog{margin:16px 0 0}
+.prog-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-family:var(--sans);font-size:12px;color:var(--muted);margin-bottom:7px}
+.prog-head .pct{font-family:var(--mono);font-size:12px;color:var(--text)}
+.track{height:8px;border:1px solid var(--rule);border-radius:4px;background:var(--placeholder);
+  overflow:hidden}
+.track i{display:block;height:100%;background:var(--ok);border-radius:3px 0 0 3px}
+.legend{display:flex;gap:16px;font-family:var(--sans);font-size:12px;color:var(--muted);
+  margin-top:8px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:2px;display:block}
+
+.row-foot{margin:auto 0 0;padding-top:16px;display:flex;align-items:center;gap:12px;
+  flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);font-size:12px;
+  line-height:1;padding:5px 9px;border-radius:4px;white-space:nowrap;border:1px solid transparent}
+.badge.pub{background:var(--ok-bg);color:var(--ok);border-color:rgba(63,107,79,.28)}
+.badge.wip{background:var(--done-bg);color:var(--done);border-color:rgba(110,98,87,.28)}
+.badge.ocr{background:var(--ocr-bg);color:var(--ocr);border-color:rgba(166,124,0,.3)}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.btn{font-family:var(--sans);font-size:13px;line-height:1;padding:9px 15px;border-radius:4px;
+  border:1px solid transparent;cursor:pointer;text-decoration:none;display:inline-flex;
+  align-items:center;gap:6px}
+.btn.secondary{background:transparent;color:var(--primary);border-color:var(--rule)}
+.btn.secondary:hover{border-color:var(--primary);color:var(--primary-strong)}
+.btn.ghost{background:transparent;color:var(--muted);border-color:transparent;padding:9px 4px}
+.btn.ghost:hover{color:var(--primary-strong);text-decoration:underline}
+.row-foot .note{font-family:var(--sans);font-size:12px;color:var(--muted)}
+
+.site-foot{border-top:1px solid var(--rule);margin-top:20px;padding:40px 0 60px;
+  background:var(--surface)}
+.foot-yin{width:52px;height:52px;margin:0 auto 16px;background:var(--accent);
+  opacity:.94;display:flex;align-items:center;justify-content:center}
+.foot-yin span{font-family:var(--serif);font-size:42px;line-height:1;color:#fff;
+  transform:translateY(-2px)}
+.foot-copy{text-align:center;font-family:var(--sans);font-size:13px;color:var(--muted);
+  line-height:2;margin:0 auto;max-width:56em;padding:0 24px}
+
+@media (max-width:760px){
+  .brand small{display:none}
+  .nav a{padding:6px 8px;font-size:13px}
+  .wrap{padding:0 18px}
+  .page-head .stat{text-align:left}
+  .row{flex-direction:column;gap:16px;padding:18px}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-bar"><b>設計演示稿</b>　本頁非正式頁面，僅供設計評審；進度數字取自上游已發佈數據層</div>
+
+<header class="site-head">
+  <div class="inner">
+    <a class="brand" href="index.html"><b>粵語文叢</b><small>歷史粵語文獻數碼閱讀</small></a>
+    <nav class="nav">
+      <a href="browse.html" aria-current="page">書目庫</a>
+      <a href="search.html">檢索</a>
+      <a href="#">關於</a>
+      <a href="#">數據開放</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <div>
+      <h1>書目庫</h1>
+      <p>1842–1907 年粵語白話文獻 · 底本屬公有領域 · 掃描影像來自 Internet Archive</p>
+    </div>
+    <p class="stat"><b>9</b> 個語料　·　已發佈 689 頁 / 866 篇</p>
+  </div>
+
+  <div class="filters">
+    <div class="chips" role="group" aria-label="狀態篩選">
+      <button type="button" class="chip is-on">全部<em>9</em></button>
+      <button type="button" class="chip">已發佈<em>3</em></button>
+      <button type="button" class="chip">整理中<em>4</em></button>
+      <button type="button" class="chip">待 OCR<em>2</em></button>
+    </div>
+    <span class="spacer"></span>
+    <div class="sort">
+      <span>排序</span>
+      <div class="seg" role="group" aria-label="排序方式">
+        <button type="button" class="is-on" title="佔位：依底本年代由新至舊">年代 ↓</button>
+        <button type="button" title="佔位：依書名筆畫">書名</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list">
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>廣東白話報</h2><span class="yr">1907</span>
+        </div>
+        <p class="slug">gd-vernacular-paper · 旬報 · 4 期</p>
+        <p class="desc">廣州刊行的粵語白話旬報，時評、新聞、小說、告白混排，字用粵語口語。全庫最貼近今日粵語書面語嘅一種語料。</p>
+
+        <div class="facts">
+          <div class="fact"><b>221</b>葉（掃描）</div>
+          <div class="fact"><b>269</b>篇</div>
+          <div class="fact"><b>4</b>期</div>
+          <div class="fact mono"><b>issue-01…07</b>期號</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>葉級校對進度 · 已核驗 14 / 221 葉（另 207 葉待校）</span>
+            <span class="pct">6.3%</span>
+          </div>
+          <div class="track"><i style="width:6.3%"></i></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge pub">已發佈</span>
+          <span class="note">影像：Internet Archive</span>
+          <a class="btn secondary" href="reader.html">進入閱讀 →</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>A Handbook of the Canton Vernacular</h2><span class="yr">1874</span>
+        </div>
+        <p class="slug">canton-vernacular-handbook · N. B. Dennys · 香港 China Mail 印</p>
+        <p class="desc">傳教士編嘅粵語入門手冊，課文用「漢字 + 19 世紀羅馬字 + 英文」三欄並排，係歷史拼式研究嘅主要材料。</p>
+
+        <div class="facts">
+          <div class="fact"><b>248</b>葉（掃描）</div>
+          <div class="fact"><b>329</b>篇</div>
+          <div class="fact mono"><b>1874</b>出版年</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>葉級校對進度 · 已核驗 170 / 248 葉（另 78 葉待校）</span>
+            <span class="pct">68.5%</span>
+          </div>
+          <div class="track"><i style="width:68.5%"></i></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge pub">已發佈</span>
+          <span class="note">影像：Internet Archive · Cornell University Library 藏本</span>
+          <a class="btn secondary" href="reader.html">進入閱讀 →</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>Readings in Cantonese Colloquial</h2><span class="yr">1894</span>
+        </div>
+        <p class="slug">readings-in-cantonese-colloquial · J. Dyer Ball · Kelly &amp; Walsh</p>
+        <p class="desc">粵語白話文選讀，逐段附英文直譯同羅馬字拼式；卷首一篇綜述 19 世紀粵語白話出版物，本身即文獻目錄。</p>
+
+        <div class="facts">
+          <div class="fact"><b>220</b>葉（掃描）</div>
+          <div class="fact"><b>268</b>篇</div>
+          <div class="fact mono"><b>1894</b>出版年</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>葉級校對進度 · 已核驗 80 / 220 葉（另 140 葉待校）</span>
+            <span class="pct">36.4%</span>
+          </div>
+          <div class="track"><i style="width:36.4%"></i></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge pub">已發佈</span>
+          <span class="note">影像：Internet Archive · Cornell University Library 藏本</span>
+          <a class="btn secondary" href="reader.html">進入閱讀 →</a>
+        </div>
+      </div>
+    </article>
+
+    <div class="yuwai sm" aria-hidden="true"><span></span><i></i><span></span></div>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>Cantonese Apothegms</h2><span class="yr">1902</span>
+        </div>
+        <p class="slug">cantonese-apothegms · H. J. Stevens</p>
+        <p class="desc">粵語諺語與格言集，短句為主。工作層已完成，待逐葉複核後發佈。</p>
+
+        <div class="facts">
+          <div class="fact"><b>170</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>未進入發佈層，暫無葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge wip">整理中</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>A Chinese and English Phrase Book in the Canton Dialect</h2><span class="yr">1888</span>
+        </div>
+        <p class="slug">chinese-english-phrase-book</p>
+        <p class="desc">中英粵語會話手冊，短句對照。工作層已有初校，待複核。</p>
+
+        <div class="facts">
+          <div class="fact"><b>224</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>未進入發佈層，暫無葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge wip">整理中</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>Easy Lessons in Chinese</h2><span class="yr">1842</span>
+        </div>
+        <p class="slug">easy-lessons-in-chinese · S. W. Williams</p>
+        <p class="desc">現存最早嘅一種粵語教材，兼收廣州話音系說明。全書已完成 OCR，複核進行中。</p>
+
+        <div class="facts">
+          <div class="fact"><b>316</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>未進入發佈層，暫無葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge wip">整理中</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+    <div class="yuwai sm" aria-hidden="true"><span></span><i></i><span></span></div>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>How to Speak Cantonese</h2><span class="yr">1902</span>
+        </div>
+        <p class="slug">how-to-speak-cantonese · J. Dyer Ball</p>
+        <p class="desc">粵語會話教本。底本已掃描入庫，未開始 OCR。</p>
+
+        <div class="facts">
+          <div class="fact"><b>268</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>待 OCR，未有葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge ocr">待 OCR</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>Select Phrases and Reading Lessons in the Canton Dialect</h2><span class="yr">1864</span>
+        </div>
+        <p class="slug">select-phrases-reading-lessons</p>
+        <p class="desc">粵語短句與讀本合刊，篇幅較小。底本已掃描入庫，未開始 OCR。</p>
+
+        <div class="facts">
+          <div class="fact"><b>83</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>待 OCR，未有葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge ocr">待 OCR</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="row">
+      <div class="row-body">
+        <div class="row-top">
+          <h2>The Gospel According to St. Mark in English and Cantonese</h2><span class="yr">1899</span>
+        </div>
+        <p class="slug">gospel-st-mark-cantonese</p>
+        <p class="desc">馬可福音粵語譯本，中英對照。底本已掃描入庫，工作層已完成 OCR，複核進行中。</p>
+
+        <div class="facts">
+          <div class="fact"><b>96</b>葉（掃描）</div>
+          <div class="fact mono"><b>–</b>篇數（未發佈）</div>
+        </div>
+
+        <div class="prog">
+          <div class="prog-head">
+            <span>未進入發佈層，暫無葉級進度數字</span>
+            <span class="pct">–</span>
+          </div>
+          <div class="track"></div>
+        </div>
+
+        <div class="row-foot">
+          <span class="badge wip">整理中</span>
+          <span class="note">影像：Internet Archive</span>
+          <span class="btn ghost">尚未開放</span>
+        </div>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="legend" style="margin-top:22px">
+    <span><i style="background:var(--ok)"></i>已核驗（第二位校對者確認）</span>
+    <span><i style="background:var(--done)"></i>已校（本站校對通道產生）</span>
+    <span><i style="background:var(--ocr)"></i>OCR 未校（上游 draft / needs_review）</span>
+    <span><i style="background:var(--placeholder);border:1px solid var(--rule)"></i>未校葉</span>
+  </div>
+</main>
+
+<div class="yuwai" aria-hidden="true"><span></span><i></i><span></span></div>
+
+<footer class="site-foot">
+  <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
+  <p class="foot-copy">
+    粵語文叢 · 書目庫<br>
+    頁數、篇數、校對進度均取自上游發佈層 <span class="mono">issues.jsonl</span>；未發佈語料不顯示進度數字。<br>
+    底本屬公有領域 · 掃描影像來自 Internet Archive · 文本數據 CC BY-SA 4.0
+  </p>
+</footer>
+
+</body>
+</html>
