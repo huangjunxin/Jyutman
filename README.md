@@ -116,7 +116,7 @@ Astro 靜態前端 + Cloudflare Workers API + D1（SQLite FTS5 trigram）全文�
 
 ## 貢獻
 
-項目處於規劃階段，暫未開放代碼貢獻。有興趣參與（校對、數據、前端、粵語內容）可以先開 issue 講低方向。聯絡：huang-junxin@qq.com
+項目處於規劃階段，暫未開放代碼貢獻。有興趣參與（校對、數據、前端、粵語內容），或者任何查詢、授權同下架事宜，請喺 [GitHub Issues](https://github.com/huangjunxin/Jyutman/issues) 講低。
 
 ## 授權
 

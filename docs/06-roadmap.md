@@ -15,7 +15,7 @@
 | 0.1 | D1 FTS5 trigram 可行性实测 | 将 3 个已发布语料全文入库，实测中文、中英混排、罗马字三类查询的召回与延迟；结论写入文档 |
 | 0.2 | Pagefind 真实语料召回实验 | 用 866 篇文章实测；确认能否正确切分三语混排、是否需要前处理 |
 | 0.3 | 版权与许可逐件登记 | 9 个语料逐件记录底本年份、藏本、来源链接、版权判定；产出清单 |
-| 0.4 | 三个仓库脚手架、LICENSE 与发布身份 | `Jyutman`（MIT）/ `Jyutman-Corpus`（CC BY-SA 4.0）/ `Jyutman-Images`（CC BY-SA 4.0）建成，各自有 LICENSE 与 README；发布身份定为 GitHub 账号 huangjunxin、commit 邮箱 huang-junxin@qq.com；Cloudflare 独立账号与 Access 配置就绪 |
+| 0.4 | 三个仓库脚手架、LICENSE 与发布身份 | `Jyutman`（MIT）/ `Jyutman-Corpus`（CC BY-SA 4.0）/ `Jyutman-Images`（CC BY-SA 4.0）建成，各自有 LICENSE 与 README；发布身份定为 GitHub 账号 huangjunxin（提交邮箱随 commit 元数据公开，站点不展示）；Cloudflare 独立账号与 Access 配置就绪 |
 | 0.5 | CI 最小门禁 | GitHub Actions 跑 test + lint + typecheck + build，全绿 |
 
 **依赖**：无（起始阶段）。
