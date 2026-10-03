@@ -3,9 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  buildBodyIndexMap,
   buildImportSql,
+  buildIssueJyutping,
   buildPageRecord,
   chunkRows,
+  mapArticleReadings,
+  normalizeReading,
   parseJsonl,
   pickArticle,
   pickIssue,
@@ -15,6 +19,9 @@ import {
 } from "../scripts/sync-corpus.mjs";
 
 const fixture = readFileSync(new URL("./fixtures/sample-articles.jsonl", import.meta.url), "utf8");
+const jyutpingFixture = JSON.parse(
+  readFileSync(new URL("./fixtures/sample-jyutping.json", import.meta.url), "utf8"),
+);
 
 function loadFixtureArticles() {
   return parseJsonl(fixture)
@@ -246,4 +253,70 @@ test("chunkRows：按行長分批，超預算即開新批", () => {
   assert.deepEqual(chunkRows(rows, 14), [[rows[0]], [rows[1]], [rows[2]]]);
   assert.deepEqual(chunkRows(rows, 28), [[rows[0], rows[1]], [rows[2]]]);
   assert.deepEqual(chunkRows([], 30), []);
+});
+
+test("normalizeReading：兩種源寫法都取粵拼部分", () => {
+  assert.equal(normalizeReading("插(caap3)"), "caap3");
+  assert.equal(normalizeReading("現(jin6)"), "jin6");
+  assert.equal(normalizeReading("dai6"), "dai6");
+  assert.equal(normalizeReading(""), "");
+});
+
+test("buildBodyIndexMap：標記段與段首尾空白映為 -1，其餘按碼點順移", () => {
+  const map = buildBodyIndexMap("第一期\n\n［插圖］\n\n照妖鏡");
+  assert.equal(map[0], 0, "第");
+  assert.equal(map[2], 2, "期");
+  assert.equal(map[6], -1, "標記段內的插");
+  assert.equal(map[11], 5, "照：標記段抽走之後前移");
+  assert.equal(map[13], 7, "鏡");
+});
+
+test("mapArticleReadings：下標換算到站點正文，字元對唔上嘅條目略去", () => {
+  const mapped = mapArticleReadings("第一期\n\n［插圖］\n\n照妖鏡", "第一期\n\n照妖鏡", [
+    [6, "插", "插(caap3)"],
+    [11, "照", "照(ziu3)"],
+    [12, "錯", "錯(co3)"],
+  ]);
+  assert.deepEqual(mapped.readings, [[5, "照", "ziu3"]]);
+  assert.equal(mapped.skipped, 2, "標記段內一條、字元不符一條");
+});
+
+test("mapArticleReadings：下標以碼點計，補充平面字元唔會撞位", () => {
+  const mapped = mapArticleReadings("𢃇旗甲", "𢃇旗甲", [[1, "旗", "旗(kei4)"]]);
+  assert.deepEqual(mapped.readings, [[1, "旗", "kei4"]]);
+});
+
+test("buildIssueJyutping：按文章拆音表，缺表文章計入 missing，空表文章唔入檔", () => {
+  const articles = loadFixtureArticles().map((article) => ({
+    id: article.id,
+    text: article.text,
+    body: splitArticleText(article.text).body,
+  }));
+  const built = buildIssueJyutping({ articles, jyutping: jyutpingFixture });
+
+  assert.deepEqual(built.table["gdvp-01-002-01"], [
+    [0, "丁", "ding1"],
+    [3, "四", "sei3"],
+    [5, "□", "m4"],
+    [8, "版", "baan2"],
+  ]);
+  assert.deepEqual(
+    built.table["cvh-001-01"],
+    [
+      [1, "書", "syu1"],
+      [2, "衣", "ji1"],
+      [3, "貼", "tip3"],
+      [4, "紙", "zi2"],
+    ],
+    "［現代襯頁］段內讀音略去，其餘前移",
+  );
+  assert.deepEqual(built.table["rcc-021-01"], [
+    [38, "唔", "m4"],
+    [79, "照", "ziu3"],
+    [80, "妖", "jiu2"],
+    [81, "鏡", "geng3"],
+  ]);
+  assert.equal(built.table["gdvp-01-002-03"], undefined, "標記文章唔入音表");
+  assert.equal(built.missing, 1, "音表缺 gdvp-01-002-03 一篇");
+  assert.equal(built.skipped, 1, "cvh-001-01 標記段內一條讀音略去");
 });

@@ -5,5 +5,6 @@
 - `manifest.json`：語料級摘要（標題照錄底本原名、年代、葉數、篇數、校對進度、掃描來源）。
 - `<corpus>/issues.json`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
 - `<corpus>/<issue>/pages.json`：葉級頁面數據，每葉 `{page, status, blocks}`；`blocks` 由文章切分而來，`type` 為 `article`（`id` / `title` / `seq` / `text` / `text_norm`）或 `marker`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
+- `<corpus>/<issue>/jyutping.json`：粵拼音表，`{文章 id: [[字在正文中的下標, 字, 粵拼], …]}`；來源為姊妹倉 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），下標已換算到本站正文（標記段內的字略去）。
 
 重建指令：`node scripts/sync-corpus.mjs`。請勿手改本目錄任何文件；上游字段語義與容錯見 `docs/03-data-contract.md`。

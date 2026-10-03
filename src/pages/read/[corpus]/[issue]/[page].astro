@@ -3,12 +3,21 @@ import type { GetStaticPaths } from "astro";
 
 import StatusBadge from "../../../../components/StatusBadge.astro";
 import Base from "../../../../layouts/Base.astro";
-import { getCorpus, getIssue, getPage, getPageRoutes, getPages } from "../../../../utils/corpus.ts";
+import {
+  getCorpus,
+  getIssue,
+  getJyutping,
+  getPage,
+  getPageRoutes,
+  getPages,
+} from "../../../../utils/corpus.ts";
 import {
   isLatinDominant,
   markerNote,
   pageParam,
-  splitParagraphs,
+  readingsByIndex,
+  renderAnnotatedParagraph,
+  splitParagraphSpans,
 } from "../../../../utils/reader.ts";
 
 export const getStaticPaths = (() =>
@@ -34,14 +43,13 @@ const next = index >= 0 && index < pages.length - 1 ? pages[index + 1] : undefin
 
 const readUrl = (page: number) => `/read/${corpusSlug}/${issueSlug}/${pageParam(page)}/`;
 
-/** □ 為原葉未辨識字：照錄原符號，只加樣式，不改字。 */
-function renderParagraph(text: string): string {
-  const escaped = text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-  return escaped.replaceAll("□", '<span class="miss" title="未辨識字">□</span>');
+/** 本葉粵拼音表：文章 id → 正文下標 → 粵拼；冇音表嘅文章唔注音。 */
+const jyutping = getJyutping(corpusSlug, issueSlug);
+const readingsByArticle = new Map<string, Map<number, string>>();
+for (const block of leaf.blocks) {
+  if (block.type === "article") readingsByArticle.set(block.id, readingsByIndex(jyutping[block.id]));
 }
+const noReadings = new Map<number, string>();
 
 /** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
 const firstArticle = leaf.blocks.find((block) => block.type === "article");
@@ -85,6 +93,11 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
           <button type="button" data-dir="horizontal" aria-pressed="true">橫排</button>
         </div>
       </div>
+
+      <div class="tb-group">
+        <span>注音</span>
+        <button type="button" class="chip" data-jyutping aria-pressed="false">粵拼注音</button>
+      </div>
     </div>
   </div>
 
@@ -96,8 +109,15 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
             block.type === "article" ? (
               <article class="art" id={block.id}>
                 {block.title !== null && <h2>{block.title}</h2>}
-                {splitParagraphs(block.text).map((paragraph) => (
-                  <p class:list={["para", isLatinDominant(paragraph) && "rom"]} set:html={renderParagraph(paragraph)} />
+                {splitParagraphSpans(block.text).map((paragraph) => (
+                  <p
+                    class:list={["para", isLatinDominant(paragraph.text) && "rom"]}
+                    set:html={renderAnnotatedParagraph(
+                      paragraph.text,
+                      paragraph.start,
+                      readingsByArticle.get(block.id) ?? noReadings,
+                    )}
+                  />
                 ))}
               </article>
             ) : (
@@ -178,5 +198,31 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
         }
       });
     }
+
+    const jyutpingButton = document.querySelector<HTMLButtonElement>("button[data-jyutping]");
+    let jyutpingOn = false;
+    try {
+      jyutpingOn = window.localStorage.getItem("jm-jyutping") === "on";
+    } catch (error) {
+      /* 本機儲存唔可用時按預設關閉 */
+    }
+
+    /** 注音開關：body.show-jyutping 時 <rt> 先顯示；預設關。 */
+    const applyJyutping = (enabled: boolean) => {
+      document.body.classList.toggle("show-jyutping", enabled);
+      jyutpingButton?.setAttribute("aria-pressed", String(enabled));
+    };
+
+    applyJyutping(jyutpingOn);
+
+    jyutpingButton?.addEventListener("click", () => {
+      jyutpingOn = !jyutpingOn;
+      applyJyutping(jyutpingOn);
+      try {
+        window.localStorage.setItem("jm-jyutping", jyutpingOn ? "on" : "off");
+      } catch (error) {
+        /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
+      }
+    });
   </script>
 </Base>

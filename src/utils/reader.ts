@@ -1,9 +1,13 @@
 /**
- * 閱讀器純函數：段落切分、字體分層判定、標記說明、狀態徽章。
+ * 閱讀器純函數：段落切分、字體分層判定、標記說明、狀態徽章、粵拼注音渲染。
  * 只做展示層推導，不改寫正文（原文逐字保留，見 docs/03）。
  */
 
-export type { ArticleBlock, MarkerBlock, PageBlock, PageDocument } from "./types.ts";
+import { isCjkIdeograph } from "./search-planner.ts";
+
+export type { ArticleBlock, JyutpingEntry, JyutpingTable, MarkerBlock, PageBlock, PageDocument } from "./types.ts";
+
+import type { JyutpingEntry } from "./types.ts";
 
 /** 拉丁字母佔比達到此閾值的段落按羅馬字層排印（等寬）。 */
 export const LATIN_RATIO_THRESHOLD = 0.5;
@@ -11,14 +15,69 @@ export const LATIN_RATIO_THRESHOLD = 0.5;
 /** 整段版面標記：如 ［插圖］［空白頁］［現代襯頁］。 */
 export const MARKER_PATTERN = /^［[^］]+］$/u;
 
+/** 段落連它在正文中的起始下標（碼點計）；粵拼注音按正文字元下標對表。 */
+export interface ParagraphSpan {
+  text: string;
+  start: number;
+}
+
+/** 拆段並記低每段在正文中的起始下標；分段規則與 splitParagraphs 一致。 */
+export function splitParagraphSpans(text: string): ParagraphSpan[] {
+  const spans: ParagraphSpan[] = [];
+  let cursor = 0;
+  for (const paragraph of text.split("\n\n")) {
+    const chars = [...paragraph];
+    const start = cursor;
+    cursor += chars.length + 2;
+    let from = 0;
+    let to = chars.length;
+    while (from < to && /\s/u.test(chars[from])) from += 1;
+    while (to > from && /\s/u.test(chars[to - 1])) to -= 1;
+    if (from === to) continue;
+    spans.push({ text: chars.slice(from, to).join(""), start: start + from });
+  }
+  return spans;
+}
+
 /** 拆段：塊內以空行分段，段首尾空白不進正文。 */
 export function splitParagraphs(text: string): string[] {
-  const paragraphs = [];
-  for (const paragraph of text.split("\n\n")) {
-    const trimmed = paragraph.trim();
-    if (trimmed !== "") paragraphs.push(trimmed);
+  return splitParagraphSpans(text).map((span) => span.text);
+}
+
+/** 音表條目轉查表：正文下標 → 粵拼。 */
+export function readingsByIndex(entries: readonly JyutpingEntry[] | undefined): Map<number, string> {
+  const readings = new Map<number, string>();
+  for (const entry of entries ?? []) readings.set(entry[0], entry[2]);
+  return readings;
+}
+
+function escapeHtml(text: string): string {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+/**
+ * 把段落渲染成 HTML：漢字包成 <ruby>字<rt>粵拼</rt></ruby>，標點、拉丁與 □ 唔注。
+ * 冇音表或者該字冇讀音時照舊輸出；□ 保留缺字樣式，只加樣式不改字。
+ */
+export function renderAnnotatedParagraph(
+  text: string,
+  start: number,
+  readings: ReadonlyMap<number, string>,
+): string {
+  let html = "";
+  let offset = 0;
+  for (const char of text) {
+    const reading = isCjkIdeograph(char) ? readings.get(start + offset) : undefined;
+    offset += 1;
+    if (reading !== undefined) {
+      html += `<ruby>${escapeHtml(char)}<rt>${escapeHtml(reading)}</rt></ruby>`;
+    } else if (char === "□") {
+      html += '<span class="miss" title="未辨識字">□</span>';
+    } else {
+      html += escapeHtml(char);
+    }
   }
-  return paragraphs;
+  return html;
 }
 
 /** 拉丁字母在可見字符中的佔比；空白不計。 */

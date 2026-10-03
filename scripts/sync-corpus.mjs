@@ -7,7 +7,7 @@
  * 用法：node scripts/sync-corpus.mjs [--data-root <上游 data 目錄>]
  */
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { normalize } from "../src/utils/normalize.ts";
@@ -15,6 +15,7 @@ import { segmentNgrams } from "../src/utils/search-planner.ts";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const DEFAULT_DATA_ROOT = path.resolve(REPO_ROOT, "..", "JyutmanDataPipeline", "data");
+const DEFAULT_CORPUS_ROOT = path.resolve(REPO_ROOT, "..", "Jyutman-Corpus");
 const OUT_ROOT = path.join(REPO_ROOT, "src", "data", "generated");
 const SQL_PATH = path.join(REPO_ROOT, "db", "import.sql");
 
@@ -26,6 +27,7 @@ const DATA_README = `# 派生數據
 - \`manifest.json\`：語料級摘要（標題照錄底本原名、年代、葉數、篇數、校對進度、掃描來源）。
 - \`<corpus>/issues.json\`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
 - \`<corpus>/<issue>/pages.json\`：葉級頁面數據，每葉 \`{page, status, blocks}\`；\`blocks\` 由文章切分而來，\`type\` 為 \`article\`（\`id\` / \`title\` / \`seq\` / \`text\` / \`text_norm\`）或 \`marker\`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
+- \`<corpus>/<issue>/jyutping.json\`：粵拼音表，\`{文章 id: [[字在正文中的下標, 字, 粵拼], …]}\`；來源為姊妹倉 \`Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json\`（tojyutping 生成），下標已換算到本站正文（標記段內的字略去）。
 
 重建指令：\`node scripts/sync-corpus.mjs\`。請勿手改本目錄任何文件；上游字段語義與容錯見 \`docs/03-data-contract.md\`。
 `;
@@ -182,6 +184,108 @@ export function buildPageRecord(page, articles) {
     }
   }
   return { page: page.page, status: page.status, blocks };
+}
+
+/** 粵拼讀音：來源有「字(粵拼)」同純粵拼兩種寫法，一律取粵拼部分。 */
+export function normalizeReading(raw) {
+  const match = /^.+\(([^()]*)\)$/u.exec(String(raw));
+  return match ? match[1] : String(raw);
+}
+
+/**
+ * 逐段掃描原文（碼點計），列出保留段（非空、非整段標記）的原文起止。
+ * 分段與裁剪規則與 splitArticleText 一致：以空行分段，段首尾空白剪掉。
+ */
+function keptParagraphSpans(chars) {
+  const spans = [];
+  let start = 0;
+  while (start <= chars.length) {
+    let end = start;
+    while (end < chars.length && !(chars[end] === "\n" && chars[end + 1] === "\n")) end += 1;
+    let from = start;
+    let to = end;
+    while (from < to && /\s/u.test(chars[from])) from += 1;
+    while (to > from && /\s/u.test(chars[to - 1])) to -= 1;
+    const paragraph = chars.slice(from, to).join("");
+    if (paragraph !== "" && !MARKER_PATTERN.test(paragraph)) spans.push({ start: from, end: to });
+    if (end >= chars.length) break;
+    start = end + 2;
+  }
+  return spans;
+}
+
+/**
+ * 原文下標 → 站點正文下標的映射（碼點計）；標記段與段首尾空白映為 -1。
+ * 音表下標以上游原文為準，本站正文已抽出標記段，故要先換算。
+ */
+export function buildBodyIndexMap(rawText) {
+  const chars = [...rawText];
+  const map = new Array(chars.length).fill(-1);
+  let bodyIndex = 0;
+  let first = true;
+  for (const span of keptParagraphSpans(chars)) {
+    if (!first) bodyIndex += 2;
+    first = false;
+    for (let i = span.start; i < span.end; i += 1) {
+      map[i] = bodyIndex;
+      bodyIndex += 1;
+    }
+  }
+  return map;
+}
+
+/**
+ * 把一篇的音表條目換算到站點正文下標；字元對唔上或落在標記段內者略去並計數。
+ */
+export function mapArticleReadings(rawText, bodyText, entries) {
+  const map = buildBodyIndexMap(rawText);
+  const bodyChars = [...bodyText];
+  const readings = [];
+  let skipped = 0;
+  for (const entry of entries) {
+    if (!Array.isArray(entry) || entry.length < 3) {
+      skipped += 1;
+      continue;
+    }
+    const [rawIndex, char, reading] = entry;
+    const index = Number.isInteger(rawIndex) ? map[rawIndex] : undefined;
+    if (index === undefined || index < 0 || bodyChars[index] !== char) {
+      skipped += 1;
+      continue;
+    }
+    readings.push([index, char, normalizeReading(reading)]);
+  }
+  return { readings, skipped };
+}
+
+/** 由語料級音表與本期文章生成期級音表：文章 id → 換算到站點正文下標的讀音。 */
+export function buildIssueJyutping({ articles, jyutping }) {
+  const table = {};
+  let skipped = 0;
+  let missing = 0;
+  for (const article of articles) {
+    const entries = jyutping[article.id];
+    if (entries === undefined) {
+      missing += 1;
+      continue;
+    }
+    const { readings, skipped: dropped } = mapArticleReadings(article.text, article.body, entries);
+    skipped += dropped;
+    if (readings.length > 0) table[article.id] = readings;
+  }
+  return { table, skipped, missing };
+}
+
+/** 讀入語料級粵拼音表；缺檔時報清晰錯誤（Jyutman-Corpus 為本倉的上游依賴）。 */
+export function readJyutpingTable(corpusRoot, slug) {
+  const filePath = path.join(corpusRoot, "translations", "jyutping", `${slug}.jyutping.json`);
+  if (!existsSync(filePath)) {
+    throw new Error(
+      `找不到粵拼音表：${filePath}\n` +
+        `請確認姊妹倉 Jyutman-Corpus 已就位（可用 JYUTMAN_CORPUS_ROOT 指定倉庫根目錄）。`,
+    );
+  }
+  return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
 /** 由期號日期推底本年代；全部日期待考時回退到語料登記值。 */
@@ -374,7 +478,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS articles_unigram_fts USING fts5(
   return `${parts.join("\n")}`.replace(/\n{3,}/gu, "\n\n");
 }
 
-function syncCorpus(dataRoot, slug) {
+function syncCorpus(dataRoot, slug, jyutping) {
   const meta = CORPUS_META[slug];
   const dir = path.join(dataRoot, slug);
   const articles = readJsonlFile(path.join(dir, "articles.jsonl"));
@@ -422,8 +526,11 @@ function syncCorpus(dataRoot, slug) {
   const pageDocuments = [];
   const usedArticles = [];
   const sqlArticles = [];
+  const jyutpingByIssue = new Map();
   let verifiedPages = 0;
   let needsReviewPages = 0;
+  let jyutpingSkipped = 0;
+  let jyutpingMissing = 0;
 
   for (const issue of issueRecords) {
     assertSafeSegment(issue.issue, "issue");
@@ -433,6 +540,7 @@ function syncCorpus(dataRoot, slug) {
     if (issuePages.length === 0) warn(`期號 ${issue.issue} 沒有對應的葉記錄`);
 
     const document = [];
+    const issueArticles = [];
     for (const page of issuePages) {
       const list = articlesByPage.get(`${page.issue}\u0000${page.page}`) ?? [];
       if (list.length === 0) warn(`第 ${page.page} 葉沒有對應的文章記錄，正文可能缺失`);
@@ -451,6 +559,7 @@ function syncCorpus(dataRoot, slug) {
         usedArticles.push(article);
         const { body } = splitArticleText(article.text);
         sqlArticles.push({ ...article, text: body, text_norm: normalize(body) });
+        issueArticles.push({ id: article.id, text: article.text, body });
       }
       if (page.status === "verified") verifiedPages += 1;
       else if (page.status === "needs_review" || page.status === "draft") needsReviewPages += 1;
@@ -458,7 +567,15 @@ function syncCorpus(dataRoot, slug) {
 
     issueDocuments.push(issue);
     pageDocuments.push({ issue: issue.issue, pages: document });
+
+    const built = buildIssueJyutping({ articles: issueArticles, jyutping });
+    jyutpingByIssue.set(issue.issue, built.table);
+    jyutpingSkipped += built.skipped;
+    jyutpingMissing += built.missing;
   }
+
+  if (jyutpingMissing > 0) warn(`粵拼音表缺 ${jyutpingMissing} 篇文章，該等文章不注音`);
+  if (jyutpingSkipped > 0) warn(`粵拼音表有 ${jyutpingSkipped} 條讀音對唔上正文（標記段內或字元不符），已略去`);
 
   const orphanCount = articleRecords.length - usedArticles.length;
   if (orphanCount > 0) warn(`articles.jsonl 有 ${orphanCount} 篇不屬於任何已發佈葉，已略去`);
@@ -470,6 +587,7 @@ function syncCorpus(dataRoot, slug) {
     pages: pageDocuments,
     articles: usedArticles,
     sqlArticles,
+    jyutpingByIssue,
     verifiedPages,
     needsReviewPages,
     warnings,
@@ -485,9 +603,13 @@ function main() {
       : process.env.JYUTMAN_DATA_ROOT
         ? path.resolve(process.env.JYUTMAN_DATA_ROOT)
         : DEFAULT_DATA_ROOT;
+  const corpusRoot = process.env.JYUTMAN_CORPUS_ROOT
+    ? path.resolve(process.env.JYUTMAN_CORPUS_ROOT)
+    : DEFAULT_CORPUS_ROOT;
 
   console.log(`讀取上游發佈層：${dataRoot}`);
-  const synced = CORPUS_ORDER.map((slug) => syncCorpus(dataRoot, slug));
+  console.log(`讀取粵拼音表：${path.join(corpusRoot, "translations", "jyutping")}`);
+  const synced = CORPUS_ORDER.map((slug) => syncCorpus(dataRoot, slug, readJyutpingTable(corpusRoot, slug)));
   const warnings = synced.flatMap((corpus) => corpus.warnings);
 
   rmSync(OUT_ROOT, { recursive: true, force: true });
@@ -529,6 +651,7 @@ function main() {
       const issueDir = path.join(corpusDir, issue);
       mkdirSync(issueDir, { recursive: true });
       writeFileSync(path.join(issueDir, "pages.json"), serialize(pages));
+      writeFileSync(path.join(issueDir, "jyutping.json"), serialize(corpus.jyutpingByIssue.get(issue) ?? {}));
     }
   }
 
@@ -555,8 +678,16 @@ function main() {
         ),
       0,
     );
+    const jyutpingArticles = [...corpus.jyutpingByIssue.values()].reduce(
+      (total, table) => total + Object.keys(table).length,
+      0,
+    );
+    const jyutpingReadings = [...corpus.jyutpingByIssue.values()].reduce(
+      (total, table) => total + Object.values(table).reduce((sum, list) => sum + list.length, 0),
+      0,
+    );
     console.log(
-      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 葉 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）`,
+      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 葉 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）｜粵拼 ${jyutpingArticles} 篇 / ${jyutpingReadings} 條`,
     );
   }
   console.log(`  已核驗葉 ${corpora.reduce((t, c) => t + c.verifiedPages, 0)}，待校葉 ${corpora.reduce((t, c) => t + c.needsReviewPages, 0)}`);

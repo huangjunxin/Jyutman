@@ -79,8 +79,9 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 
 | 衍生数据 | 存放 | 生成方式 | 说明 |
 |---|---|---|---|
-| 归一化检索文本 | 构建期产物（映射表版本化） | `scripts/normalize.ts` | 繁简 / 异体映射 + 罗马字归一，检索正确性的核心 |
-| FTS5 索引 | D1 虚拟表 | `scripts/build-fts.ts` → D1 import | trigram tokenizer，见 02 §6 |
+| 归一化检索文本 | 构建期产物（映射表版本化） | `src/utils/normalize.ts` | 繁简 / 异体映射 + 罗马字归一，检索正确性的核心 |
+| FTS5 索引 | D1 虚拟表 | `scripts/sync-corpus.mjs` → `db/import.sql` → D1 | trigram tokenizer，见 02 §6 |
+| 粤拼音表 | `src/data/generated/<corpus>/<issue>/jyutping.json`（构建期产物，提交 git） | `scripts/sync-corpus.mjs` 读姊妹仓 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），按叶拆分并把下标换算到本站正文 | 文章 id → `[字在正文中的下标, 字, 粤拼]`；阅读器据此生成 `<ruby>`，见 04 §1.2 S1 |
 | corrections 表 | D1 | Workers API 接收用户提交 | 见 §7 |
 | 影像 manifest | Jyutman-Images 仓 | 同步脚本生成 | object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 |
 | 书本单页派生图 | R2 | 构建期渲染 | 书本类源为 PDF，派生单页图（见 02 §7，待决策） |

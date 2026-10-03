@@ -58,3 +58,9 @@ export interface Manifest {
   generated_at: string;
   corpora: CorpusSummary[];
 }
+
+/** 粵拼音表條目：[字在正文中的下標（碼點計）, 字, 粵拼]。 */
+export type JyutpingEntry = [number, string, string];
+
+/** 音表：文章 id → 讀音條目（<corpus>/<issue>/jyutping.json）。 */
+export type JyutpingTable = Record<string, JyutpingEntry[]>;

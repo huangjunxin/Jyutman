@@ -49,7 +49,7 @@
 | # | 关键任务 | 验收标准 |
 |---|---|---|
 | 2.1 | 繁简 / 异体归一 | 简体或异体字输入能命中原文繁体；抽样查询精确率达标 |
-| 2.2 | 粤拼 ruby | 已校对文本加注 Jyutping，以 ruby 呈现；可开关 |
+| 2.2 | 粤拼 ruby（已完成） | 已校对文本加注 Jyutping，以 ruby 呈现；可开关 |
 | 2.3 | 历史拼式对齐 | 19 世纪传教士罗马字拼式可检索，并与现代粤拼对应 |
 | 2.4 | 字典悬浮释义 | 选字可浮出释义；外连粤语辞丛、words.hk 等公开词典 |
 | 2.5 | 引用导出与永久 URL | 每篇有稳定 URL；提供引用格式导出 |
@@ -95,7 +95,7 @@ Phase 3 分两期：3a 为公开提交端（匿名提交＋Turnstile）＋ Cloud
 |---|---|---|---|
 | Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 已完成 |
 | Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 已完成（2026-10-03）：阅读器、书目库、D1 检索、域名均已上线 |
-| Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 未开始 |
+| Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 进行中：2.2 粤拼 ruby 已上线（构建期生成 + 开关），其余未开始 |
 | Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 未开始 |
 | Phase 4 · 增长 | 待估 | 相似文本、多版本、AI 辅助 | 未开始 |
 
@@ -139,7 +139,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）。** 分项如下：
+**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）；Phase 2 进行中。** 分项如下：
 
 - 0.1 trigram 实测通过（本地 2026-10-02，生产 D1 复核 2026-10-03）：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；D1 上 trigram tokenizer 可用，召回与本地一致（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
@@ -154,7 +154,11 @@ Phase 1 进度：
 - 1.5 D1 检索已上线（2026-10-03）：生产库 `jyutman` 灌入 866 篇，trigram 主索引加 bigram / unigram 辅助表；Worker `/api/search` 按归一后长度路由（3 字及以上 trigram 短语、2 字 bigram、1 字 unigram），bm25 排序、corpus 过滤、limit 20，命中片段在服务端从原文截取；线上复核：廣東 34、白話報 16、唔 426，与 spike 真值一致。
 - 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶已静态生成并随 Worker 上线（`jyutman.com` 与 `jyutman.huangjunxin.workers.dev` 均可访问）。
 - 1.7 域名接入：`jyutman.com` 与 `*.jyutman.com` 由 Worker 路由服务，HTTPS 正常（Cloudflare SSL），apex 200；canonical 跳转与 `*.workers.dev` noindex 已落地（见 `docs/05` 第 4 节）；`www` 因 zone 内暂无 DNS 记录未配置，记录建成后由 canonical 规则自动跳转。
-- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）。
+- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）；同期读姊妹仓 `Jyutman-Corpus/translations/jyutping/` 音表（tojyutping 生成），按叶拆分出 `jyutping.json`。
 
-下一步行动：按上方 Phase 2 任务表推进（繁简异体映射扩充、粤拼 ruby、历史拼式对齐），并在 Phase 2 开工前补 deploy workflow。
+Phase 2 进度：
+
+- 2.2 粤拼 ruby 已上线（2026-10-03）：构建期把音表按正文下标对齐后全量生成 `<ruby>字<rt>粵拼</rt></ruby>`（549 叶带注音、共 101,107 处），工具条「粵拼注音」chip 开关（本机记忆，默认关），竖排之下 rt 天然落到字右侧；无音表文章不注音。单页 HTML 增幅约 3 至 5 KB（gzip 后约 1 KB），全站 dist 增约 48%。
+
+下一步行动：按上方 Phase 2 任务表推进（2.1 繁简异体映射扩充、2.3 历史拼式对齐、2.5 引用导出），并在 Phase 2 内补 deploy workflow。
 

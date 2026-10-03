@@ -8,7 +8,10 @@ import {
   markerNote,
   pageParam,
   percent,
+  readingsByIndex,
+  renderAnnotatedParagraph,
   splitParagraphs,
+  splitParagraphSpans,
   statusBadge,
 } from "../src/utils/reader.ts";
 
@@ -64,4 +67,54 @@ test("percent：一位小數，除數為零時回零", () => {
   assert.equal(percent(80, 220), 36.3);
   assert.equal(percent(1, 3), 33.3);
   assert.equal(percent(0, 0), 0);
+});
+
+test("splitParagraphSpans：段落起始下標按碼點計，供粵拼對表", () => {
+  assert.deepEqual(splitParagraphSpans("第一期\n\n照妖鏡"), [
+    { text: "第一期", start: 0 },
+    { text: "照妖鏡", start: 5 },
+  ]);
+  assert.deepEqual(splitParagraphSpans("  甲  \n\n\n\n乙"), [
+    { text: "甲", start: 2 },
+    { text: "乙", start: 9 },
+  ]);
+  assert.deepEqual(splitParagraphSpans(""), []);
+});
+
+test("renderAnnotatedParagraph：漢字包 ruby，標點與拉丁唔注", () => {
+  const readings = new Map([
+    [0, "gwong2"],
+    [1, "dung1"],
+  ]);
+  assert.equal(
+    renderAnnotatedParagraph("廣東，ABC！", 0, readings),
+    "<ruby>廣<rt>gwong2</rt></ruby><ruby>東<rt>dung1</rt></ruby>，ABC！",
+  );
+});
+
+test("renderAnnotatedParagraph：段落起始下標對正文章節偏移，HTML 特殊字元轉義", () => {
+  assert.equal(
+    renderAnnotatedParagraph("照妖鏡", 5, new Map([[5, "ziu3"]])),
+    "<ruby>照<rt>ziu3</rt></ruby>妖鏡",
+    "段落內第一個字對正文下標 5",
+  );
+  assert.equal(renderAnnotatedParagraph("a<b>&", 0, new Map()), "a&lt;b&gt;&amp;");
+});
+
+test("renderAnnotatedParagraph：冇音表文章兜底唔注，□ 保留缺字樣式", () => {
+  assert.equal(
+    renderAnnotatedParagraph("甲□乙", 0, new Map()),
+    '甲<span class="miss" title="未辨識字">□</span>乙',
+  );
+  assert.equal(
+    renderAnnotatedParagraph("甲□乙", 3, new Map()),
+    '甲<span class="miss" title="未辨識字">□</span>乙',
+    "冇音表時行為與有表但該處無讀音一致",
+  );
+});
+
+test("readingsByIndex：條目轉查表，缺音表返回空表", () => {
+  assert.deepEqual([...readingsByIndex([[0, "甲", "gaap3"]]).entries()], [[0, "gaap3"]]);
+  assert.equal(readingsByIndex(undefined).size, 0);
+  assert.equal(readingsByIndex([]).size, 0);
 });

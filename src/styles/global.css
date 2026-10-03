@@ -988,6 +988,35 @@ a:hover {
   background: var(--primary-strong);
 }
 
+.chip {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1;
+  padding: 8px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  color: var(--primary-strong);
+  background: var(--placeholder);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.chip[aria-pressed="true"]:hover {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+}
+
 /* 閱讀區 */
 .reader {
   display: grid;
@@ -1032,6 +1061,21 @@ a:hover {
   font-family: var(--mono);
   font-size: 0.88em;
   letter-spacing: 0.01em;
+}
+
+/* 粵拼注音：預設隱藏，body.show-jyutping 時顯示；
+   豎排之下 ruby-position 天然落到字右側，唔使另外定位。 */
+.doc ruby rt {
+  display: none;
+  font-family: var(--mono);
+  font-size: 0.55em;
+  color: var(--muted);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+body.show-jyutping .doc ruby rt {
+  display: revert;
 }
 
 /* 版面標記占位塊 */
