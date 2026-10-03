@@ -1,9 +1,11 @@
 ---
+import SearchBar from "../../components/SearchBar.astro";
 import Yuwai from "../../components/Yuwai.astro";
 import Base from "../../layouts/Base.astro";
 import { getCorpora } from "../../utils/corpus.ts";
 
 const corpora = getCorpora();
+const query = Astro.url.searchParams.get("q") ?? "";
 ---
 
 <Base
@@ -21,17 +23,7 @@ const corpora = getCorpora();
     </div>
 
     <div class="search-panel">
-      <form action="/search/" method="get" role="search">
-        <input
-          type="search"
-          name="q"
-          id="search-input"
-          aria-label="全站檢索"
-          placeholder="搵字詞、專名或者拼式"
-          autocomplete="off"
-        />
-        <button type="submit" class="btn primary">檢索</button>
-      </form>
+      <SearchBar value={query} inputId="search-input" examples={query === ""} />
 
       <div class="filters">
         <h2 id="filter-title">範圍</h2>

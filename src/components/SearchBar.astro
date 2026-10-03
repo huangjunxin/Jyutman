@@ -1,0 +1,54 @@
+---
+/**
+ * 一體化檢索欄：首頁 hero 與 /search 共用。
+ * 移動端隨頁面邊距通欄，桌面 max-width 540px 居中；iOS 外觀重置見 global.css 的 .sbar 段。
+ */
+interface Props {
+  /** 當前查詢字（/search 頁由 URL 帶入）。 */
+  value?: string;
+  /** 輸入框 id（/search 頁的腳本靠它取值）。 */
+  inputId?: string;
+  /** 是否顯示示例 pill 行。 */
+  examples?: boolean;
+  class?: string;
+}
+
+const { value = "", inputId, examples = true, class: className } = Astro.props;
+
+const EXAMPLES = ["廣東", "唔係", "teng"];
+---
+
+<div class:list={["sbar-wrap", className]}>
+  <form class="sbar" action="/search/" method="get" role="search">
+    <input
+      type="search"
+      name="q"
+      id={inputId}
+      value={value === "" ? undefined : value}
+      aria-label="全站檢索"
+      placeholder="搵字詞、專名或者拼式"
+      autocomplete="off"
+      enterkeyhint="search"
+    />
+    <button type="submit" class="sbar-go" aria-label="檢索">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <circle cx="8.6" cy="8.6" r="5.9" fill="none" stroke="currentColor" stroke-width="2"></circle>
+        <line x1="13" y1="13" x2="17.6" y2="17.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        ></line>
+      </svg>
+    </button>
+  </form>
+
+  {
+    examples && (
+      <p class="sbar-examples">
+        <span>試試：</span>
+        {EXAMPLES.map((term) => (
+          <a class="sbar-pill" href={`/search/?q=${encodeURIComponent(term)}`}>
+            {term}
+          </a>
+        ))}
+      </p>
+    )
+  }
+</div>

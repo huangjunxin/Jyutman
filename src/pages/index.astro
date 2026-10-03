@@ -1,6 +1,7 @@
 ---
 import JsonLd from "../components/JsonLd.astro";
 import Progress from "../components/Progress.astro";
+import SearchBar from "../components/SearchBar.astro";
 import Yuwai from "../components/Yuwai.astro";
 import Base from "../layouts/Base.astro";
 import { getCorpora, getIssues, getPages, getSiteTotals } from "../utils/corpus.ts";
@@ -59,12 +60,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
         1842 至 1907 年嘅粵語白話文獻：傳教士讀本、方言報紙、識字課本，而家可以檢索、閱讀、引用。
       </p>
 
-      <form class="big-search" action="/search/" method="get" role="search">
-        <input type="search" name="q" aria-label="全站檢索" placeholder="搵字詞、專名或者拼式" />
-        <button type="submit" class="btn primary">檢索</button>
-      </form>
-
-      <p class="try">全庫檢索已經開放，搵字詞即刻跳去命中嘅葉。</p>
+      <SearchBar />
     </section>
 
     <Yuwai />
