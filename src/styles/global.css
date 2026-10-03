@@ -1079,6 +1079,161 @@ a:hover {
   }
 }
 
+/* 引用彈出層 */
+.cite-btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cite-btn:hover {
+  color: var(--primary-strong);
+  background: var(--placeholder);
+}
+
+.cite-btn[aria-expanded="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.cite-pop {
+  margin: 0 0 1.2em;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.cite-pop[hidden] {
+  display: none;
+}
+
+.cite-head {
+  margin: 0 0 10px;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.cite-block + .cite-block {
+  margin-top: 12px;
+}
+
+.cite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.cite-label {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cite-copy {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.cite-copy:hover {
+  background: var(--placeholder);
+  color: var(--primary-strong);
+}
+
+.cite-pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+/* 辭叢懸浮卡 */
+.dict-card {
+  position: fixed;
+  z-index: 65;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(42, 33, 28, 0.18);
+  font-family: var(--sans);
+}
+
+.dict-card[hidden] {
+  display: none;
+}
+
+.dc-word {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.dc-link {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1px;
+}
+
+.dc-link:hover {
+  color: var(--primary-strong);
+}
+
+.dc-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 檢索分頁 */
+.hits-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.hits-count {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+}
+
 /* 複製連結提示 */
 .toast {
   position: fixed;

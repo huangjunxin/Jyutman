@@ -71,6 +71,13 @@ const corpora = getCorpora();
       post?: string | null;
     }
 
+    interface SearchPayload {
+      results?: SearchHit[];
+      total?: number;
+      page?: number;
+      more?: boolean;
+    }
+
     const results = document.getElementById("results");
     const input = document.getElementById("search-input");
     if (results instanceof HTMLElement) {
@@ -82,6 +89,11 @@ const corpora = getCorpora();
       for (const box of document.querySelectorAll('input[name="corpus"]')) {
         if (box instanceof HTMLInputElement) box.checked = selectedCorpora.includes(box.value);
       }
+
+      let listNode: HTMLUListElement | null = null;
+      let shown = 0;
+      let total = 0;
+      let currentPage = 0;
 
       const stateNode = (title: string, body: string): HTMLElement => {
         const wrapper = document.createElement("p");
@@ -115,43 +127,85 @@ const corpora = getCorpora();
         return snippet;
       };
 
-      const renderHits = (hits: SearchHit[]) => {
-        if (hits.length === 0) {
-          results.replaceChildren(stateNode("冇符合嘅結果", "試下換個寫法，簡體字都會歸一到繁體。"));
-          return;
+      const hitNode = (hit: SearchHit): HTMLLIElement | null => {
+        if (!hit.corpus || !hit.issue || typeof hit.page !== "number") return null;
+        const page = String(hit.page).padStart(3, "0");
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = `/read/${hit.corpus}/${hit.issue}/${page}/${hit.id ? `#${hit.id}` : ""}`;
+        link.textContent = hit.title ?? "（無題）";
+        const meta = document.createElement("span");
+        meta.className = "hit-meta";
+        meta.textContent = `${hit.corpus} · ${hit.issue} · 第 ${page} 葉`;
+        item.append(link, meta);
+        const snippet = snippetNode(hit);
+        if (snippet) item.append(snippet);
+        return item;
+      };
+
+      const footer = document.createElement("div");
+      footer.className = "hits-foot";
+
+      const renderFooter = (): void => {
+        footer.replaceChildren();
+        if (shown === 0) return;
+        const count = document.createElement("p");
+        count.className = "hits-count";
+        count.textContent = `已顯示 ${shown} / 共 ${total} 條`;
+        footer.append(count);
+        if (shown < total) {
+          const more = document.createElement("button");
+          more.type = "button";
+          more.className = "btn";
+          more.textContent = "載入更多";
+          more.addEventListener("click", () => {
+            more.disabled = true;
+            void load(currentPage + 1, true).then((ok) => {
+              if (!ok) {
+                more.disabled = false;
+                results.replaceChildren(unavailable());
+              }
+            });
+          });
+          footer.append(more);
         }
-        const list = document.createElement("ul");
-        list.className = "hits";
-        for (const hit of hits) {
-          if (!hit.corpus || !hit.issue || typeof hit.page !== "number") continue;
-          const page = String(hit.page).padStart(3, "0");
-          const item = document.createElement("li");
-          const link = document.createElement("a");
-          link.href = `/read/${hit.corpus}/${hit.issue}/${page}/${hit.id ? `#${hit.id}` : ""}`;
-          link.textContent = hit.title ?? "（無題）";
-          const meta = document.createElement("span");
-          meta.className = "hit-meta";
-          meta.textContent = `${hit.corpus} · ${hit.issue} · 第 ${page} 葉`;
-          item.append(link, meta);
-          const snippet = snippetNode(hit);
-          if (snippet) item.append(snippet);
-          list.append(item);
-        }
-        results.replaceChildren(list);
+        results.append(footer);
       };
 
       /** 檢索 API 由 Worker 提供；離線或出錯時顯示部署提示。 */
-      const runSearch = async (text: string) => {
+      const load = async (page: number, append: boolean): Promise<boolean> => {
         const url = new URL("/api/search", window.location.origin);
-        url.searchParams.set("q", text);
+        url.searchParams.set("q", query);
+        url.searchParams.set("page", String(page));
         for (const slug of selectedCorpora) url.searchParams.append("corpus", slug);
         try {
           const response = await fetch(url, { headers: { accept: "application/json" } });
           if (!response.ok) return false;
-          const payload: unknown = await response.json();
-          const hits = (payload as { results?: SearchHit[] })?.results;
+          const payload = (await response.json()) as SearchPayload;
+          const hits = payload.results;
           if (!Array.isArray(hits)) return false;
-          renderHits(hits);
+
+          if (!append) {
+            listNode = null;
+            shown = 0;
+          }
+          if (hits.length === 0 && shown === 0) {
+            results.replaceChildren(stateNode("冇符合嘅結果", "試下換個寫法，簡體字都會歸一到繁體。"));
+            return true;
+          }
+          if (listNode === null) {
+            listNode = document.createElement("ul");
+            listNode.className = "hits";
+          }
+          for (const hit of hits) {
+            const item = hitNode(hit);
+            if (item !== null) listNode.append(item);
+          }
+          shown += hits.length;
+          total = typeof payload.total === "number" ? payload.total : shown;
+          currentPage = typeof payload.page === "number" ? payload.page : page;
+          results.replaceChildren(listNode);
+          renderFooter();
           return true;
         } catch {
           return false;
@@ -160,7 +214,7 @@ const corpora = getCorpora();
 
       if (query !== "") {
         results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
-        void runSearch(query).then((served) => {
+        void load(1, false).then((served) => {
           if (!served) results.replaceChildren(unavailable());
         });
       }

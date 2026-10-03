@@ -13,6 +13,7 @@ import {
   getPages,
   getTranslations,
 } from "../../../../utils/corpus.ts";
+import { buildCitations, type Citations } from "../../../../utils/citation.ts";
 import {
   markerNote,
   mergeParagraphSpans,
@@ -55,6 +56,8 @@ for (const block of leaf.blocks) {
 }
 const noReadings = new Map<number, string>();
 
+const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
+
 /** 本葉今譯：原文各段與譯文同步分組；冇今譯層嘅語料唔顯示開關。 */
 const translations = getTranslations(corpusSlug, issueSlug);
 const hasTranslations = Object.keys(translations).length > 0;
@@ -66,6 +69,8 @@ interface ArticleView {
   paragraphs: TranslatedParagraph[];
   /** 譯文段數對唔上：跳過今譯，喺 HTML 註釋標記。 */
   translationMismatch: boolean;
+  /** 引用格式（純文字 / BibTeX / RIS），構建期砌好。 */
+  citations: Citations;
 }
 
 interface MarkerView {
@@ -73,10 +78,23 @@ interface MarkerView {
   text: string;
 }
 
+const leafUrl = `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageParam(pageNumber)}/`;
+
+const citationsFor = (id: string, title: string | null): Citations =>
+  buildCitations({
+    articleId: id,
+    title,
+    corpusTitle: corpus.title,
+    issueDate: issue.issue_date,
+    page: pageNumber,
+    url: `${leafUrl}#${id}`,
+  });
+
 const views: (ArticleView | MarkerView)[] = leaf.blocks.map((block) => {
   if (block.type !== "article") return { kind: "marker", text: block.text };
   const groups = mergeParagraphSpans(splitParagraphSpans(block.text));
   const paired = pairTranslations(groups, translations[block.id]?.paragraphs);
+  const citations = citationsFor(block.id, block.title);
   if (paired === null) {
     console.warn(`今譯段數對唔上，已跳過：${block.id}`);
     return {
@@ -85,9 +103,17 @@ const views: (ArticleView | MarkerView)[] = leaf.blocks.map((block) => {
       title: block.title,
       paragraphs: pairTranslations(groups, undefined) ?? [],
       translationMismatch: true,
+      citations,
     };
   }
-  return { kind: "article", id: block.id, title: block.title, paragraphs: paired, translationMismatch: false };
+  return {
+    kind: "article",
+    id: block.id,
+    title: block.title,
+    paragraphs: paired,
+    translationMismatch: false,
+    citations,
+  };
 });
 
 /** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
@@ -95,7 +121,6 @@ const firstArticle = leaf.blocks.find((block) => block.type === "article");
 const leafTitle = firstArticle?.type === "article" ? firstArticle.title : null;
 const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle} · ${corpus.title}` : corpus.title;
 
-const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 const articleJsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -180,9 +205,36 @@ const articleJsonLd = {
               <article class="art" id={view.id}>
                 <div class="art-head">
                   {view.title !== null && <h2>{view.title}</h2>}
+                  <button
+                    type="button"
+                    class="cite-btn"
+                    data-cite={view.id}
+                    aria-expanded="false"
+                    aria-controls={`cite-${view.id}`}
+                  >
+                    引用
+                  </button>
                   <a class="anchor" href={`#${view.id}`} data-copy-anchor={view.id} aria-label="複製本篇連結">
                     #
                   </a>
+                </div>
+                <div class="cite-pop" id={`cite-${view.id}`} data-cite-pop={view.id} hidden>
+                  <p class="cite-head">引用本篇</p>
+                  {[
+                    { key: "text", label: "純文字", body: view.citations.text },
+                    { key: "bibtex", label: "BibTeX", body: view.citations.bibtex },
+                    { key: "ris", label: "RIS", body: view.citations.ris },
+                  ].map((format) => (
+                    <div class="cite-block">
+                      <div class="cite-row">
+                        <span class="cite-label">{format.label}</span>
+                        <button type="button" class="cite-copy" data-copy-format={format.key}>
+                          複製
+                        </button>
+                      </div>
+                      <pre class="cite-pre">{format.body}</pre>
+                    </div>
+                  ))}
                 </div>
                 {view.translationMismatch && (
                   <Fragment set:html={`<!-- 今譯段數對唔上，已跳過：${view.id} -->`} />
@@ -258,6 +310,12 @@ const articleJsonLd = {
       }
     </div>
   </nav>
+
+  <div class="dict-card" id="dictCard" hidden>
+    <p class="dc-word" id="dcWord"></p>
+    <a class="dc-link" id="dcLink" href="#" target="_blank" rel="noopener">去辭叢查「…」</a>
+    <p class="dc-hint">釋義以辭叢為準</p>
+  </div>
 
   <div class="selbar" id="selbar" role="toolbar" aria-label="選字操作" hidden>
     <button type="button" class="sb" data-act="copy">複製</button>
@@ -781,5 +839,170 @@ const articleJsonLd = {
     };
 
     void restoreReports();
+  </script>
+
+  <script>
+    import { wordAround } from "../../../../utils/reader.ts";
+
+    const docRoot = document.querySelector(".doc");
+    const citeButtons = [...document.querySelectorAll<HTMLButtonElement>("button[data-cite]")];
+    const dictCard = document.getElementById("dictCard");
+    const dcWord = document.getElementById("dcWord");
+    const dcLink = document.getElementById("dcLink");
+
+    const toastFor = (): HTMLElement => {
+      const found = document.querySelector<HTMLElement>(".toast");
+      if (found !== null) return found;
+      const created = document.createElement("div");
+      created.className = "toast";
+      created.setAttribute("role", "status");
+      document.body.append(created);
+      return created;
+    };
+
+    let toastTimer = 0;
+    const say = (message: string): void => {
+      const toast = toastFor();
+      toast.textContent = message;
+      toast.classList.add("is-on");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
+    };
+
+    /** 引用彈出層：開一個就閂其他。 */
+    const closeCites = (except?: string): void => {
+      for (const pop of document.querySelectorAll<HTMLElement>("[data-cite-pop]")) {
+        if (pop.dataset.citePop === except) continue;
+        pop.hidden = true;
+      }
+      for (const button of citeButtons) {
+        if (button.dataset.cite === except) continue;
+        button.setAttribute("aria-expanded", "false");
+      }
+    };
+
+    for (const button of citeButtons) {
+      button.addEventListener("click", () => {
+        const id = button.dataset.cite ?? "";
+        const pop = document.querySelector<HTMLElement>(`[data-cite-pop="${id}"]`);
+        if (pop === null) return;
+        const open = pop.hidden;
+        closeCites(open ? id : undefined);
+        pop.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+      });
+    }
+
+    for (const copy of document.querySelectorAll<HTMLButtonElement>("button[data-copy-format]")) {
+      copy.addEventListener("click", async () => {
+        const block = copy.closest(".cite-block");
+        const body = block?.querySelector(".cite-pre")?.textContent ?? "";
+        try {
+          await navigator.clipboard.writeText(body);
+          say("已複製引用");
+        } catch {
+          say("複製唔成功，請手動選取");
+        }
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest(".cite-pop, button[data-cite]") !== null) return;
+      closeCites();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeCites();
+    });
+
+    /** 辭叢懸浮卡：mouseup 取詞，300ms 後浮出；移動、滾動或按 Esc 收起。 */
+    let dictTimer = 0;
+    let dictPoint: { x: number; y: number } | null = null;
+
+    const hideDict = (): void => {
+      window.clearTimeout(dictTimer);
+      dictPoint = null;
+      if (dictCard !== null) dictCard.hidden = true;
+    };
+
+    const wordAtPoint = (x: number, y: number): { word: string; rect: DOMRect } | null => {
+      const caretDocument = document as unknown as {
+        caretRangeFromPoint?: (x: number, y: number) => Range | null;
+        caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+      };
+      let node: Node | null = null;
+      let offset = 0;
+      let rect: DOMRect | null = null;
+      const range = caretDocument.caretRangeFromPoint?.(x, y) ?? null;
+      if (range !== null) {
+        node = range.startContainer;
+        offset = range.startOffset;
+        rect = range.getBoundingClientRect();
+      } else {
+        const position = caretDocument.caretPositionFromPoint?.(x, y) ?? null;
+        if (position !== null) {
+          node = position.offsetNode;
+          offset = position.offset;
+        }
+      }
+      if (node === null || node.nodeType !== Node.TEXT_NODE) return null;
+      const parent = node.parentElement;
+      if (parent === null || parent.closest("rt, .dict-card, .selbar, .report-mask, .cite-pop") !== null) return null;
+      const word = wordAround(node.nodeValue ?? "", offset);
+      if (word === null) return null;
+      return { word, rect: rect ?? parent.getBoundingClientRect() };
+    };
+
+    const showDict = (word: string, rect: DOMRect): void => {
+      if (dictCard === null || dcWord === null || dcLink === null) return;
+      dcWord.textContent = word;
+      dcLink.textContent = `去辭叢查「${word}」`;
+      dcLink.setAttribute("href", `https://jyutjyu.com/word/${encodeURIComponent(word)}`);
+      dictCard.hidden = false;
+      const width = dictCard.offsetWidth;
+      const height = dictCard.offsetHeight;
+      const x = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
+      let y = rect.top - height - 8;
+      if (y < 8) y = rect.bottom + 8;
+      dictCard.style.left = `${Math.round(x)}px`;
+      dictCard.style.top = `${Math.round(Math.min(y, window.innerHeight - height - 8))}px`;
+    };
+
+    document.addEventListener("mouseup", (event) => {
+      if (window.matchMedia("(hover: none)").matches) return;
+      if (event.target instanceof Element && event.target.closest(".dict-card, .selbar, .report-mask, .cite-pop") !== null) {
+        return;
+      }
+      if (docRoot === null || !(event.target instanceof Node) || !docRoot.contains(event.target)) {
+        hideDict();
+        return;
+      }
+      const selection = window.getSelection();
+      if (selection !== null && !selection.isCollapsed) {
+        hideDict();
+        return;
+      }
+      const found = wordAtPoint(event.clientX, event.clientY);
+      window.clearTimeout(dictTimer);
+      if (found === null) {
+        hideDict();
+        return;
+      }
+      dictPoint = { x: event.clientX, y: event.clientY };
+      dictTimer = window.setTimeout(() => showDict(found.word, found.rect), 300);
+    });
+
+    document.addEventListener(
+      "mousemove",
+      (event) => {
+        if (dictPoint === null) return;
+        if (Math.abs(event.clientX - dictPoint.x) + Math.abs(event.clientY - dictPoint.y) > 10) hideDict();
+      },
+      true,
+    );
+    document.addEventListener("scroll", hideDict, true);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") hideDict();
+    });
   </script>
 </Base>

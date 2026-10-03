@@ -89,6 +89,25 @@ export function paragraphJoin(previous: string, next: string): string {
   return isLatinWordChar(lastWordChar(previous)) || isLatinWordChar(firstWordChar(next)) ? " " : "";
 }
 
+/**
+ * 由光標位置向兩邊擴展到連續詞字元（漢字連續段或拉丁詞），上限 maxLength 字。
+ * 位置唔屬詞字元（標點、空白）或者超出範圍時返回 null。
+ */
+export function wordAround(text: string, offset: number, maxLength = 8): string | null {
+  const chars = [...text];
+  if (offset < 0 || offset >= chars.length) return null;
+  if (!WORD_CHAR.test(chars[offset])) return null;
+  let start = offset;
+  let end = offset + 1;
+  while (start > 0 && WORD_CHAR.test(chars[start - 1])) start -= 1;
+  while (end < chars.length && WORD_CHAR.test(chars[end])) end += 1;
+  const word = chars.slice(start, end);
+  if (word.length <= maxLength) return word.join("");
+  const before = offset - start;
+  const from = Math.max(0, Math.min(before - Math.floor(maxLength / 2), word.length - maxLength));
+  return word.slice(from, from + maxLength).join("");
+}
+
 /** 連排之後嘅段落：spans 為組成佢嘅原文切片（各自帶正文章節下標）。 */
 export interface MergedParagraph {
   /** 連排文字（段落之間按連接規則補位），用於羅馬字層判定。 */

@@ -19,6 +19,7 @@ import {
   splitParagraphs,
   splitParagraphSpans,
   statusBadge,
+  wordAround,
 } from "../src/utils/reader.ts";
 
 test("splitParagraphs：按空行拆段，去段首尾空白", () => {
@@ -219,4 +220,20 @@ test("pairTranslations：譯文段數等於原文段數（未合併）時逐段�
   const groups = mergeParagraphSpans(splitParagraphSpans("甲。\n\n乙。"));
   const paired = pairTranslations(groups, ["甲嘅今譯。", "乙嘅今譯。"]);
   assert.deepEqual(paired?.map((entry) => entry.translation), ["甲嘅今譯。", "乙嘅今譯。"]);
+});
+
+test("wordAround：由光標向兩邊擴展到連續漢字，標點截斷", () => {
+  assert.equal(wordAround("聖藥呢", 0), "聖藥呢", "短漢字連續段整段取");
+  assert.equal(wordAround("白話報係中國人嘅聖藥", 3), "白話報係中國人嘅", "超過上限（8 字）以光標為中心截");
+  assert.equal(wordAround("乜野叫做聖藥呢。白話報就係喇。", 5), "乜野叫做聖藥呢", "句號截斷");
+  assert.equal(wordAround("見「聖藥」二字", 2), "聖藥", "引號截斷");
+  assert.equal(wordAround("abc def", 1), "abc", "拉丁詞按空白截斷");
+});
+
+test("wordAround：標點位、越界回 null；過長連續段按光標居中截取", () => {
+  assert.equal(wordAround("甲乙。丙丁", 2), null, "光標落喺標點");
+  assert.equal(wordAround("甲乙", 9), null);
+  assert.equal(wordAround("", 0), null);
+  assert.equal(wordAround("一二三四五六七八九十", 5, 4), "四五六七", "以光標為中心截 4 字");
+  assert.equal(wordAround("一二三四五六七八九十", 0, 4), "一二三四", "近段首時由頭截");
 });

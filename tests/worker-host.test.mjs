@@ -8,20 +8,23 @@ const htmlResponse = () =>
 
 const env = {
   DB: {
-    prepare: () => ({
+    prepare: (sql) => ({
       bind: () => ({
         all: async () => ({
-          results: [
-            {
-              id: "gdvp-01-009-01",
-              corpus: "gd-vernacular-paper",
-              issue: "issue-01",
-              page: 9,
-              title: null,
-              text: "乜野叫做聖藥呢。白話報就係喇。",
-            },
-          ],
+          results: sql.includes("COUNT(*)")
+            ? []
+            : [
+                {
+                  id: "gdvp-01-009-01",
+                  corpus: "gd-vernacular-paper",
+                  issue: "issue-01",
+                  page: 9,
+                  title: null,
+                  text: "乜野叫做聖藥呢。白話報就係喇。",
+                },
+              ],
         }),
+        first: async () => ({ total: 1 }),
       }),
     }),
   },

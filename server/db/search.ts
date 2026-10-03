@@ -28,13 +28,23 @@ const INDEXES: Record<Exclude<SearchMode, "empty">, { table: string; column: str
 };
 
 /** 多取一條命中，用於判斷結果是否被 limit 截斷。 */
+export interface SearchPageResult {
+  rows: SearchRow[];
+  /** 符合條件嘅總命中數（另跑一次 COUNT，唔受分頁影響）。 */
+  total: number;
+}
+
+/**
+ * 分頁檢索：bm25 排序 + LIMIT/OFFSET，另跑 COUNT 取總數。
+ * （FTS5 嘅 bm25() 唔可以同窗口函數一齊用，故總數要獨立查一次。）
+ */
 export async function searchArticles(
   db: D1Database,
   plan: SearchPlan,
   corpora: readonly string[] = [],
-  limit = RESULT_LIMIT,
-): Promise<SearchRow[]> {
-  if (plan.mode === "empty") return [];
+  { page = 1, pageSize = RESULT_LIMIT }: { page?: number; pageSize?: number } = {},
+): Promise<SearchPageResult> {
+  if (plan.mode === "empty") return { rows: [], total: 0 };
   const { table, column } = INDEXES[plan.mode];
   const params: unknown[] = [ftsPhrase(column, plan.query)];
   let corpusFilter = "";
@@ -42,17 +52,21 @@ export async function searchArticles(
     corpusFilter = ` AND a.corpus IN (${corpora.map(() => "?").join(", ")})`;
     params.push(...corpora);
   }
-  params.push(limit + 1);
-  const statement =
-    `SELECT a.id, a.corpus, a.issue, a.page, a.title, a.text` +
+  const from =
     ` FROM ${table}` +
     ` JOIN articles AS a ON a.id = ${table}.id` +
-    ` WHERE ${table} MATCH ?${corpusFilter}` +
-    ` ORDER BY bm25(${table})` +
-    ` LIMIT ?`;
-  const result = await db
-    .prepare(statement)
+    ` WHERE ${table} MATCH ?${corpusFilter}`;
+  const offset = Math.max(0, (page - 1) * pageSize);
+  const rows =
+    (
+      await db
+        .prepare(`SELECT a.id, a.corpus, a.issue, a.page, a.title, a.text${from} ORDER BY bm25(${table}) LIMIT ? OFFSET ?`)
+        .bind(...params, pageSize, offset)
+        .all<SearchRow>()
+    ).results ?? [];
+  const counted = await db
+    .prepare(`SELECT COUNT(*) AS total${from}`)
     .bind(...params)
-    .all<SearchRow>();
-  return result.results ?? [];
+    .first<{ total: number }>();
+  return { rows, total: Number(counted?.total ?? 0) };
 }
