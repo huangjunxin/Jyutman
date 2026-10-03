@@ -13,4 +13,6 @@ export interface Env {
   DB: D1Database;
   /** Static Assets 綁定：非 /api 請求由 Worker 轉交資產層直出。 */
   ASSETS: AssetFetcher;
+  /** 維護端令牌（wrangler secret）；未設定時維護接口一律 401。 */
+  ADMIN_TOKEN?: string;
 }

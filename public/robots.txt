@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /search
+Disallow: /proofread
 
 Sitemap: https://jyutman.com/sitemap-index.xml

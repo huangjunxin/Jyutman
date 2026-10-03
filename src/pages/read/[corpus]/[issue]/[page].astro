@@ -259,6 +259,68 @@ const articleJsonLd = {
     </div>
   </nav>
 
+  <div class="selbar" id="selbar" role="toolbar" aria-label="選字操作" hidden>
+    <button type="button" class="sb" data-act="copy">複製</button>
+    <button type="button" class="sb" data-act="dict">查辭叢</button>
+    <button type="button" class="sb" data-act="report">回報此處</button>
+  </div>
+
+  <div
+    class="report-mask"
+    id="reportMask"
+    data-from={`${corpus.title} · ${issue.issue} · 第 ${pageParam(pageNumber)} 葉`}
+    hidden
+  >
+    <div
+      class="report-card"
+      id="reportCard"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reportTitle"
+      tabindex="-1"
+    >
+      <div class="rc-head">
+        <h2 id="reportTitle">回報此處</h2>
+        <button type="button" class="rc-close" id="reportClose" aria-label="閂咗佢">×</button>
+      </div>
+
+      <dl class="rc-facts">
+        <dt>所選文字</dt>
+        <dd><span class="hl" id="rcSel"></span></dd>
+        <dt>出處</dt>
+        <dd id="rcFrom"></dd>
+        <dt>前後文</dt>
+        <dd class="ctx" id="rcCtx"></dd>
+      </dl>
+
+      <form id="reportForm" novalidate>
+        <fieldset class="rc-types">
+          <legend>問題類型</legend>
+          <label class="rchip"><input type="radio" name="rtype" value="錯字" checked /><span>錯字</span></label>
+          <label class="rchip"><input type="radio" name="rtype" value="缺字" /><span>缺字</span></label>
+          <label class="rchip"><input type="radio" name="rtype" value="標點分段" /><span>標點分段</span></label>
+          <label class="rchip"><input type="radio" name="rtype" value="今譯疑問" /><span>今譯疑問</span></label>
+          <label class="rchip"><input type="radio" name="rtype" value="其他" /><span>其他</span></label>
+        </fieldset>
+
+        <label class="rc-field">
+          <span>建議讀法或說明（選填）</span>
+          <textarea id="rcNote" rows="3" placeholder="例：呢個字似係「冇」多過「有」。"></textarea>
+        </label>
+
+        <label class="rc-hp" aria-hidden="true">
+          <span>網址（唔好填）</span>
+          <input type="text" id="rcSite" tabindex="-1" autocomplete="off" />
+        </label>
+
+        <div class="rc-foot">
+          <button type="submit" class="btn primary" id="rcSubmit">提交</button>
+          <p class="rc-hint">匿名上報，唔會收集任何聯繫方式；提交後由維護者人工審閱。</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const buttons = document.querySelectorAll<HTMLButtonElement>(".seg button[data-dir]");
     const root = document.documentElement;
@@ -362,5 +424,362 @@ const articleJsonLd = {
         }
       });
     }
+  </script>
+
+  <script>
+    const doc = document.querySelector(".doc");
+    const selbar = document.getElementById("selbar");
+    const mask = document.getElementById("reportMask");
+    const card = document.getElementById("reportCard");
+    const form = document.getElementById("reportForm");
+    const selLine = document.getElementById("rcSel");
+    const fromLine = document.getElementById("rcFrom");
+    const ctxLine = document.getElementById("rcCtx");
+    const closeBtn = document.getElementById("reportClose");
+    const siteInput = document.getElementById("rcSite");
+    const STORE_KEY = "jm-reports";
+    const CTX_CHARS = 20;
+    const SKIP = "rt, .selbar, .report-card, .report-mask, .ph";
+
+    interface SelectionInfo {
+      range: Range;
+      text: string;
+      fragment: string;
+      articleId: string;
+      paragraphIndex: number;
+    }
+
+    interface StoredReport {
+      id?: number | null;
+      article_id?: string;
+      selected_text?: string;
+      type?: string;
+      created_at?: string;
+    }
+
+    let pending: SelectionInfo | null = null;
+    let debounceId = 0;
+    let reportToastTimer = 0;
+
+    const elementOf = (node: Node | null): Element | null =>
+      node === null ? null : node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+
+    const textOf = (root: Node): string => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let out = "";
+      let node = walker.nextNode();
+      while (node !== null) {
+        const parent = elementOf(node);
+        if (parent !== null && parent.closest("rt") === null) out += node.nodeValue;
+        node = walker.nextNode();
+      }
+      return out.replace(/\s+/gu, " ").trim();
+    };
+
+    const toastNode = () => {
+      const found = document.querySelector(".toast");
+      if (found !== null) return found;
+      const created = document.createElement("div");
+      created.className = "toast";
+      created.setAttribute("role", "status");
+      document.body.append(created);
+      return created;
+    };
+
+    const showReportToast = (message: string): void => {
+      const toast = toastNode();
+      toast.textContent = message;
+      toast.classList.add("is-on");
+      window.clearTimeout(reportToastTimer);
+      reportToastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
+    };
+
+    /** 由選區推出上報上下文：文章 id、段落序號、前後文（前 20 + 選 + 後 20）。 */
+    const selectionInfo = (): SelectionInfo | null => {
+      const selection = window.getSelection();
+      if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
+      const range = selection.getRangeAt(0);
+      if (doc === null || !doc.contains(range.commonAncestorContainer)) return null;
+      const start = elementOf(range.startContainer);
+      const end = elementOf(range.endContainer);
+      if (start === null || end === null || start.closest(SKIP) !== null || end.closest(SKIP) !== null) {
+        return null;
+      }
+      const article = start.closest("article.art");
+      if (article === null) return null;
+      const text = textOf(range.cloneContents());
+      if (text === "") return null;
+
+      const paragraphs = [...article.querySelectorAll("p.para")];
+      let paragraphIndex = paragraphs.findIndex((node) => node.contains(range.startContainer));
+      if (paragraphIndex < 0) {
+        paragraphIndex =
+          paragraphs.filter(
+            (node) =>
+              (node.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+          ).length - 1;
+      }
+      paragraphIndex = Math.max(0, paragraphIndex);
+
+      const host =
+        start.closest("p.para") ?? start.closest(".modtrans") ?? paragraphs[paragraphIndex] ?? article;
+      const hostText = textOf(host);
+      const at = hostText.indexOf(text);
+      const fragment = at < 0 ? text : hostText.slice(Math.max(0, at - CTX_CHARS), at + text.length + CTX_CHARS);
+
+      return { range: range.cloneRange(), text, fragment, articleId: article.id, paragraphIndex };
+    };
+
+    /** 選字條位置：橫排擺上方，豎排擺左側；夾返落視窗之內。 */
+    const placeBar = (rect: DOMRect): void => {
+      if (selbar === null) return;
+      const width = selbar.offsetWidth;
+      const height = selbar.offsetHeight;
+      const vertical = document.documentElement.classList.contains("dir-vertical");
+      let x;
+      let y;
+      if (vertical) {
+        x = rect.left - width - 8;
+        if (x < 8) x = rect.right + 8;
+        y = rect.top + rect.height / 2 - height / 2;
+      } else {
+        x = rect.left + rect.width / 2 - width / 2;
+        y = rect.top - height - 8;
+        if (y < 8) y = rect.bottom + 8;
+      }
+      x = Math.max(8, Math.min(x, window.innerWidth - width - 8));
+      y = Math.max(8, Math.min(y, window.innerHeight - height - 8));
+      selbar.style.left = `${Math.round(x)}px`;
+      selbar.style.top = `${Math.round(y)}px`;
+    };
+
+    const hideBar = () => {
+      if (selbar !== null) selbar.hidden = true;
+    };
+
+    const closeReport = () => {
+      if (mask !== null) mask.hidden = true;
+    };
+
+    const openReport = () => {
+      if (pending === null || mask === null || selLine === null || fromLine === null || ctxLine === null) return;
+      selLine.textContent = pending.text;
+      fromLine.textContent = `${mask.dataset.from ?? ""} · ${pending.articleId}`;
+      ctxLine.textContent = pending.fragment;
+      if (siteInput instanceof HTMLInputElement) siteInput.value = "";
+      mask.hidden = false;
+      hideBar();
+      card?.focus();
+    };
+
+    document.addEventListener("selectionchange", () => {
+      window.clearTimeout(debounceId);
+      debounceId = window.setTimeout(() => {
+        if (mask !== null && !mask.hidden) {
+          hideBar();
+          return;
+        }
+        const info = selectionInfo();
+        if (info === null || selbar === null) {
+          hideBar();
+          return;
+        }
+        pending = info;
+        selbar.hidden = false;
+        placeBar(info.range.getBoundingClientRect());
+      }, 300);
+    });
+
+    document.addEventListener("scroll", hideBar, true);
+    window.addEventListener("resize", hideBar);
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (mask !== null && !mask.hidden) closeReport();
+      else hideBar();
+    });
+    document.addEventListener(
+      "mousedown",
+      (event) => {
+        if (event.target instanceof Element && event.target.closest(".selbar") !== null) return;
+        hideBar();
+      },
+      true,
+    );
+    selbar?.addEventListener("mousedown", (event) => event.preventDefault());
+
+    selbar?.addEventListener("click", (event) => {
+      const button = event.target instanceof Element ? event.target.closest(".sb") : null;
+      if (button === null || pending === null) return;
+      const action = button.getAttribute("data-act");
+      if (action === "copy") {
+        void navigator.clipboard?.writeText(pending.text).then(
+          () => {
+            const label = button.textContent;
+            button.textContent = "已複製";
+            button.classList.add("is-done");
+            window.setTimeout(() => {
+              button.textContent = label;
+              button.classList.remove("is-done");
+            }, 1200);
+          },
+          () => undefined,
+        );
+      } else if (action === "dict") {
+        window.open(`https://jyutjyu.com/word/${encodeURIComponent(pending.text)}`, "_blank", "noopener");
+      } else if (action === "report") {
+        openReport();
+      }
+    });
+
+    closeBtn?.addEventListener("click", closeReport);
+    mask?.addEventListener("click", (event) => {
+      if (event.target === mask) closeReport();
+    });
+
+    /** 已回報標記：喺文章內搵返該段文字包一層 .reported。 */
+    const markReported = (article: HTMLElement, text: string, label: string): boolean => {
+      if (text === "") return false;
+      const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+      const nodes: { node: Text; start: number }[] = [];
+      let full = "";
+      let node = walker.nextNode();
+      while (node !== null) {
+        const parent = elementOf(node);
+        if (parent !== null && parent.closest("rt") === null) {
+          nodes.push({ node: node as Text, start: full.length });
+          full += node.nodeValue ?? "";
+        }
+        node = walker.nextNode();
+      }
+      const at = full.indexOf(text);
+      if (at < 0) return false;
+      const locate = (offset: number): { node: Text; offset: number } | null => {
+        for (const entry of nodes) {
+          const end = entry.start + entry.node.data.length;
+          if (offset >= entry.start && offset < end) {
+            return { node: entry.node, offset: offset - entry.start };
+          }
+        }
+        return null;
+      };
+      const first = locate(at);
+      const last = locate(at + text.length - 1);
+      if (first === null || last === null) return false;
+      const range = document.createRange();
+      range.setStart(first.node, first.offset);
+      range.setEnd(last.node, last.offset + 1);
+      const span = document.createElement("span");
+      span.className = "reported";
+      span.dataset.label = label;
+      try {
+        range.surroundContents(span);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    /** 由元素取值：唔係 input 就回空字串（蜜罐欄位用）。 */
+    const inputValue = (node: HTMLElement | null): string =>
+      node instanceof HTMLInputElement ? node.value : "";
+
+    const readStore = (): StoredReport[] => {
+      try {
+        const raw = window.localStorage.getItem(STORE_KEY);
+        const parsed = raw === null ? [] : JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const writeStore = (entries: StoredReport[]): void => {
+      try {
+        window.localStorage.setItem(STORE_KEY, JSON.stringify(entries.slice(-200)));
+      } catch {
+        /* 本機儲存唔可用時只保留今次標記 */
+      }
+    };
+
+    const markAll = (entries: StoredReport[]): void => {
+      for (const entry of entries) {
+        if (typeof entry?.article_id !== "string" || typeof entry?.selected_text !== "string") continue;
+        const article = document.getElementById(entry.article_id);
+        if (article === null) continue;
+        markReported(article, entry.selected_text, entry.type ?? "已回報");
+      }
+    };
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (pending === null) return;
+      const type = form.querySelector<HTMLInputElement>('input[name="rtype"]:checked')?.value ?? "其他";
+      const note = document.getElementById("rcNote");
+      const payload = {
+        article_id: pending.articleId,
+        selected_text: pending.text,
+        fragment: pending.fragment,
+        type,
+        suggestion: note instanceof HTMLTextAreaElement ? note.value : "",
+        paragraph_index: pending.paragraphIndex,
+        website: inputValue(siteInput),
+      };
+      const submit = document.getElementById("rcSubmit");
+      if (submit instanceof HTMLButtonElement) submit.disabled = true;
+      try {
+        const response = await fetch("/api/correct", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || body?.ok !== true) throw new Error("submit failed");
+        const entries = readStore().filter(
+          (entry) => !(entry.article_id === payload.article_id && entry.selected_text === payload.selected_text),
+        );
+        entries.push({
+          id: body.id ?? null,
+          article_id: payload.article_id,
+          selected_text: payload.selected_text,
+          type,
+          created_at: new Date().toISOString(),
+        });
+        writeStore(entries);
+        const article = document.getElementById(payload.article_id);
+        if (article !== null) markReported(article, payload.selected_text, type);
+        closeReport();
+        showReportToast("已收到，多謝指正");
+      } catch {
+        showReportToast("送出失敗，請稍後再試");
+      } finally {
+        if (submit instanceof HTMLButtonElement) submit.disabled = false;
+      }
+    });
+
+    /** 重載之後：本機記錄先標，再同服務端 pending 合併（簡版）。 */
+    const restoreReports = async () => {
+      markAll(readStore());
+      const articleIds = [...document.querySelectorAll("article.art")].map((node) => node.id);
+      for (const id of articleIds) {
+        try {
+          const response = await fetch(`/api/reports?article_id=${encodeURIComponent(id)}`);
+          if (!response.ok) continue;
+          const body = await response.json();
+          const reports: Record<string, unknown>[] = Array.isArray(body?.reports) ? body.reports : [];
+          markAll(
+            reports.map((report) => ({
+              id: typeof report.id === "number" ? report.id : null,
+              article_id: id,
+              selected_text: typeof report.selected_text === "string" ? report.selected_text : "",
+              type: typeof report.type === "string" ? report.type : "已回報",
+            })),
+          );
+        } catch {
+          /* 服務未通時只靠本機記錄 */
+        }
+      }
+    };
+
+    void restoreReports();
   </script>
 </Base>

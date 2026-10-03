@@ -91,36 +91,45 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 ## 7. corrections 回写流程
 
 ```text
-用户提交 diff（阅读页的 CorrectionForm island）
-  → POST /api/correct（Workers；防滥用：Turnstile + 速率限制，Phase 3 上线时启用）
+用户提交 diff（阅读页选区 → 「回報此處」表单）
+  → POST /api/correct（Workers；防滥用：IP 令牌桶 + 蜜罐字段，Turnstile 待接）
   → D1 corrections 表（pending）
-  → 审阅（维护者经 Cloudflare Access 保护的审阅界面操作）→ accepted / rejected / deferred
-  → GitHub Actions 定期把 accepted 整理成 PR：
-       · 首选指向 JyutmanDataPipeline（上游）
-       · 若上游不再维护，则指向 Jyutman-Corpus
+  → 审阅（维护者用内部校对工作台；v1 为 admin token 鉴权，升级路径为 Cloudflare Access）
+  → accepted 由维护者在工作台导出 JSON / CSV
+  → 人工整理后向上游提 PR（首选 JyutmanDataPipeline；若不再维护则 Jyutman-Corpus）
   → 是否合并由上游/维护者决定；本站绝不直接改上游
 ```
 
-建议的表结构（草案，待实现时定稿）：
+表结构（已实现，见 `db/migrations/0001-corrections.sql`）：
 
 ```sql
 CREATE TABLE corrections (
-  id          INTEGER PRIMARY KEY,
-  article_id  TEXT NOT NULL,
-  page_id     TEXT,
-  span_start  INTEGER,          -- 待决策：字符偏移 vs 引用片段
-  span_end    INTEGER,
-  suggestion  TEXT NOT NULL,
-  note        TEXT,
-  submitter   TEXT,             -- 匿名或哈希，不存 PII
-  status      TEXT NOT NULL DEFAULT 'pending',  -- pending/accepted/rejected
-  created_at  TEXT NOT NULL
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  article_id      TEXT NOT NULL,
+  page_id         TEXT,                       -- <corpus>/<issue>/<三位叶码>，由 articles 表推出
+  span_start      INTEGER,                    -- 保留：字符偏移方案未启用
+  span_end        INTEGER,
+  fragment        TEXT NOT NULL,              -- 原文片段引用（前 20 字 + 所选 + 后 20 字）
+  selected_text   TEXT NOT NULL,
+  paragraph_index INTEGER,                    -- 显示段落序号（合并渲染之后）
+  type            TEXT NOT NULL,              -- 錯字 / 缺字 / 標點分段 / 今譯疑問 / 其他
+  suggestion      TEXT,
+  note            TEXT,                       -- 保留字段
+  status          TEXT NOT NULL DEFAULT 'pending',  -- pending / accepted / rejected / deferred
+  created_at      TEXT NOT NULL
 );
+CREATE INDEX idx_corrections_fragment ON corrections (fragment);
+CREATE INDEX idx_corrections_article  ON corrections (article_id);
+CREATE INDEX idx_corrections_status   ON corrections (status);
 ```
 
-**待决策**：定位方式用字符偏移（简单，但对上游文本变动脆弱）还是原文片段引用（稳，但有匹配歧义）。
+**已定**：定位方式用原文片段引用（`fragment`）；字符偏移（`span_start` / `span_end`）保留字段但未启用，片段引用对上游文本变动更稳。
 
-上游 checklist 结构化产物（review_items）入库后与 corrections 同队列呈现，按 article_id 与位置归组，同位置读者上报自动合并不重复展示。
+**匿名与隐私**：不收任何联系方式；表内不存提交者、IP、UA 等可识别资料；防滥用只靠 IP 令牌桶（内存态）与蜜罐字段。
+
+**接口**（`server/routes/corrections.ts`）：`POST /api/correct`、`GET /api/reports?article_id=`、`GET /api/queue`（需 `Authorization: Bearer <ADMIN_TOKEN>`）、`POST /api/adjudicate`（同上）。维护令牌由 `npx wrangler secret put ADMIN_TOKEN` 写入，代码与仓库不存任何令牌。
+
+**待办**：Turnstile（需先建 widget）；上游回写仍为人工导出，不自动化。
 
 ## 8. 版权与许可登记
 

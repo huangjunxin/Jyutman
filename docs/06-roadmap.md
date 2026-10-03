@@ -65,7 +65,7 @@
 | # | 关键任务 | 验收标准 |
 |---|---|---|
 | 3.1 | 页级校对状态机 | `draft` / `verified` / `needs_review` 三态在 UI 如实呈现；状态传播规则与上游一致 |
-| 3.2 | 众包纠错通道 | 公开提交端（POST /api/correct，Turnstile + 速率限制）＋ Cloudflare Access 保护的审阅界面（免费档 ≤50 用户，当前规模足够），採用/駁回/暫緩有记录 |
+| 3.2 | 众包纠错通道（已完成 3a 首版） | 公开提交端（POST /api/correct，IP 令牌桶 + 蜜罐；Turnstile 待接）＋ 内部审阅工作台（v1 admin token 鉴权，Access 为升级路径），採用/駁回/暫緩有记录 |
 | 3.3 | GitHub Actions 回写 | 已审核的更正定时回写至数据管道，独立于站点数据 |
 | 3.4 | 开放 API | 提供文章与检索的公开读取 API，有文档 |
 | 3.5 | Zenodo DOI | 文本数据在 Zenodo 发布并取得 DOI |
@@ -96,7 +96,7 @@ Phase 3 分两期：3a 为公开提交端（匿名提交＋Turnstile）＋ Cloud
 | Phase 0 · 准备 | 约 2 周 | 关键假设实测、版权清单、三仓＋CI | 已完成 |
 | Phase 1 · MVP | 约 6 周 | 阅读器 + 检索 + 3 语料上线 + 域名 | 已完成（2026-10-03）：阅读器、书目库、D1 检索、域名均已上线 |
 | Phase 2 · 深化 | 待估 | 归一检索、粤拼 ruby、历史拼式 | 进行中：2.2 粤拼 ruby 已上线（构建期生成 + 开关），其余未开始 |
-| Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 未开始 |
+| Phase 3 · 开放 | 待估 | 校对状态机、纠错通道、开放 API、DOI、IIIF | 进行中（3a）：读者上报与维护端审阅已上线；Turnstile、Actions 回写、开放 API、DOI、IIIF 未做 |
 | Phase 4 · 增长 | 待估 | 相似文本、多版本、AI 辅助 | 未开始 |
 
 ## 阶段依赖链
@@ -139,7 +139,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）；Phase 2 进行中。** 分项如下：
+**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）；Phase 2 进行中，Phase 3 已启动（3a 首版）。** 分项如下：
 
 - 0.1 trigram 实测通过（本地 2026-10-02，生产 D1 复核 2026-10-03）：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；D1 上 trigram tokenizer 可用，召回与本地一致（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
@@ -161,6 +161,12 @@ Phase 2 进度：
 - 2.2 粤拼 ruby 已上线（2026-10-03）：构建期把音表按正文下标对齐后全量生成 `<ruby>字<rt>粵拼</rt></ruby>`（549 叶带注音、共 101,107 处），工具条「粵拼注音」chip 开关（本机记忆，默认关），竖排之下 rt 天然落到字右侧；无音表文章不注音。单页 HTML 增幅约 3 至 5 KB（gzip 后约 1 KB），全站 dist 增约 48%。
 - 阅读体验批次 2 已上线（2026-10-03）：版面合并渲染（相邻段若前段末无句末标点即连排，仅文章块内；8974 段并成 4464 段，音表下标体系不变）、叶内文章哈希锚点（`#<article_id>`，标题行「#」锚链可复制链接，检索结果直达篇）、JSON-LD（首页 WebSite + SearchAction、书目页 Book、阅读叶 Article，字段全取自 generated JSON）。
 - 今译层（docs/04 S8）已上线（2026-10-03，廣東白話報）：构建期读姊妹仓 `translations/gdvp.translations.json`，按叶拆出 `translations.json`（264 篇有译文，5 篇纯标记文章无正文不译）；阅读器「今譯」chip 开关（本机记忆，默认关），译块与原文段按同一合并规则同步分组，标「譯 v0 · 未校訂」；cvh / rcc 无译文故不显示开关。
+
+Phase 3 进度（3a）：
+
+- 读者上报通道已上线（2026-10-03）：阅读页选字浮出操作条（複製 / 查辭叢 / 回報此處），表单匿名提交 `POST /api/correct`（IP 令牌桶 + 蜜罐字段，不收任何联系方式），写入 D1 `corrections`（pending，表见 `db/migrations/0001-corrections.sql`）；已回报处在页内以虚线角标标出，重载后与本机记录及 `GET /api/reports` 合并还原。
+- 维护端审阅已上线：内部校对工作台（noindex、robots 屏蔽、站点导航不挂入口，路径不对外公布）以 admin token 鉴权（`ADMIN_TOKEN` 经 `wrangler secret` 写入），队列按状态筛选，逐条「採用 / 駁回 / 暫緩」，accepted 可导出 JSON / CSV 供人工向上游提 PR（本站不直接回写上游）。
+- 未做：Turnstile（需先建 widget）、Actions 自动回写（维持人工导出）、Cloudflare Access 升级路径。
 
 下一步行动：按上方 Phase 2 任务表推进（2.1 繁简异体映射扩充、2.3 历史拼式对齐、2.5 引用导出），并在 Phase 2 内补 deploy workflow。
 

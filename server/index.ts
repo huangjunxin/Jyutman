@@ -11,6 +11,12 @@ import type { Context } from "hono";
 import { decideHost } from "../src/utils/host-policy.ts";
 import type { Env } from "./env.ts";
 import { TokenBucketLimiter } from "./lib/rate-limit.ts";
+import {
+  handleAdjudicate,
+  handleCorrect,
+  handleQueue,
+  handleReports,
+} from "./routes/corrections.ts";
 import { handleSearch } from "./routes/search.ts";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -35,6 +41,11 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.get("/api/search", handleSearch);
+
+app.post("/api/correct", handleCorrect);
+app.get("/api/reports", handleReports);
+app.get("/api/queue", handleQueue);
+app.post("/api/adjudicate", handleAdjudicate);
 
 const notFound = (c: Context<{ Bindings: Env }>) =>
   c.json({ error: "無此接口" }, 404, { "Cache-Control": "no-store" });

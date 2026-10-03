@@ -4,5 +4,5 @@ import { defineConfig } from "astro/config";
 
 export default defineConfig({
   site: "https://jyutman.com",
-  integrations: [sitemap()],
+  integrations: [sitemap({ filter: (page) => !page.includes("/proofread") })],
 });
