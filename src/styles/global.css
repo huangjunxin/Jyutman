@@ -1143,6 +1143,55 @@ body.show-jyutping .doc ruby rt {
   display: revert;
 }
 
+/* 今譯層：預設隱藏，body.show-modtrans 時顯示；豎排之下譯塊保持橫排 */
+.modtrans {
+  display: none;
+  margin: 0 0 1.15em;
+  padding-left: 12px;
+  border-left: 1px solid var(--rule);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+
+body.show-modtrans .modtrans {
+  display: block;
+}
+
+html.dir-vertical .modtrans {
+  writing-mode: horizontal-tb;
+  max-width: 34em;
+}
+
+.modtrans-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mt-tag {
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.mt-meta {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.mt-body {
+  margin: 0;
+}
+
 /* 版面標記占位塊 */
 .ph {
   margin: 0 0 1.15em;

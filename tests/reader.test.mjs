@@ -8,7 +8,9 @@ import {
   latinRatio,
   markerNote,
   mergeParagraphSpans,
+  MODTRANS_JOIN,
   pageParam,
+  pairTranslations,
   paragraphJoin,
   percent,
   readingsByIndex,
@@ -193,4 +195,28 @@ test("renderMergedParagraph：逐片按各自下標注音，連排唔會令讀�
     '<span class="rom">a tumhler</span> <ruby>唔<rt>m4</rt></ruby>係茶杯',
     "拉丁片包 .rom，連接位補空格，讀音按正文下標 11",
   );
+});
+
+test("pairTranslations：原文組合併之後，譯文按同組順序連排", () => {
+  const groups = mergeParagraphSpans(splitParagraphSpans("第一期\n\n省城\n\n香港。\n\n澳門"));
+  const paired = pairTranslations(groups, ["第一期", "省城", "香港。", "澳門"]);
+  assert.equal(paired?.length, 2);
+  assert.equal(paired?.[0].translation, `第一期${MODTRANS_JOIN}省城${MODTRANS_JOIN}香港。`, "三段落併成一段，譯文同步連排");
+  assert.equal(paired?.[1].translation, "澳門");
+  assert.equal(paired?.[0].paragraph.text, "第一期省城香港。");
+});
+
+test("pairTranslations：段數唔等返回 null（呼叫方跳過該篇），無譯文時原文照排", () => {
+  const groups = mergeParagraphSpans(splitParagraphSpans("甲乙\n\n丙丁"));
+  assert.equal(pairTranslations(groups, ["只有一段"]), null);
+  const without = pairTranslations(groups, undefined);
+  assert.equal(without?.length, 1);
+  assert.equal(without?.[0].translation, null);
+  assert.equal(without?.[0].paragraph.text, "甲乙丙丁");
+});
+
+test("pairTranslations：譯文段數等於原文段數（未合併）時逐段對應", () => {
+  const groups = mergeParagraphSpans(splitParagraphSpans("甲。\n\n乙。"));
+  const paired = pairTranslations(groups, ["甲嘅今譯。", "乙嘅今譯。"]);
+  assert.deepEqual(paired?.map((entry) => entry.translation), ["甲嘅今譯。", "乙嘅今譯。"]);
 });

@@ -6,10 +6,12 @@ import {
   buildBodyIndexMap,
   buildImportSql,
   buildIssueJyutping,
+  buildIssueTranslations,
   buildPageRecord,
   chunkRows,
   mapArticleReadings,
   normalizeReading,
+  pairArticleTranslations,
   parseJsonl,
   pickArticle,
   pickIssue,
@@ -319,4 +321,58 @@ test("buildIssueJyutping：按文章拆音表，缺表文章計入 missing，空
   assert.equal(built.table["gdvp-01-002-03"], undefined, "標記文章唔入音表");
   assert.equal(built.missing, 1, "音表缺 gdvp-01-002-03 一篇");
   assert.equal(built.skipped, 1, "cvh-001-01 標記段內一條讀音略去");
+});
+
+test("pairArticleTranslations：標記段略去，譯文按站點正文段對齊", () => {
+  const entry = {
+    paragraphs: [
+      { orig: "第一期", trans: "第一期" },
+      { orig: "［插圖］", trans: "［插圖］" },
+      { orig: "照妖鏡", trans: "照妖鏡（即今日嘅哈哈鏡）" },
+    ],
+    notes: ["封面標目照錄。"],
+  };
+  const paired = pairArticleTranslations("第一期\n\n［插圖］\n\n照妖鏡", entry);
+  assert.deepEqual(paired.paragraphs, ["第一期", "照妖鏡（即今日嘅哈哈鏡）"]);
+  assert.equal(paired.noteCount, 1);
+  assert.equal(paired.reason, null);
+});
+
+test("pairArticleTranslations：段數或原文對唔上即整篇略去並回報原因", () => {
+  const count = pairArticleTranslations("甲\n\n乙", { paragraphs: [{ orig: "甲", trans: "甲" }], notes: [] });
+  assert.equal(count.paragraphs, null);
+  assert.equal(count.reason, "count");
+
+  const orig = pairArticleTranslations("甲\n\n乙", {
+    paragraphs: [
+      { orig: "甲", trans: "甲" },
+      { orig: "丙", trans: "丙" },
+    ],
+    notes: [],
+  });
+  assert.equal(orig.paragraphs, null);
+  assert.equal(orig.reason, "orig");
+
+  const shape = pairArticleTranslations("甲", { paragraphs: [{ orig: "甲", trans: null }], notes: [] });
+  assert.equal(shape.reason, "shape", "trans 唔係字串即略去");
+  assert.equal(pairArticleTranslations("甲", { paragraphs: [{ trans: "甲" }], notes: [] }).paragraphs?.length, 1,
+    "冇 orig 時只按段序對齊，唔當錯");
+});
+
+test("buildIssueTranslations：按文章拆今譯，全標記段唔入表亦唔當錯", () => {
+  const translations = new Map([
+    ["gdvp-01-001-01", { paragraphs: [{ orig: "第一期", trans: "第一期" }], notes: [] }],
+    ["gdvp-01-001-02", { paragraphs: [{ orig: "［插圖］", trans: "［插圖］" }], notes: [] }],
+    ["gdvp-01-001-03", { paragraphs: [{ orig: "甲", trans: "甲" }, { orig: "乙", trans: "乙" }], notes: ["註一"] }],
+  ]);
+  const articles = [
+    { id: "gdvp-01-001-01", text: "第一期" },
+    { id: "gdvp-01-001-02", text: "［插圖］" },
+    { id: "gdvp-01-001-03", text: "甲" },
+    { id: "gdvp-01-001-04", text: "無譯文" },
+  ];
+  const built = buildIssueTranslations({ articles, translations });
+  assert.deepEqual(Object.keys(built.table), ["gdvp-01-001-01"]);
+  assert.deepEqual(built.table["gdvp-01-001-01"], { paragraphs: ["第一期"], note_count: 0 });
+  assert.equal(built.mismatched, 1, "gdvp-01-001-03 段數唔等");
 });

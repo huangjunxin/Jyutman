@@ -64,3 +64,12 @@ export type JyutpingEntry = [number, string, string];
 
 /** 音表：文章 id → 讀音條目（<corpus>/<issue>/jyutping.json）。 */
 export type JyutpingTable = Record<string, JyutpingEntry[]>;
+
+/** 今譯條目：與本站正文段一一對應的譯文（標記段略去），加譯註數量。 */
+export interface TranslationEntry {
+  paragraphs: string[];
+  note_count: number;
+}
+
+/** 今譯表：文章 id → 譯文（<corpus>/<issue>/translations.json）。 */
+export type TranslationTable = Record<string, TranslationEntry>;

@@ -28,6 +28,7 @@ const DATA_README = `# 派生數據
 - \`<corpus>/issues.json\`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
 - \`<corpus>/<issue>/pages.json\`：葉級頁面數據，每葉 \`{page, status, blocks}\`；\`blocks\` 由文章切分而來，\`type\` 為 \`article\`（\`id\` / \`title\` / \`seq\` / \`text\` / \`text_norm\`）或 \`marker\`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
 - \`<corpus>/<issue>/jyutping.json\`：粵拼音表，\`{文章 id: [[字在正文中的下標, 字, 粵拼], …]}\`；來源為姊妹倉 \`Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json\`（tojyutping 生成），下標已換算到本站正文（標記段內的字略去）。
+- \`<corpus>/<issue>/translations.json\`（目前只有廣東白話報）：現代粵文今譯，\`{文章 id: {paragraphs: [譯文…], note_count}}\`；paragraphs 與本站正文段一一對應（標記段略去），來源為姊妹倉 \`Jyutman-Corpus/translations/gdvp.translations.json\`。
 
 重建指令：\`node scripts/sync-corpus.mjs\`。請勿手改本目錄任何文件；上游字段語義與容錯見 \`docs/03-data-contract.md\`。
 `;
@@ -49,6 +50,11 @@ export const CORPUS_META = {
     year: 1894,
     sourceLine: "Internet Archive · Cornell University Library 藏",
   },
+};
+
+/** 有今譯嘅語料：slug → 姊妹倉 translations/ 之下嘅檔名；其餘語料無今譯層。 */
+export const TRANSLATION_SOURCES = {
+  "gd-vernacular-paper": "gdvp.translations.json",
 };
 
 export const CORPUS_ORDER = Object.keys(CORPUS_META);
@@ -288,6 +294,79 @@ export function readJyutpingTable(corpusRoot, slug) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
+/**
+ * 讀入語料級今譯；TRANSLATION_SOURCES 有登記嘅語料缺檔即報清晰錯誤，
+ * 未登記嘅語料返回 undefined（該語料無今譯層）。
+ */
+export function readTranslations(corpusRoot, slug) {
+  const fileName = TRANSLATION_SOURCES[slug];
+  if (fileName === undefined) return undefined;
+  const filePath = path.join(corpusRoot, "translations", fileName);
+  if (!existsSync(filePath)) {
+    throw new Error(
+      `找不到今譯檔：${filePath}\n` +
+        `請確認姊妹倉 Jyutman-Corpus 已就位（可用 JYUTMAN_CORPUS_ROOT 指定倉庫根目錄）。`,
+    );
+  }
+  const parsed = JSON.parse(readFileSync(filePath, "utf8"));
+  const articles = Array.isArray(parsed?.articles) ? parsed.articles : [];
+  const byId = new Map();
+  for (const article of articles) {
+    if (typeof article?.id === "string") byId.set(article.id, article);
+  }
+  return byId;
+}
+
+/**
+ * 把一篇嘅今譯對到站點正文段：上游段（含標記）同譯文一一對應，
+ * 標記段略去；數量或原文對唔上者整篇略去（回報 reason）。
+ */
+export function pairArticleTranslations(rawText, entry) {
+  const rawParagraphs = rawText
+    .split("\n\n")
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== "");
+  const translated = Array.isArray(entry?.paragraphs) ? entry.paragraphs : [];
+  if (rawParagraphs.length !== translated.length) {
+    return { paragraphs: null, noteCount: 0, reason: "count" };
+  }
+  const paragraphs = [];
+  for (let i = 0; i < rawParagraphs.length; i += 1) {
+    const orig = rawParagraphs[i];
+    const item = translated[i];
+    const trans = typeof item?.trans === "string" ? item.trans : null;
+    if (trans === null) return { paragraphs: null, noteCount: 0, reason: "shape" };
+    if (typeof item?.orig === "string" && item.orig.trim() !== orig) {
+      return { paragraphs: null, noteCount: 0, reason: "orig" };
+    }
+    if (MARKER_PATTERN.test(orig)) continue;
+    paragraphs.push(trans);
+  }
+  return {
+    paragraphs,
+    noteCount: Array.isArray(entry?.notes) ? entry.notes.length : 0,
+    reason: null,
+  };
+}
+
+/** 由語料級今譯與本期文章生成期級今譯表：文章 id → {paragraphs, note_count}。 */
+export function buildIssueTranslations({ articles, translations }) {
+  const table = {};
+  let mismatched = 0;
+  for (const article of articles) {
+    const entry = translations?.get(article.id);
+    if (entry === undefined) continue;
+    const paired = pairArticleTranslations(article.text, entry);
+    if (paired.paragraphs === null) {
+      mismatched += 1;
+      continue;
+    }
+    if (paired.paragraphs.length === 0) continue;
+    table[article.id] = { paragraphs: paired.paragraphs, note_count: paired.noteCount };
+  }
+  return { table, mismatched };
+}
+
 /** 由期號日期推底本年代；全部日期待考時回退到語料登記值。 */
 export function pickYear(issueDates, fallback) {
   const years = [];
@@ -478,7 +557,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS articles_unigram_fts USING fts5(
   return `${parts.join("\n")}`.replace(/\n{3,}/gu, "\n\n");
 }
 
-function syncCorpus(dataRoot, slug, jyutping) {
+function syncCorpus(dataRoot, slug, jyutping, translations) {
   const meta = CORPUS_META[slug];
   const dir = path.join(dataRoot, slug);
   const articles = readJsonlFile(path.join(dir, "articles.jsonl"));
@@ -527,10 +606,12 @@ function syncCorpus(dataRoot, slug, jyutping) {
   const usedArticles = [];
   const sqlArticles = [];
   const jyutpingByIssue = new Map();
+  const translationsByIssue = new Map();
   let verifiedPages = 0;
   let needsReviewPages = 0;
   let jyutpingSkipped = 0;
   let jyutpingMissing = 0;
+  let translationMismatched = 0;
 
   for (const issue of issueRecords) {
     assertSafeSegment(issue.issue, "issue");
@@ -572,10 +653,18 @@ function syncCorpus(dataRoot, slug, jyutping) {
     jyutpingByIssue.set(issue.issue, built.table);
     jyutpingSkipped += built.skipped;
     jyutpingMissing += built.missing;
+
+    const builtTranslations = buildIssueTranslations({
+      articles: issueArticles,
+      translations,
+    });
+    translationsByIssue.set(issue.issue, builtTranslations.table);
+    translationMismatched += builtTranslations.mismatched;
   }
 
   if (jyutpingMissing > 0) warn(`粵拼音表缺 ${jyutpingMissing} 篇文章，該等文章不注音`);
   if (jyutpingSkipped > 0) warn(`粵拼音表有 ${jyutpingSkipped} 條讀音對唔上正文（標記段內或字元不符），已略去`);
+  if (translationMismatched > 0) warn(`今譯有 ${translationMismatched} 篇段數或原文對唔上，已略去`);
 
   const orphanCount = articleRecords.length - usedArticles.length;
   if (orphanCount > 0) warn(`articles.jsonl 有 ${orphanCount} 篇不屬於任何已發佈葉，已略去`);
@@ -588,6 +677,8 @@ function syncCorpus(dataRoot, slug, jyutping) {
     articles: usedArticles,
     sqlArticles,
     jyutpingByIssue,
+    translationsByIssue,
+    hasTranslations: translations !== undefined,
     verifiedPages,
     needsReviewPages,
     warnings,
@@ -609,7 +700,9 @@ function main() {
 
   console.log(`讀取上游發佈層：${dataRoot}`);
   console.log(`讀取粵拼音表：${path.join(corpusRoot, "translations", "jyutping")}`);
-  const synced = CORPUS_ORDER.map((slug) => syncCorpus(dataRoot, slug, readJyutpingTable(corpusRoot, slug)));
+  const synced = CORPUS_ORDER.map((slug) =>
+    syncCorpus(dataRoot, slug, readJyutpingTable(corpusRoot, slug), readTranslations(corpusRoot, slug)),
+  );
   const warnings = synced.flatMap((corpus) => corpus.warnings);
 
   rmSync(OUT_ROOT, { recursive: true, force: true });
@@ -652,6 +745,10 @@ function main() {
       mkdirSync(issueDir, { recursive: true });
       writeFileSync(path.join(issueDir, "pages.json"), serialize(pages));
       writeFileSync(path.join(issueDir, "jyutping.json"), serialize(corpus.jyutpingByIssue.get(issue) ?? {}));
+      const translations = corpus.translationsByIssue.get(issue);
+      if (corpus.hasTranslations) {
+        writeFileSync(path.join(issueDir, "translations.json"), serialize(translations ?? {}));
+      }
     }
   }
 
@@ -686,8 +783,12 @@ function main() {
       (total, table) => total + Object.values(table).reduce((sum, list) => sum + list.length, 0),
       0,
     );
+    const translatedArticles = [...corpus.translationsByIssue.values()].reduce(
+      (total, table) => total + Object.keys(table).length,
+      0,
+    );
     console.log(
-      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 葉 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）｜粵拼 ${jyutpingArticles} 篇 / ${jyutpingReadings} 條`,
+      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 葉 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）｜粵拼 ${jyutpingArticles} 篇 / ${jyutpingReadings} 條｜今譯 ${translatedArticles} 篇`,
     );
   }
   console.log(`  已核驗葉 ${corpora.reduce((t, c) => t + c.verifiedPages, 0)}，待校葉 ${corpora.reduce((t, c) => t + c.needsReviewPages, 0)}`);

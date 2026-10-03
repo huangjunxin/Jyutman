@@ -133,6 +133,43 @@ export function renderMergedParagraph(
   return html;
 }
 
+/** 今譯段落連排用嘅分隔：全角空格。 */
+export const MODTRANS_JOIN = "\u3000";
+
+/** 原文連排組與其今譯嘅配對；今譯層唔開時 translation 為 null。 */
+export interface TranslatedParagraph {
+  paragraph: MergedParagraph;
+  /** 同組譯文（以全角空格連排）；該組無譯文時為 null。 */
+  translation: string | null;
+}
+
+/** 唔配今譯嘅分組（原文照常渲染）。 */
+export function withoutTranslations(groups: readonly MergedParagraph[]): TranslatedParagraph[] {
+  return groups.map((paragraph) => ({ paragraph, translation: null }));
+}
+
+/**
+ * 把今譯段對到已合併嘅原文組：組序與原文段序一致，逐組取譯文連排。
+ * 譯文段數與原文段數唔等時返回 null（呼叫方跳過該篇今譯）；
+ * translations 為 undefined（該篇無譯文）時返回原文組、譯文為 null。
+ */
+export function pairTranslations(
+  groups: readonly MergedParagraph[],
+  translations: readonly string[] | undefined,
+): TranslatedParagraph[] | null {
+  if (translations === undefined) return withoutTranslations(groups);
+  const total = groups.reduce((sum, group) => sum + group.spans.length, 0);
+  if (total !== translations.length) return null;
+  let cursor = 0;
+  const paired: TranslatedParagraph[] = [];
+  for (const group of groups) {
+    const parts = translations.slice(cursor, cursor + group.spans.length);
+    cursor += group.spans.length;
+    paired.push({ paragraph: group, translation: parts.join(MODTRANS_JOIN) });
+  }
+  return paired;
+}
+
 /** 音表條目轉查表：正文下標 → 粵拼。 */
 export function readingsByIndex(entries: readonly JyutpingEntry[] | undefined): Map<number, string> {
   const readings = new Map<number, string>();

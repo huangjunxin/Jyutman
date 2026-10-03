@@ -11,14 +11,17 @@ import {
   getPage,
   getPageRoutes,
   getPages,
+  getTranslations,
 } from "../../../../utils/corpus.ts";
 import {
   markerNote,
   mergeParagraphSpans,
   pageParam,
+  pairTranslations,
   readingsByIndex,
   renderMergedParagraph,
   splitParagraphSpans,
+  type TranslatedParagraph,
 } from "../../../../utils/reader.ts";
 
 export const getStaticPaths = (() =>
@@ -51,6 +54,41 @@ for (const block of leaf.blocks) {
   if (block.type === "article") readingsByArticle.set(block.id, readingsByIndex(jyutping[block.id]));
 }
 const noReadings = new Map<number, string>();
+
+/** 本葉今譯：原文各段與譯文同步分組；冇今譯層嘅語料唔顯示開關。 */
+const translations = getTranslations(corpusSlug, issueSlug);
+const hasTranslations = Object.keys(translations).length > 0;
+
+interface ArticleView {
+  kind: "article";
+  id: string;
+  title: string | null;
+  paragraphs: TranslatedParagraph[];
+  /** 譯文段數對唔上：跳過今譯，喺 HTML 註釋標記。 */
+  translationMismatch: boolean;
+}
+
+interface MarkerView {
+  kind: "marker";
+  text: string;
+}
+
+const views: (ArticleView | MarkerView)[] = leaf.blocks.map((block) => {
+  if (block.type !== "article") return { kind: "marker", text: block.text };
+  const groups = mergeParagraphSpans(splitParagraphSpans(block.text));
+  const paired = pairTranslations(groups, translations[block.id]?.paragraphs);
+  if (paired === null) {
+    console.warn(`今譯段數對唔上，已跳過：${block.id}`);
+    return {
+      kind: "article",
+      id: block.id,
+      title: block.title,
+      paragraphs: pairTranslations(groups, undefined) ?? [],
+      translationMismatch: true,
+    };
+  }
+  return { kind: "article", id: block.id, title: block.title, paragraphs: paired, translationMismatch: false };
+});
 
 /** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
 const firstArticle = leaf.blocks.find((block) => block.type === "article");
@@ -119,6 +157,17 @@ const articleJsonLd = {
         <span>注音</span>
         <button type="button" class="chip" data-jyutping aria-pressed="false">粵拼注音</button>
       </div>
+
+      {
+        hasTranslations && (
+          <div class="tb-group">
+            <span>譯文</span>
+            <button type="button" class="chip" data-modtrans aria-pressed="false">
+              今譯
+            </button>
+          </div>
+        )
+      }
     </div>
   </div>
 
@@ -126,23 +175,40 @@ const articleJsonLd = {
     <section class="pane-text">
       <div class="doc">
         {
-          leaf.blocks.map((block) =>
-            block.type === "article" ? (
-              <article class="art" id={block.id}>
+          views.map((view) =>
+            view.kind === "article" ? (
+              <article class="art" id={view.id}>
                 <div class="art-head">
-                  {block.title !== null && <h2>{block.title}</h2>}
-                  <a class="anchor" href={`#${block.id}`} data-copy-anchor={block.id} aria-label="複製本篇連結">
+                  {view.title !== null && <h2>{view.title}</h2>}
+                  <a class="anchor" href={`#${view.id}`} data-copy-anchor={view.id} aria-label="複製本篇連結">
                     #
                   </a>
                 </div>
-                {mergeParagraphSpans(splitParagraphSpans(block.text)).map((paragraph) => (
-                  <p class="para" set:html={renderMergedParagraph(paragraph, readingsByArticle.get(block.id) ?? noReadings)} />
+                {view.translationMismatch && (
+                  <Fragment set:html={`<!-- 今譯段數對唔上，已跳過：${view.id} -->`} />
+                )}
+                {view.paragraphs.map((entry) => (
+                  <Fragment>
+                    <p
+                      class="para"
+                      set:html={renderMergedParagraph(entry.paragraph, readingsByArticle.get(view.id) ?? noReadings)}
+                    />
+                    {entry.translation !== null && (
+                      <div class="modtrans">
+                        <div class="modtrans-head">
+                          <span class="mt-tag">今譯</span>
+                          <span class="mt-meta">譯 v0 · 未校訂</span>
+                        </div>
+                        <p class="mt-body">{entry.translation}</p>
+                      </div>
+                    )}
+                  </Fragment>
                 ))}
               </article>
             ) : (
               <div class="ph">
-                <b>{block.text}</b>
-                {markerNote(block.text) !== null && <span>{markerNote(block.text)}</span>}
+                <b>{view.text}</b>
+                {markerNote(view.text) !== null && <span>{markerNote(view.text)}</span>}
               </div>
             ),
           )
@@ -239,6 +305,32 @@ const articleJsonLd = {
       applyJyutping(jyutpingOn);
       try {
         window.localStorage.setItem("jm-jyutping", jyutpingOn ? "on" : "off");
+      } catch (error) {
+        /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
+      }
+    });
+
+    const modtransButton = document.querySelector<HTMLButtonElement>("button[data-modtrans]");
+    let modtransOn = false;
+    try {
+      modtransOn = window.localStorage.getItem("jm-modtrans") === "on";
+    } catch (error) {
+      /* 本機儲存唔可用時按預設關閉 */
+    }
+
+    /** 今譯開關：body.show-modtrans 時譯塊先顯示；預設關。 */
+    const applyModtrans = (enabled: boolean) => {
+      document.body.classList.toggle("show-modtrans", enabled);
+      modtransButton?.setAttribute("aria-pressed", String(enabled));
+    };
+
+    applyModtrans(modtransOn);
+
+    modtransButton?.addEventListener("click", () => {
+      modtransOn = !modtransOn;
+      applyModtrans(modtransOn);
+      try {
+        window.localStorage.setItem("jm-modtrans", modtransOn ? "on" : "off");
       } catch (error) {
         /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
       }
