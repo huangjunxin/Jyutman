@@ -6,7 +6,7 @@
 import type { Context } from "hono";
 
 import {
-  extractSnippet,
+  locateAndSlice,
   MAX_QUERY_LENGTH,
   planSearch,
   RESULT_LIMIT,
@@ -41,7 +41,7 @@ export async function handleSearch(c: Context<{ Bindings: Env }>): Promise<Respo
     issue: row.issue,
     page: row.page,
     title: row.title,
-    snippet: extractSnippet(row.text, plan.query),
+    ...locateAndSlice(row.text, plan.query),
   }));
   return c.json(
     {

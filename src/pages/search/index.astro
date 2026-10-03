@@ -65,7 +65,9 @@ const corpora = getCorpora();
       issue?: string;
       page?: number;
       title?: string | null;
-      snippet?: string;
+      pre?: string;
+      highlight?: string | null;
+      post?: string | null;
     }
 
     const results = document.getElementById("results");
@@ -93,6 +95,25 @@ const corpora = getCorpora();
       const unavailable = () =>
         stateNode("檢索服務部署中", "全文索引暫時未通，可能正在部署或者維護，請稍後再試。");
 
+      /** 命中片段：有 highlight 就用 <mark> 包住命中處，其餘照文字節點拼返。 */
+      const snippetNode = (hit: SearchHit): HTMLElement | null => {
+        if (hit.highlight) {
+          const snippet = document.createElement("p");
+          snippet.className = "hit-snippet";
+          if (hit.pre) snippet.append(document.createTextNode(hit.pre));
+          const mark = document.createElement("mark");
+          mark.textContent = hit.highlight;
+          snippet.append(mark);
+          if (hit.post) snippet.append(document.createTextNode(hit.post));
+          return snippet;
+        }
+        if (!hit.pre) return null;
+        const snippet = document.createElement("p");
+        snippet.className = "hit-snippet";
+        snippet.textContent = hit.pre;
+        return snippet;
+      };
+
       const renderHits = (hits: SearchHit[]) => {
         if (hits.length === 0) {
           results.replaceChildren(stateNode("冇符合嘅結果", "試下換個寫法，簡體字都會歸一到繁體。"));
@@ -111,12 +132,8 @@ const corpora = getCorpora();
           meta.className = "hit-meta";
           meta.textContent = `${hit.corpus} · ${hit.issue} · 第 ${page} 葉`;
           item.append(link, meta);
-          if (hit.snippet) {
-            const snippet = document.createElement("p");
-            snippet.className = "hit-snippet";
-            snippet.textContent = hit.snippet;
-            item.append(snippet);
-          }
+          const snippet = snippetNode(hit);
+          if (snippet) item.append(snippet);
           list.append(item);
         }
         results.replaceChildren(list);

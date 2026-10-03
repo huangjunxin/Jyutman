@@ -1327,6 +1327,13 @@ a:hover {
   color: var(--muted);
 }
 
+.hit-snippet mark {
+  background: var(--highlight);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
 /* 長文頁（關於、數據開放） */
 .prose {
   max-width: 44em;

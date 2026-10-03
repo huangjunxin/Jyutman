@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  extractSnippet,
   ftsPhrase,
+  locateAndSlice,
   MAX_QUERY_LENGTH,
   planSearch,
   RESULT_LIMIT,
@@ -62,21 +62,56 @@ test("segmentNgrams：標點截斷連續段，拉丁與數字整段保留", () =
   assert.equal(segmentNgrams("", 1), "");
 });
 
-test("extractSnippet：命中點前後各取一段，兩端補省略號", () => {
+test("locateAndSlice：命中點前後各取一段，highlight 為原文命中處，兩端補省略號", () => {
   const text = `${"A".repeat(100)}廣東白話報${"B".repeat(100)}`;
-  const snippet = extractSnippet(text, "白話報");
-  assert.equal(snippet.length, 125);
-  assert.ok(snippet.startsWith("…A"), "左側截斷補省略號");
-  assert.ok(snippet.includes("廣東白話報"));
-  assert.ok(snippet.endsWith("B…"), "右側截斷補省略號");
+  const parts = locateAndSlice(text, "白話報");
+  assert.equal(parts.pre.length, 61);
+  assert.ok(parts.pre.startsWith("…A"), "左側截斷補省略號");
+  assert.ok(parts.pre.endsWith("廣東"), "命中前文照原文保留");
+  assert.equal(parts.highlight, "白話報");
+  assert.equal(parts.post.length, 61);
+  assert.ok(parts.post.startsWith("B"));
+  assert.ok(parts.post.endsWith("B…"), "右側截斷補省略號");
 });
 
-test("extractSnippet：空格歸一之後仍映回原文，命中在段首不補前置省略號", () => {
-  assert.equal(extractSnippet("唔 係 茶 杯", "唔係茶杯"), "唔 係 茶 杯");
-  assert.equal(extractSnippet("廣東白話報就係喇。", "白話報"), "廣東白話報就係喇。");
+test("locateAndSlice：簡體查詢經映射高亮底本繁體原字", () => {
+  assert.equal(locateAndSlice("廣東白話報就係喇。", planSearch("广东").query).highlight, "廣東");
+  assert.equal(locateAndSlice("廣東白話報就係喇。", planSearch("白话报").query).highlight, "白話報");
+  assert.deepEqual(locateAndSlice("廣東白話報就係喇。", "廣東"), {
+    pre: "",
+    highlight: "廣東",
+    post: "白話報就係喇。",
+  });
 });
 
-test("extractSnippet：拉丁查詢大小寫折疊，命中唔到時退回段首", () => {
-  assert.equal(extractSnippet("LESSON ONE", "lesson"), "LESSON ONE");
-  assert.equal(extractSnippet(`${"前".repeat(200)}`, "廣東"), `${"前".repeat(120)}…`);
+test("locateAndSlice：stripSpaces 之後仍映回原文，命中在段首不補前置省略號", () => {
+  assert.deepEqual(locateAndSlice("唔 係 茶 杯", "唔係茶杯"), {
+    pre: "",
+    highlight: "唔 係 茶 杯",
+    post: "",
+  });
+  assert.deepEqual(locateAndSlice("佢話 唔 係 你", "唔係"), {
+    pre: "佢話",
+    highlight: "唔 係",
+    post: "你",
+  });
+});
+
+test("locateAndSlice：多處命中只取首處，拉丁查詢大小寫折疊", () => {
+  assert.deepEqual(locateAndSlice("甲乙廣東丙丁廣東戊", "廣東"), {
+    pre: "甲乙",
+    highlight: "廣東",
+    post: "丙丁廣東戊",
+  });
+  assert.equal(locateAndSlice("LESSON ONE", "lesson").highlight, "LESSON");
+});
+
+test("locateAndSlice：找不到命中時退化為段首，highlight 為 null", () => {
+  assert.deepEqual(locateAndSlice("一二三", "廣東"), { pre: "一二三", highlight: null, post: null });
+  assert.deepEqual(locateAndSlice(`${"前".repeat(200)}`, "廣東"), {
+    pre: `${"前".repeat(60)}…`,
+    highlight: null,
+    post: null,
+  });
+  assert.deepEqual(locateAndSlice("", "廣東"), { pre: "", highlight: null, post: null });
 });

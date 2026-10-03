@@ -146,22 +146,42 @@ function collapse(text: string): string {
   return text.replace(/\s+/gu, " ").trim();
 }
 
+/** 命中片段的三段結構：命中前文、命中處原文、命中後文。 */
+export interface SnippetParts {
+  /** 命中點之前的原文，兩端按需補省略號。 */
+  pre: string;
+  /** 命中處的原文切片（保留底本原字形）；兜底分支為 null。 */
+  highlight: string | null;
+  /** 命中點之後的原文；兜底分支為 null。 */
+  post: string | null;
+}
+
 /**
- * 由命中葉的原文取片段：命中點前後各約 radius 字，兩端按需補省略號。
- * 找不到命中點（例如只有標題命中）時退回原文開頭，保證片段不為空。
+ * 在原文中定位歸一查詢詞，切出命中前後各約 radius 字。
+ * 命中位置經歸一映射換算回原文，highlight 取原文切片，
+ * 故簡體或去空白之後嘅查詢，高亮嘅仍然係底本原字。
+ * 找不到命中點（例如只有標題命中）時退化為原文開頭一段，highlight 為 null。
  */
-export function extractSnippet(text: string, query: string, radius = SNIPPET_RADIUS): string {
+export function locateAndSlice(
+  text: string,
+  queryNorm: string,
+  radius = SNIPPET_RADIUS,
+): SnippetParts {
   const { normalized, starts, ends } = normalizeWithMap(text);
-  const position = findFoldIndex(normalized, query);
+  const position = findFoldIndex(normalized, queryNorm);
   if (position < 0) {
-    const head = collapse(text.slice(0, radius * 2));
-    if (head === "") return "";
-    return text.length > radius * 2 ? `${head}…` : head;
+    const head = collapse(text.slice(0, radius));
+    return { pre: text.length > radius ? `${head}…` : head, highlight: null, post: null };
   }
+  const queryLength = [...queryNorm].length;
   const start = Math.max(0, position - radius);
-  const end = Math.min(starts.length, position + [...query].length + radius);
-  const slice = collapse(text.slice(starts[start], ends[end - 1]));
-  const prefix = start > 0 ? "…" : "";
-  const suffix = end < starts.length ? "…" : "";
-  return `${prefix}${slice}${suffix}`;
+  const end = Math.min(starts.length, position + queryLength + radius);
+  const highlightEnd = ends[position + queryLength - 1];
+  const pre = collapse(text.slice(starts[start], starts[position]));
+  const post = collapse(text.slice(highlightEnd, ends[end - 1]));
+  return {
+    pre: `${start > 0 ? "…" : ""}${pre}`,
+    highlight: collapse(text.slice(starts[position], highlightEnd)),
+    post: `${post}${end < starts.length ? "…" : ""}`,
+  };
 }
