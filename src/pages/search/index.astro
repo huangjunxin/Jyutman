@@ -78,9 +78,10 @@ const query = Astro.url.searchParams.get("q") ?? "";
       if (input instanceof HTMLInputElement && query !== "") input.value = query;
 
       const selectedCorpora = params.getAll("corpus");
-      for (const box of document.querySelectorAll('input[name="corpus"]')) {
-        if (box instanceof HTMLInputElement) box.checked = selectedCorpora.includes(box.value);
-      }
+      const corpusBoxes = [...document.querySelectorAll('input[name="corpus"]')].filter(
+        (box): box is HTMLInputElement => box instanceof HTMLInputElement,
+      );
+      for (const box of corpusBoxes) box.checked = selectedCorpora.includes(box.value);
 
       let listNode: HTMLUListElement | null = null;
       let shown = 0;
@@ -203,6 +204,30 @@ const query = Astro.url.searchParams.get("q") ?? "";
           return false;
         }
       };
+
+      /** 把目前勾選嘅語料同步入 URL（唔留歷史紀錄）。 */
+      const syncCorpusParams = (): void => {
+        selectedCorpora.length = 0;
+        for (const box of corpusBoxes) {
+          if (box.checked) selectedCorpora.push(box.value);
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.delete("corpus");
+        for (const slug of selectedCorpora) url.searchParams.append("corpus", slug);
+        window.history.replaceState(null, "", url);
+      };
+
+      /** 勾選範圍即重新檢索；冇查詢字時只同步 URL。 */
+      for (const box of corpusBoxes) {
+        box.addEventListener("change", () => {
+          syncCorpusParams();
+          if (query === "") return;
+          results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
+          void load(1, false).then((served) => {
+            if (!served) results.replaceChildren(unavailable());
+          });
+        });
+      }
 
       if (query !== "") {
         results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));

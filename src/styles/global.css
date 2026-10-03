@@ -467,8 +467,8 @@ a:hover {
   box-shadow: 0 0 0 2px rgba(110, 75, 51, 0.14);
 }
 
-.sbar input,
-.search-panel input {
+.sbar input[type="search"],
+.search-panel input[type="search"] {
   -webkit-appearance: none;
   appearance: none;
 }
@@ -1898,18 +1898,75 @@ html.dir-vertical .modtrans {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
   font-family: var(--sans);
   font-size: 13px;
   color: var(--muted);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 8px 12px;
-  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
-.filter-list input {
-  accent-color: var(--primary);
+.filter-list label:hover {
+  border-color: var(--muted);
+}
+
+.filter-list label:active {
+  transform: translateY(1px);
+}
+
+/* 自繪勾選框：appearance:none 但保留可聚焦（唔用 display:none），鍵盤 Space 照切換 */
+.filter-list input[type="checkbox"] {
+  position: relative;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
   margin: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.filter-list input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--on-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0.6);
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.filter-list input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.filter-list input[type="checkbox"]:checked::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+.filter-list input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(110, 75, 51, 0.24);
+}
+
+.filter-list label:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(110, 75, 51, 0.08);
+  color: var(--primary-strong);
 }
 
 .filters .hint {
