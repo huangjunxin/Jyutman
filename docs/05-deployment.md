@@ -6,7 +6,7 @@
 
 ## 1. 平台选择：Cloudflare Workers + Static Assets
 
-Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上；API 由同一 Worker 的 Hono 应用处理（`/api/*` 走 Worker，其余走静态资产）。
+Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上；所有请求先经 Worker 入口做主機策略（canonical 跳转、預覽域 noindex），再分派：`/api/*` 走 Hono 应用，其余交 Static Assets 直出（`assets.run_worker_first` 为 `true`，见 `wrangler.jsonc`）。
 
 **不用 Cloudflare Pages 的理由**：
 
@@ -44,9 +44,11 @@ GitHub 仓库 Jyutman
 
 ## 4. 域名与 URL
 
-- 主域 `jyutman.com`（Cloudflare Registrar 注册）。已接入（2026-10-03）：apex 由 Worker 路由 `jyutman.com/*` 服务，SSL 由 Cloudflare 自动下发；`workers.dev` 地址保留可访问。
-- `www.jyutman.com` → apex 301 重定向：**未做**，待补。
-- canonical-host 中间件：请求 Host 非规范域时 301 到规范域（参考同类 Cloudflare 站点的做法）；preview 环境与 `*.workers.dev` 一律加 `X-Robots-Tag: noindex`，避免被搜索引擎收录：**未做**，待补。
+- 主域 `jyutman.com`（Cloudflare Registrar 注册）。已接入（2026-10-03）：apex 与 `*.jyutman.com` 由 Worker 路由服务，SSL 由 Cloudflare 自动下发；`workers.dev` 地址保留可访问。
+- `www.jyutman.com` → apex 301 重定向：zone 内暂无 www DNS 记录（`www.jyutman.com` 查询为 NXDOMAIN），**未加任何 DNS**；Worker 的 canonical 规则已覆盖 www，记录一旦建成（proxied）即自动 301 到 apex。
+- canonical-host 中间件：**已落地**（`server/index.ts` + `src/utils/host-policy.ts`）：Host 非 `jyutman.com` 且非 `*.workers.dev` 时 301 到 `https://jyutman.com` 同路径同查询串；本地 `localhost` / `127.0.0.1` 放行，方便开发。
+- `*.workers.dev`（含版本预览域）所有响应加 `X-Robots-Tag: noindex`，避免被搜索引擎收录：**已落地**（静态资产与 API 响应同样生效）。
+- 注意：跳转与 noindex 要覆盖静态资产，故 `assets.run_worker_first` 为 `true`，全部请求都计入 Workers 请求数（免费 10 万/日，当前规模远低于额度）。
 - URL 结构（与 04 §2.2 一致）：`/`、`/browse/:corpus`、`/read/:corpus/:issue/:page`、`/search`；每叶可索引 URL + sitemap + schema.org Book。
 
 ## 5. CI/CD

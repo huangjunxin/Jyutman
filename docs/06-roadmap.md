@@ -153,8 +153,8 @@ Phase 1 进度：
 - 1.2 / 1.3 / 1.4 阅读器：分段正文、竖排与横排即时切换（状态存本机）、底部翻叶与叶级 URL 已上线；来源信息栏含语料、期号、叶序号、OCR 状态、底本来源与文本授权。
 - 1.5 D1 检索已上线（2026-10-03）：生产库 `jyutman` 灌入 866 篇，trigram 主索引加 bigram / unigram 辅助表；Worker `/api/search` 按归一后长度路由（3 字及以上 trigram 短语、2 字 bigram、1 字 unigram），bm25 排序、corpus 过滤、limit 20，命中片段在服务端从原文截取；线上复核：廣東 34、白話報 16、唔 426，与 spike 真值一致。
 - 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶已静态生成并随 Worker 上线（`jyutman.com` 与 `jyutman.huangjunxin.workers.dev` 均可访问）。
-- 1.7 域名接入：`jyutman.com` 由 Worker 路由服务，HTTPS 正常（Cloudflare SSL），apex 200；`www` 跳转与 canonical-host 中间件待补（见 `docs/05` 第 4 节）。
+- 1.7 域名接入：`jyutman.com` 与 `*.jyutman.com` 由 Worker 路由服务，HTTPS 正常（Cloudflare SSL），apex 200；canonical 跳转与 `*.workers.dev` noindex 已落地（见 `docs/05` 第 4 节）；`www` 因 zone 内暂无 DNS 记录未配置，记录建成后由 canonical 规则自动跳转。
 - 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）。
 
-下一步行动：按上方 Phase 2 任务表推进（繁简异体映射扩充、粤拼 ruby、历史拼式对齐），并在 Phase 2 开工前处理 `www` 跳转、`workers.dev` noindex 与 deploy workflow。
+下一步行动：按上方 Phase 2 任务表推进（繁简异体映射扩充、粤拼 ruby、历史拼式对齐），并在 Phase 2 开工前补 deploy workflow。
 

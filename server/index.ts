@@ -1,10 +1,14 @@
 /**
- * Worker 入口：/api/* 走 Hono，其餘路徑由 Static Assets 直接服務。
- * 靜態資產的掛載見 wrangler.jsonc（run_worker_first 只匹配 /api/*）。
+ * Worker 入口：所有請求先過主機策略（規範主機、www 跳轉、預覽域 noindex），
+ * 再分派：/api/* 走 Hono，其餘交 Static Assets 直出。
+ * 掛載與 run_worker_first 設定見 wrangler.jsonc。
  */
 
+import type { ExecutionContext } from "@cloudflare/workers-types";
 import { Hono } from "hono";
+import type { Context } from "hono";
 
+import { decideHost } from "../src/utils/host-policy.ts";
 import type { Env } from "./env.ts";
 import { TokenBucketLimiter } from "./lib/rate-limit.ts";
 import { handleSearch } from "./routes/search.ts";
@@ -32,11 +36,40 @@ app.use("/api/*", async (c, next) => {
 
 app.get("/api/search", handleSearch);
 
-app.all("/api/*", (c) => c.json({ error: "無此接口" }, 404, { "Cache-Control": "no-store" }));
+const notFound = (c: Context<{ Bindings: Env }>) =>
+  c.json({ error: "無此接口" }, 404, { "Cache-Control": "no-store" });
+
+app.all("/api", notFound);
+app.all("/api/*", notFound);
 
 app.onError((error, c) => {
   console.error("api error", error);
   return c.json({ error: "檢索服務暫時未能使用，請稍後再試。" }, 500, { "Cache-Control": "no-store" });
 });
 
-export default app;
+/** 預覽域響應統一加 noindex，避免被搜索引擎收錄。 */
+const ROBOTS_HEADER = "X-Robots-Tag";
+const ROBOTS_VALUE = "noindex";
+
+function withNoindex(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set(ROBOTS_HEADER, ROBOTS_VALUE);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const decision = decideHost(url.hostname, url.pathname, url.search);
+    if (decision.action === "redirect" && decision.location !== null) {
+      return Response.redirect(decision.location, 301);
+    }
+    const isApi = url.pathname === "/api" || url.pathname.startsWith("/api/");
+    const response = isApi ? await app.fetch(request, env, ctx) : await env.ASSETS.fetch(request);
+    return decision.noindex ? withNoindex(response) : response;
+  },
+};

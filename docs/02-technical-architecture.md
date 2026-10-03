@@ -32,7 +32,7 @@
 ## 3. 为什么选 B（按重要性排序）
 
 1. **检索质量必须自控。** 古籍与粤语的词典分词覆盖差（唔係 / 乜嘢 / 冇 这类口语词，以及大量异体字），必须自建「字符级 n-gram + 繁简/异体归一 + 粤拼/历史拼式字段」三件套。D1 + SQL 可以直接表达归一化字段与组合查询；Pagefind 是黑盒，分词与打分不可调。
-2. **成本结构匹配。** 文本仅几十 MB，远小于 D1 免费 5GB；R2 出网永久免费；Workers 免费 10 万请求/日；静态页走 Static Assets 不占 Workers 请求配额（待验证：以 Cloudflare 最新计费说明为准）。
+2. **成本结构匹配。** 文本仅几十 MB，远小于 D1 免费 5GB；R2 出网永久免费；Workers 免费 10 万请求/日；静态资产由同一 Worker 直出（为统一加 canonical 跳转与预览域 noindex，`assets.run_worker_first` 为 `true`），全部请求计入 Workers 请求数，当前规模远低于额度。
 3. **跟随 Cloudflare 平台方向。** 官方已明确新项目推荐 Workers + Static Assets 而非 Pages。Pages 静态文件数上限为免费 2 万 / 付费 10 万、单文件 ≤ 25 MiB，若「每叶一页」会撞限；应对：按卷/章合并出页 + 叶级内容客户端按 JSON 渲染，或升级静态资产档位（列入 §10 实测清单）。
 4. **演进路径自然。** 静态 IIIF manifest → iiif-worker 动态裁切；众包走 Workers API；AI 走 Workers AI。
 
@@ -74,6 +74,8 @@
               ▼
       R2 桶（影像 + 预生成瓦片，自定义域直出）
 ```
+
+说明：静态资产与 API 由同一个 Worker 承载（`assets.run_worker_first` 为 `true`）；Worker 入口先做主機策略（canonical 跳转、预览域 noindex），再分派 `/api/*` 与资产层。
 
 ### 5.2 构建 / 数据侧（离线，GitHub Actions）
 

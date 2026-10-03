@@ -48,7 +48,7 @@
 
 CI 已配置：`.github/workflows/ci.yml` 在 push 与 PR 时依次执行 `npm ci`、`npm test`、`npm run lint`、`npm run typecheck`、`npm run build`（Node 24）。
 
-目录结构：`src/pages/` 页面路由；`src/layouts/` 与 `src/components/` 版式与组件；`src/styles/global.css` 全站样式；`src/utils/` 纯函数与数据层读取（检索管线在 `src/utils/search-planner.ts`，索引端与查询端共用）；`src/data/generated/` 由 `npm run sync` 生成的派生数据（已提交 git，勿手改）；`scripts/` 数据同步脚本；`server/` Worker API（Hono 入口、`/api/search` 路由与 D1 查询、限流）；`wrangler.jsonc` Worker、静态资产与 D1 绑定配置；`db/import.sql` 生产 D1 建表与灌数 SQL（已于 2026-10-03 执行）；`tests/` 测试与 fixture；`.github/workflows/` CI。
+目录结构：`src/pages/` 页面路由；`src/layouts/` 与 `src/components/` 版式与组件；`src/styles/global.css` 全站样式；`src/utils/` 纯函数与数据层读取（检索管线在 `src/utils/search-planner.ts`，主機策略在 `src/utils/host-policy.ts`，索引端与查询端共用）；`src/data/generated/` 由 `npm run sync` 生成的派生数据（已提交 git，勿手改）；`scripts/` 数据同步脚本；`server/` Worker API（Hono 入口、主機策略分派、`/api/search` 路由与 D1 查询、限流）；`wrangler.jsonc` Worker、静态资产（`run_worker_first` 为 `true`，全量请求经 Worker）与 D1 绑定配置；`db/import.sql` 生产 D1 建表与灌数 SQL（已于 2026-10-03 执行）；`tests/` 测试与 fixture；`.github/workflows/` CI。
 
 测试约定：纯函数放 `src/utils/`，测试放 `tests/*.test.mjs`（`node:test` + `node:assert/strict`，零额外依赖；Node 24 原生支持测试直接导入 `.ts`）。新增函数须配断言测试。
 

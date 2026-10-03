@@ -10,6 +10,9 @@ export default [
       // 倉庫內 JS 只出現在 Node 腳本與測試（瀏覽器端代碼寫在 .astro 內，唔經本配置）。
       globals: {
         Buffer: "readonly",
+        Headers: "readonly",
+        Request: "readonly",
+        Response: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",

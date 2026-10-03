@@ -5,8 +5,9 @@
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "none",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": true
   },
   "d1_databases": [
     {
@@ -19,6 +20,10 @@
   "routes": [
     {
       "pattern": "jyutman.com/*",
+      "zone_name": "jyutman.com"
+    },
+    {
+      "pattern": "*.jyutman.com/*",
       "zone_name": "jyutman.com"
     }
   ],
