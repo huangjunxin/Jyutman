@@ -1,0 +1,14 @@
+---
+/**
+ * JSON-LD 結構化數據：數據一律嚟自既有 generated JSON，唔編造字段。
+ * 輸出前把 "<" 轉義，避免內容提早收結 <script>。
+ */
+interface Props {
+  data: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const { data } = Astro.props;
+const json = JSON.stringify(data).replaceAll("<", "\\u003c");
+---
+
+<script type="application/ld+json" is:inline set:html={json} />

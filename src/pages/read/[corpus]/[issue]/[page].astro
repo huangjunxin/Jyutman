@@ -2,6 +2,7 @@
 import type { GetStaticPaths } from "astro";
 
 import StatusBadge from "../../../../components/StatusBadge.astro";
+import JsonLd from "../../../../components/JsonLd.astro";
 import Base from "../../../../layouts/Base.astro";
 import {
   getCorpus,
@@ -12,11 +13,11 @@ import {
   getPages,
 } from "../../../../utils/corpus.ts";
 import {
-  isLatinDominant,
   markerNote,
+  mergeParagraphSpans,
   pageParam,
   readingsByIndex,
-  renderAnnotatedParagraph,
+  renderMergedParagraph,
   splitParagraphSpans,
 } from "../../../../utils/reader.ts";
 
@@ -55,6 +56,25 @@ const noReadings = new Map<number, string>();
 const firstArticle = leaf.blocks.find((block) => block.type === "article");
 const leafTitle = firstArticle?.type === "article" ? firstArticle.title : null;
 const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle} · ${corpus.title}` : corpus.title;
+
+const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
+const articleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline:
+    leafTitle !== null && leafTitle !== corpus.title
+      ? leafTitle
+      : `${corpus.title} 第 ${pageParam(pageNumber)} 葉`,
+  isPartOf: {
+    "@type": "Book",
+    name: corpus.title,
+    url: `${siteUrl}browse/${corpus.slug}/`,
+  },
+  ...(issue.issue_date !== null ? { datePublished: issue.issue_date } : {}),
+  inLanguage: "zh-Hant",
+  license: "https://creativecommons.org/licenses/by-sa/4.0/",
+  url: `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageParam(pageNumber)}/`,
+};
 ---
 
 <Base
@@ -73,6 +93,7 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
         }
       })();
     </script>
+    <JsonLd data={articleJsonLd} />
   </Fragment>
 
   <div class="toolbar">
@@ -108,16 +129,14 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
           leaf.blocks.map((block) =>
             block.type === "article" ? (
               <article class="art" id={block.id}>
-                {block.title !== null && <h2>{block.title}</h2>}
-                {splitParagraphSpans(block.text).map((paragraph) => (
-                  <p
-                    class:list={["para", isLatinDominant(paragraph.text) && "rom"]}
-                    set:html={renderAnnotatedParagraph(
-                      paragraph.text,
-                      paragraph.start,
-                      readingsByArticle.get(block.id) ?? noReadings,
-                    )}
-                  />
+                <div class="art-head">
+                  {block.title !== null && <h2>{block.title}</h2>}
+                  <a class="anchor" href={`#${block.id}`} data-copy-anchor={block.id} aria-label="複製本篇連結">
+                    #
+                  </a>
+                </div>
+                {mergeParagraphSpans(splitParagraphSpans(block.text)).map((paragraph) => (
+                  <p class="para" set:html={renderMergedParagraph(paragraph, readingsByArticle.get(block.id) ?? noReadings)} />
                 ))}
               </article>
             ) : (
@@ -224,5 +243,32 @@ const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle
         /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
       }
     });
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.setAttribute("role", "status");
+    document.body.append(toast);
+    let toastTimer = 0;
+
+    const showToast = (message: string) => {
+      toast.textContent = message;
+      toast.classList.add("is-on");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
+    };
+
+    /** 篇級錨鏈：照跳錨點，同時複製絕對連結。 */
+    for (const anchor of document.querySelectorAll<HTMLAnchorElement>("a[data-copy-anchor]")) {
+      anchor.addEventListener("click", async () => {
+        const id = anchor.dataset.copyAnchor ?? "";
+        const url = `${window.location.origin}${window.location.pathname}#${id}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast("已複製本篇連結");
+        } catch (error) {
+          /* 剪貼板唔可用時照跳錨點 */
+        }
+      });
+    }
   </script>
 </Base>

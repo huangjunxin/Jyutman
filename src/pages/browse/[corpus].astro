@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPaths } from "astro";
 
+import JsonLd from "../../components/JsonLd.astro";
 import Progress from "../../components/Progress.astro";
 import Yuwai from "../../components/Yuwai.astro";
 import Base from "../../layouts/Base.astro";
@@ -28,6 +29,8 @@ const issues = getIssues(slug).map((issue) => {
     href: first ? `/read/${slug}/${issue.issue}/${pageParam(first.page)}/` : undefined,
   };
 });
+
+const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 ---
 
 <Base
@@ -35,6 +38,20 @@ const issues = getIssues(slug).map((issue) => {
   description={`${corpus.title}（${corpus.year ?? "年代待考"}）：${corpus.pageCount} 葉 / ${corpus.articleCount} 篇，逐期列出葉數與校對進度，可進入閱讀器。`}
   current="browse"
 >
+  <Fragment slot="head">
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "Book",
+        name: corpus.title,
+        ...(corpus.year !== null ? { datePublished: String(corpus.year) } : {}),
+        inLanguage: "zh-Hant",
+        license: "https://creativecommons.org/licenses/by-sa/4.0/",
+        url: `${siteUrl}browse/${corpus.slug}/`,
+      }}
+    />
+  </Fragment>
+
   <div class="wrap">
     <div class="page-head">
       <div>

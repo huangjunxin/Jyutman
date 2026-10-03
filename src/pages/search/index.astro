@@ -61,6 +61,7 @@ const corpora = getCorpora();
 
   <script>
     interface SearchHit {
+      id?: string;
       corpus?: string;
       issue?: string;
       page?: number;
@@ -126,7 +127,7 @@ const corpora = getCorpora();
           const page = String(hit.page).padStart(3, "0");
           const item = document.createElement("li");
           const link = document.createElement("a");
-          link.href = `/read/${hit.corpus}/${hit.issue}/${page}/`;
+          link.href = `/read/${hit.corpus}/${hit.issue}/${page}/${hit.id ? `#${hit.id}` : ""}`;
           link.textContent = hit.title ?? "（無題）";
           const meta = document.createElement("span");
           meta.className = "hit-meta";

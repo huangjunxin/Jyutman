@@ -44,6 +44,95 @@ export function splitParagraphs(text: string): string[] {
   return splitParagraphSpans(text).map((span) => span.text);
 }
 
+/** 句末標點：漢文句末標點（。！？；…）加收尾引號（」』），另收英文 . ! ? ;。 */
+const SENTENCE_END = /[。！？；…」』.!?;]/u;
+
+/** 收尾符號：句末標點之後仲可以有收尾括號或引號。 */
+const TRAILING_CLOSER = /[」』）)\]"'’”]/u;
+
+/** 段末是否句末標點；段末收尾引號／括號先跳過，再睇前一個字。 */
+export function endsWithSentenceEnd(text: string): boolean {
+  const chars = [...text.trim()];
+  let end = chars.length - 1;
+  while (end >= 0 && TRAILING_CLOSER.test(chars[end]) && !SENTENCE_END.test(chars[end])) end -= 1;
+  return end >= 0 && SENTENCE_END.test(chars[end]);
+}
+
+/** 詞字元：字母、數字、附標記（標點與空白唔算）。 */
+const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
+
+/** 拉丁詞字元（字母、數字、附標記）；漢字唔算，令漢字段之間直接連排。 */
+function isLatinWordChar(char: string | undefined): boolean {
+  if (char === undefined || isCjkIdeograph(char)) return false;
+  return WORD_CHAR.test(char);
+}
+
+/** 由尾向前搵第一個詞字元，跳過標點與空白。 */
+function lastWordChar(text: string): string | undefined {
+  const chars = [...text.trim()];
+  for (let i = chars.length - 1; i >= 0; i -= 1) {
+    if (WORD_CHAR.test(chars[i])) return chars[i];
+  }
+  return undefined;
+}
+
+/** 由頭向後搵第一個詞字元，跳過標點與空白。 */
+function firstWordChar(text: string): string | undefined {
+  for (const char of text.trim()) {
+    if (WORD_CHAR.test(char)) return char;
+  }
+  return undefined;
+}
+
+/** 段與段之間嘅連接：邊界有拉丁詞字元就補一個空格，漢字之間直接連排。 */
+export function paragraphJoin(previous: string, next: string): string {
+  return isLatinWordChar(lastWordChar(previous)) || isLatinWordChar(firstWordChar(next)) ? " " : "";
+}
+
+/** 連排之後嘅段落：spans 為組成佢嘅原文切片（各自帶正文章節下標）。 */
+export interface MergedParagraph {
+  /** 連排文字（段落之間按連接規則補位），用於羅馬字層判定。 */
+  text: string;
+  spans: ParagraphSpan[];
+}
+
+/**
+ * 版面合併：相鄰段若前一段末冇句末標點，就唔分段、直接連排（visual merge，唔改數據）。
+ * 音表下標仍按各原文切片計，故合併唔影響注音。
+ */
+export function mergeParagraphSpans(spans: readonly ParagraphSpan[]): MergedParagraph[] {
+  const merged: MergedParagraph[] = [];
+  for (const span of spans) {
+    const previous = merged.at(-1);
+    if (previous !== undefined && !endsWithSentenceEnd(previous.text)) {
+      previous.text += paragraphJoin(previous.text, span.text) + span.text;
+      previous.spans.push(span);
+    } else {
+      merged.push({ text: span.text, spans: [span] });
+    }
+  }
+  return merged;
+}
+
+/**
+ * 連排段落嘅 HTML：逐片按各自正文章節下標注音，再按連接規則拼埋；
+ * 拉丁為主嘅切片包一層 .rom（等寬層），令連排之後嘅漢字仍然用襯線正文。
+ */
+export function renderMergedParagraph(
+  paragraph: MergedParagraph,
+  readings: ReadonlyMap<number, string>,
+): string {
+  let html = "";
+  let previous = "";
+  for (const span of paragraph.spans) {
+    if (previous !== "") html += paragraphJoin(previous, span.text);
+    const inner = renderAnnotatedParagraph(span.text, span.start, readings);
+    html += isLatinDominant(span.text) ? `<span class="rom">${inner}</span>` : inner;
+    previous = span.text;
+  }
+  return html;
+}
+
 /** 音表條目轉查表：正文下標 → 粵拼。 */
 export function readingsByIndex(entries: readonly JyutpingEntry[] | undefined): Map<number, string> {
   const readings = new Map<number, string>();

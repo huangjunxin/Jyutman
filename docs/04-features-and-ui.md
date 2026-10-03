@@ -69,7 +69,7 @@
 | 书目库 | `/browse` | 全部语料列表：年代、页数、状态徽章（已发布/整理中/待 OCR） | 让读者按年代或体裁挑书 |
 | 书目详情 | `/browse/:corpus` | 卷/期结构与章节目录，进入阅读器 | 展示结构而非平铺页面 |
 | 阅读器 | `/read/:corpus/:issue/:page` | OCR 文本阅读（含来源信息栏，见第 3 节） | 阅读与定位 |
-| 文章锚点 | `/read/:corpus/:issue/:page/:article` | 叶内单篇文章／段落 | 学术引用的最小单位 |
+| 文章锚点 | `/read/:corpus/:issue/:page#:article` | 叶内单篇文章（哈希锚点，见 2.2） | 学术引用的最小单位 |
 | 检索结果 | `/search` | 全库/单书筛选、命中高亮与上下文摘要 | 从词到叶的最短路径 |
 | 关于 | `/about` | 项目缘起、团队、编例、术语说明 | 建立可信度 |
 | 数据开放 | `/data` | 许可清单、takedown 流程、数据下载、API 说明 | 合规与开放承诺 |
@@ -83,7 +83,7 @@
 | `/browse` | 书目库 | 稳定 |
 | `/browse/:corpus` | 单书目录；`corpus` 用短横线小写 slug | 稳定 |
 | `/read/:corpus/:issue/:page` | 叶级阅读页；`page` 用扫描序号而非原书叶码，避免重号 | 稳定 |
-| `/read/:corpus/:issue/:page/:article` | 叶内文章／段落锚点 | 稳定 |
+| `/read/:corpus/:issue/:page#:article` | 叶内文章锚点：`#` 后接上游文章 id（如 `#gdvp-01-009-01`） | 稳定 |
 | `/search?q=&corpus=` | 检索结果（查询参数不参与索引） | 可变动 |
 | `/about`、`/data` | 关于与数据开放 | 稳定 |
 | `/api/...` | Workers 只读接口（后期开放） | 版本化后稳定 |
@@ -91,6 +91,7 @@
 约定与考虑：
 
 - 叶级 URL 是引用主键；`page` 采用扫描序号，原书叶码作为显示信息保留（见 3.3 双标页码）。
+- **已定（2026-10-03）**：叶内文章锚点用哈希 `#<article_id>`，不另开 `/read/:corpus/:issue/:page/:article` 路径段。理由：叶页静态生成，哈希锚点零构建成本，可引用性与路径段等价（同一叶页内定位到篇）；文章块已带 `id`（上游 id），阅读器标题行提供「#」锚链，检索结果直接拼 `#` 锚点。若日后需要可独立索引的篇级 URL，再改回路径段。
 - **待决策 D1**：永久链接是否需要内嵌版本/修订标识。候选：`?rev=` 查询参数（不破坏路径）或在 `/read/...` 下加 `/v/:revision` 段。倾向查询参数，因为叶文本会随校对变化，而路径不应跟着变。
 - **已定 D2**：corpus slug 沿用上游英文描述式 slug（如 `gd-vernacular-paper`），稳定且已存在于数据，URL 直接引用。粤拼 slug 只适用于中文书名语料，全站统一性差，不采用。
 
@@ -253,7 +254,7 @@
 ### 6.2 SEO 与分享
 
 - 每叶、每篇都有可索引 URL（见 2.2），并生成 sitemap。
-- 结构化数据：书目页用 `Book`，叶页用 `Chapter` / `WebPage` 并标注 `isPartOf`、作者、年代、`license`。
+- 结构化数据（已上线 2026-10-03）：首页 `WebSite` + `SearchAction`，书目页 `Book`，阅读叶 `Article`（`isPartOf` 指向语料，`datePublished` 取期号日期，`license` 为 CC BY-SA 4.0）；字段全部取自 generated JSON，无数据者省略（如作者）。
 - OG 卡：每叶生成 OG 图（页影像缩略 + 书名 + 叶码），便于社交与笔记软件预览。
 - 检索结果页 `noindex`，避免查询参数污染索引；`/browse` 与叶页参与索引。
 - 引用友好：`<link rel="canonical">` 指向无查询参数的叶级 URL；页面内提供可复制的引用文本（S7）。
