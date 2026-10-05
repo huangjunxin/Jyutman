@@ -1,10 +1,63 @@
 ---
-import Yuwai from "../components/Yuwai.astro";
+import Icon from "../components/Icon.astro";
+import Longform from "../components/Longform.astro";
+import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
-import { getCorpora, getSiteTotals } from "../utils/corpus.ts";
+import { buildCitations } from "../utils/citation.ts";
+import { corpusMeta } from "../utils/corpus-meta.ts";
+import { getCorpora, getCorpus, getIssue, getPage, getSiteTotals } from "../utils/corpus.ts";
+import { pageParam } from "../utils/reader.ts";
+import type { ArticleBlock } from "../utils/types.ts";
 
 const totals = getSiteTotals();
 const corpora = getCorpora();
+
+/** 首版版權登記結果，取自 Jyutman-Corpus rights/0.3-rights-summary.md（唔喺發佈層數據入面）。 */
+const RIGHTS_VERIFIED = 5;
+const RIGHTS_TOTAL = 9;
+
+/** 引用示範：同首頁原文樣張同一篇（廣東白話報第一期第 006 葉）。 */
+const SAMPLE = { corpus: "gd-vernacular-paper", issue: "issue-01", page: 6 };
+const sampleCorpus = getCorpus(SAMPLE.corpus);
+const sampleIssue = getIssue(SAMPLE.corpus, SAMPLE.issue);
+const sampleArticle = getPage(SAMPLE.corpus, SAMPLE.issue, SAMPLE.page)?.blocks.find(
+  (block): block is ArticleBlock => block.type === "article",
+);
+if (!sampleCorpus || !sampleIssue || !sampleArticle) {
+  throw new Error(`數據開放頁引用示範搵唔到：${SAMPLE.corpus}/${SAMPLE.issue}/${pageParam(SAMPLE.page)}`);
+}
+const sampleHref = `/read/${SAMPLE.corpus}/${SAMPLE.issue}/${pageParam(SAMPLE.page)}/#${sampleArticle.id}`;
+const sampleCitation = buildCitations({
+  articleId: sampleArticle.id,
+  title: sampleArticle.title,
+  corpusTitle: sampleCorpus.title,
+  issueDate: sampleIssue.issue_date,
+  page: SAMPLE.page,
+  url: new URL(sampleHref, Astro.site ?? "https://jyutman.com").href,
+}).text;
+
+const sections = [
+  { id: "rights", label: "版權登記摘要" },
+  { id: "cite", label: "引用本站" },
+  { id: "api", label: "數據下載與 API" },
+  { id: "takedown", label: "下架與更正" },
+  { id: "corpora", label: "已發佈語料" },
+];
+
+const REPO = "https://github.com/huangjunxin";
+const ISSUES_URL = `${REPO}/Jyutman/issues`;
+
+const licences = [
+  { tone: "ink", label: "站點代碼", value: "MIT", size: "xl", repo: "Jyutman" },
+  { tone: "kapok", label: "文本數據", value: "CC BY-SA 4.0", size: "lg", repo: "Jyutman-Corpus" },
+  { tone: "green", label: "影像清單同來源登記", value: "見倉庫說明", size: "md", repo: "Jyutman-Images" },
+];
+
+const steps = [
+  { title: "收到通知", note: "經 GitHub Issues 提出" },
+  { title: "先下架", note: "相關內容即時下架" },
+  { title: "核證並記錄", note: "核證後記錄處理結果" },
+];
 ---
 
 <Base
@@ -12,104 +65,595 @@ const corpora = getCorpora();
   description="粵語文叢的授權安排：站點代碼 MIT、文本數據 CC BY-SA 4.0、底本屬公有領域；附版權登記摘要與下架聯絡。"
   current="data"
 >
-  <div class="wrap">
-    <div class="prose">
-      <h1>數據開放</h1>
-      <p class="lead">
-        站點代碼、文本數據、影像清單三者分開發佈，各自有清楚嘅授權；底本全部屬公有領域，但來源義務唔會因此消失。
-      </p>
+  <PageHero
+    eyebrow="Open data · 數據開放"
+    mark="開"
+    lead="站點代碼、文本數據、影像清單三者分開發佈，各自有清楚嘅授權；底本全部屬公有領域，但來源義務唔會因此消失。"
+  >
+    <Fragment slot="title">數據開放</Fragment>
+    <ul class="licences">
+      {
+        licences.map((card) => (
+          <li>
+            <a class={`licence lift tone-block tone-${card.tone}`} href={`${REPO}/${card.repo}`} target="_blank" rel="noopener">
+              <span class="corner" aria-hidden="true" />
+              <span class="licence__label">{card.label}</span>
+              <span class={`licence__value licence__value--${card.size}`}>{card.value}</span>
+              <span class="licence__foot">
+                <span class="mono">{card.repo}</span>
+                <Icon name="arrow-up-right" size={16} />
+                <span class="visually-hidden">（新分頁開啟）</span>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+      <li class="licence licence--public">
+        <span class="licence__label">底本文獻 · 1842 至 1907 年出版物</span>
+        <span class="licence__value licence__value--lg">公有領域</span>
+        <span class="licence__foot">圖書館特藏 · Internet Archive</span>
+      </li>
+    </ul>
+  </PageHero>
 
-      <h2>授權三件套</h2>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">對象</th>
-            <th scope="col">倉庫</th>
-            <th scope="col">授權</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>站點代碼</td>
-            <td><a href="https://github.com/huangjunxin/Jyutman">Jyutman</a></td>
-            <td>MIT</td>
-          </tr>
-          <tr>
-            <td>文本數據</td>
-            <td><a href="https://github.com/huangjunxin/Jyutman-Corpus">Jyutman-Corpus</a></td>
-            <td>CC BY-SA 4.0</td>
-          </tr>
-          <tr>
-            <td>影像清單同來源登記</td>
-            <td><a href="https://github.com/huangjunxin/Jyutman-Images">Jyutman-Images</a></td>
-            <td>見該倉庫說明</td>
-          </tr>
-          <tr>
-            <td>底本文獻（1842 至 1907 年出版物）</td>
-            <td>圖書館特藏 / Internet Archive</td>
-            <td>公有領域</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>版權登記摘要</h2>
-      <p>
-        語料逐件登記底本年份、藏本、來源連結同版權判定，登記表放喺
-        <code>Jyutman-Corpus</code> 倉 <code>rights/</code> 目錄（主表
-        <code>0.3-rights-registry.csv</code>、說明 <code>0.3-rights-summary.md</code>）。首版登記結果：9 個語料中 5 件已核、4 件待核。
+  <Longform sections={sections}>
+    <section class="lf-section" id="rights">
+      <div class="ordinal ordinal--lg">一</div>
+      <h2 class="lf-h2">版權登記摘要</h2>
+      <p class="lf-text">
+        語料逐件登記底本年份、藏本、來源連結同版權判定，登記表放喺 <code>Jyutman-Corpus</code> 倉 <code>rights/</code> 目錄（主表
+        <code>0.3-rights-registry.csv</code>、說明 <code>0.3-rights-summary.md</code>）。
       </p>
-      <ul>
+      <div class="rights">
+        <div>
+          <p class="rights__label">首版登記結果</p>
+          <p class="rights__count">
+            <span class="rights__num">{RIGHTS_VERIFIED}</span>
+            <span class="rights__total">/ {RIGHTS_TOTAL}</span>
+            <span>個語料已核</span>
+          </p>
+        </div>
+        <div class="rights__blocks" aria-hidden="true">
+          {
+            Array.from({ length: RIGHTS_TOTAL }, (_, index) => (
+              <span class:list={["rights__block", { "rights__block--todo": index >= RIGHTS_VERIFIED }]} />
+            ))
+          }
+        </div>
+        <ul class="rights__legend">
+          <li><span class="rights__swatch" aria-hidden="true"></span>已核 {RIGHTS_VERIFIED} 件</li>
+          <li>
+            <span class="rights__swatch rights__swatch--todo" aria-hidden="true"></span>待核 {RIGHTS_TOTAL - RIGHTS_VERIFIED} 件
+          </li>
+        </ul>
+      </div>
+      <ul class="points">
         <li>本站預設只公開 OCR 文本層；掃描影像要逐件核查藏館條款之後先會開放。</li>
         <li>研究語料庫（HKUST / EdUHK / PolyU 等）走合作授權，唔下載轉載。</li>
         <li>展示層逐葉標明底本來源同文本授權；現時 {totals.corpusCount} 個已發佈語料每葉都可追溯到來源。</li>
       </ul>
+    </section>
 
-      <h2>引用本站</h2>
-      <p>
-        葉級 URL 係引用主鍵，形如
-        <code>/read/gd-vernacular-paper/issue-01/001/</code>，路徑唔會隨校對狀態改變。引用時請一併標明所引葉嘅底本、期號同年份（各葉「本葉來源」欄有齊）。
-        引用格式導出屬後續功能，未開放。
+    <section class="lf-section" id="cite">
+      <div class="ordinal ordinal--lg">二</div>
+      <h2 class="lf-h2">引用本站</h2>
+      <p class="lf-text">葉級 URL 係引用主鍵，路徑唔會隨校對狀態改變。</p>
+      <div class="anatomy" role="region" aria-label="葉級網址結構" tabindex="0">
+        <p class="anatomy__row">
+          <span class="anatomy__dim">jyutman.com/read/</span>
+          <span class="anatomy__seg anatomy__seg--corpus"><span>{SAMPLE.corpus}</span><small>語料</small></span>
+          <span class="anatomy__dim">/</span>
+          <span class="anatomy__seg anatomy__seg--issue"><span>{SAMPLE.issue}</span><small>期號</small></span>
+          <span class="anatomy__dim">/</span>
+          <span class="anatomy__seg anatomy__seg--page"><span>{pageParam(1)}</span><small>葉碼（掃描序號）</small></span>
+          <span class="anatomy__dim">/</span>
+        </p>
+      </div>
+      <p class="lf-text">
+        引用時請一併標明所引葉嘅底本、期號同年份（各葉「本葉來源」欄有齊）。閱讀頁「引用」欄可以直接複製文本、BibTeX、RIS 三種格式：
       </p>
+      <pre class="citation">{sampleCitation}</pre>
+      <a class="try" href={sampleHref}>喺閱讀頁試下 →</a>
+    </section>
 
-      <h2>數據下載與 API</h2>
-      <p>
-        全量數據下載、開放 API 同 DOI 都未有；文本數據可以喺
-        <a href="https://github.com/huangjunxin/Jyutman-Corpus">Jyutman-Corpus</a> 倉取得，授權 CC BY-SA 4.0。
-      </p>
+    <section class="lf-section" id="api">
+      <div class="ordinal ordinal--lg">三</div>
+      <h2 class="lf-h2">數據下載與 API</h2>
+      <p class="lf-text">文本數據可以喺 Jyutman-Corpus 倉取得，授權 CC BY-SA 4.0；全量數據下載、開放 API 同 DOI 都未有。</p>
+      <ul class="avail">
+        <li class="avail__slot">
+          <a class="avail__card avail__card--ok" href={`${REPO}/Jyutman-Corpus`} target="_blank" rel="noopener">
+            <span class="badge badge--green">已可取得</span>
+            <span class="avail__title">GitHub 倉庫</span>
+            <span class="avail__repo">
+              Jyutman-Corpus<Icon name="arrow-up-right" size={16} /><span class="visually-hidden">（新分頁開啟）</span>
+            </span>
+          </a>
+        </li>
+        {
+          ["全量數據下載", "開放 API", "DOI"].map((item) => (
+            <li class="avail__card">
+              <span class="badge badge--gold">未有</span>
+              <span class="avail__title">{item}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
 
-      <h2>下架與更正</h2>
-      <p>
-        如認為本站內容涉及版權、私隱或其他權益問題，歡迎喺 GitHub Issues 聯絡我哋：
-        <a href="https://github.com/huangjunxin/Jyutman/issues">github.com/huangjunxin/Jyutman/issues</a>。收到通知後會先下架相關內容，再核證並記錄處理結果。
-      </p>
+    <section class="lf-section" id="takedown">
+      <div class="ordinal ordinal--lg">四</div>
+      <h2 class="lf-h2">下架與更正</h2>
+      <p class="lf-text">如認為本站內容涉及版權、私隱或其他權益問題，歡迎喺 GitHub Issues 聯絡我哋。</p>
+      <ol class="steps">
+        {
+          steps.map((step, index) => (
+            <li>
+              <span class="steps__num">{String(index + 1).padStart(2, "0")}</span>
+              <span class="steps__title">{step.title}</span>
+              <span class="steps__note">{step.note}</span>
+            </li>
+          ))
+        }
+      </ol>
+      <a class="btn btn--solid issues" href={ISSUES_URL} target="_blank" rel="noopener">
+        <Icon name="github" />GitHub Issues<span class="visually-hidden">（新分頁開啟）</span>
+      </a>
+    </section>
 
-      <h2>現時已發佈語料</h2>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">語料</th>
-            <th scope="col">年代</th>
-            <th scope="col">葉數</th>
-            <th scope="col">篇數</th>
-            <th scope="col">底本來源</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            corpora.map((corpus) => (
-              <tr>
-                <td><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></td>
-                <td>{corpus.year ?? "待考"}</td>
-                <td>{corpus.pageCount}</td>
-                <td>{corpus.articleCount}</td>
-                <td>{corpus.sourceLine}</td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <Yuwai size="sm" />
+    <section class="lf-section" id="corpora">
+      <div class="ordinal ordinal--lg">五</div>
+      <h2 class="lf-h2">現時已發佈語料</h2>
+      <div class="table-wrap" role="region" aria-label="現時已發佈語料" tabindex="0">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">語料</th>
+              <th scope="col">年代</th>
+              <th scope="col">葉數</th>
+              <th scope="col">篇數</th>
+              <th scope="col">底本來源</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              corpora.map((corpus, index) => (
+                <tr>
+                  <td>
+                    <a class={`corpus-link tone-${corpusMeta(corpus, index).tone}`} href={`/browse/${corpus.slug}/`}>
+                      <span class="corpus-link__bar" aria-hidden="true" />
+                      {corpus.title}
+                    </a>
+                  </td>
+                  <td class="year">{corpus.year ?? "待考"}</td>
+                  <td>{corpus.pageCount}</td>
+                  <td>{corpus.articleCount}</td>
+                  <td class="source">{corpus.sourceLine}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </Longform>
 </Base>
+
+<style>
+  /* 頁頭四張授權卡 */
+  .licences {
+    margin: 48px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+  }
+
+  .licences > li {
+    display: flex;
+  }
+
+  .licence {
+    flex: 1;
+    min-height: 240px;
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .licence .corner {
+    --corner-size: 90px;
+    --corner-offset: -36px;
+  }
+
+  .tone-ink .corner {
+    --corner-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .licence--public {
+    background: var(--surface-highest);
+    color: var(--ink);
+  }
+
+  .licence__label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--on-dark-88);
+  }
+
+  .licence--public .licence__label {
+    color: var(--graphite);
+  }
+
+  .licence__value {
+    font-family: var(--font-serif);
+    line-height: 1.05;
+  }
+
+  .licence__value--xl {
+    font-size: 64px;
+  }
+
+  .licence__value--lg {
+    font-size: 44px;
+  }
+
+  .licence__value--md {
+    font-size: 36px;
+  }
+
+  .licence__foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .licence--public .licence__foot {
+    color: var(--graphite);
+  }
+
+  /* 一、版權登記摘要 */
+  .rights {
+    margin: 10px 0 28px;
+    padding: 24px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px 40px;
+    background: var(--surface-low);
+  }
+
+  .rights__label {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--graphite);
+  }
+
+  .rights__count {
+    margin: 8px 0 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 15px;
+    color: var(--ink);
+  }
+
+  .rights__num {
+    font-family: var(--font-serif);
+    font-size: 64px;
+    line-height: 1;
+    color: var(--archive-green);
+  }
+
+  .rights__total {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--graphite);
+  }
+
+  .rights__blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rights__block {
+    width: 30px;
+    height: 44px;
+    background: var(--archive-green);
+  }
+
+  .rights__legend {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+
+  .rights__legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rights__swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    background: var(--archive-green);
+  }
+
+  .rights__block--todo,
+  .rights__swatch--todo {
+    background: transparent;
+    border: 1.5px dashed var(--muted-gold);
+  }
+
+  .points {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--ink);
+  }
+
+  .points li {
+    display: flex;
+    gap: 12px;
+  }
+
+  .points li::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 11px;
+    background: var(--kapok);
+  }
+
+  /* 二、網址拆解圖 */
+  .anatomy {
+    margin: 6px 0 26px;
+    padding: 28px;
+    background: var(--ink);
+    color: var(--parchment);
+    overflow-x: auto;
+  }
+
+  .anatomy__row {
+    margin: 0;
+    display: flex;
+    align-items: flex-start;
+    font-family: var(--font-mono);
+    font-size: clamp(14px, 1.7vw, 20px);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .anatomy__dim {
+    color: rgba(251, 249, 244, 0.62);
+  }
+
+  .anatomy__seg {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .anatomy__seg > span {
+    padding-bottom: 6px;
+    border-bottom: 3px solid var(--seg);
+  }
+
+  .anatomy__seg small {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--seg);
+  }
+
+  .anatomy__seg--corpus {
+    --seg: var(--kapok-on-dark);
+  }
+
+  .anatomy__seg--issue {
+    --seg: var(--archive-green-light);
+  }
+
+  .anatomy__seg--page {
+    --seg: var(--parchment);
+  }
+
+  .citation {
+    margin: 0;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--line-10);
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--ink);
+  }
+
+  .try {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* 三、可取得／未有 */
+  .avail {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .avail__slot {
+    display: flex;
+  }
+
+  .avail__card {
+    flex: 1;
+    padding: 20px 22px;
+    background: var(--surface-low);
+    border: 1px dashed rgba(114, 91, 53, 0.5);
+    color: var(--ink);
+  }
+
+  .avail__card--ok {
+    background: var(--card);
+    border: 1px solid var(--line-10);
+    border-top: 4px solid var(--archive-green);
+    transition: background-color 200ms;
+  }
+
+  .avail__card--ok:hover {
+    background: var(--surface-low);
+    text-decoration: none;
+  }
+
+  .avail .badge {
+    font-weight: 700;
+  }
+
+  .avail__title {
+    display: block;
+    margin-top: 12px;
+    font-family: var(--font-serif);
+    font-size: 22px;
+    line-height: 1.75;
+  }
+
+  .avail__repo {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--kapok);
+  }
+
+  /* 四、下架三步 */
+  .steps {
+    margin: 4px 0 24px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .steps li {
+    display: flex;
+    flex-direction: column;
+    padding: 22px;
+    background: var(--surface-low);
+  }
+
+  .steps__num {
+    font-family: var(--font-serif);
+    font-size: 40px;
+    line-height: 1;
+    color: var(--kapok);
+  }
+
+  .steps__title {
+    margin-top: 10px;
+    font-family: var(--font-serif);
+    font-size: 21px;
+  }
+
+  .steps__note {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--graphite);
+  }
+
+  .issues {
+    gap: 10px;
+    padding: 12px 24px;
+  }
+
+  /* 五、已發佈語料表 */
+  .table-wrap {
+    overflow-x: auto;
+    border-top: 2px solid var(--ink);
+  }
+
+  table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 15px;
+    color: var(--ink);
+  }
+
+  th {
+    padding: 12px 16px 12px 0;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--graphite);
+  }
+
+  tbody tr {
+    border-top: 1px solid var(--line-10);
+  }
+
+  td {
+    padding: 14px 16px 14px 0;
+  }
+
+  td.source {
+    padding-right: 0;
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  td.year {
+    font-family: var(--font-serif);
+    font-size: 18px;
+  }
+
+  .corpus-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-serif);
+    font-size: 18px;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+
+  .corpus-link__bar {
+    flex: none;
+    width: 8px;
+    height: 30px;
+    background: var(--tone);
+  }
+</style>
