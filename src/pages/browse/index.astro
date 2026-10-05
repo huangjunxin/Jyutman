@@ -69,7 +69,7 @@ const sections = getCorpora().map((corpus, index) => {
             <div class="corner" aria-hidden="true" />
             <div>
               <div class="spine__kind">{meta.kind}</div>
-              {corpus.year && <div class="spine__year">{corpus.year}</div>}
+              <div class:list={["spine__year", { "spine__year--none": corpus.year == null }]}>{corpus.year ?? "年代待考"}</div>
             </div>
             <div class:list={["spine__title", { "spine__title--en": meta.script === "en" }]} aria-hidden="true">
               {meta.spineTitle}
@@ -280,6 +280,11 @@ const sections = getCorpora().map((corpus, index) => {
     letter-spacing: -0.04em;
   }
 
+  .spine__year--none {
+    font-size: 34px;
+    letter-spacing: 0;
+  }
+
   .spine__title {
     align-self: flex-end;
     writing-mode: vertical-rl;
@@ -297,7 +302,7 @@ const sections = getCorpora().map((corpus, index) => {
   .spine__slug {
     font-family: var(--font-mono);
     font-size: 11px;
-    color: rgba(251, 249, 244, 0.85);
+    color: var(--on-dark-88);
   }
 
   /* 資料欄 */
