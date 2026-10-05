@@ -3,24 +3,6 @@
    頁面專屬樣式寫喺各頁 scoped <style>，數值照 design handoff 原型。
    規矩：冇圓角（徽章 8px、chip 999px 除外）、冇陰影、只有頁首同閱讀頁工具列用模糊。 */
 
-/* ---- 字體：設計系統 UI 子集（自託管），罕用字由 @fontsource-variable 全量字體接手 ---- */
-
-@font-face {
-  font-family: "Chiron Hei HK UI";
-  font-style: normal;
-  font-weight: 200 900;
-  font-display: swap;
-  src: url("/fonts/chiron-hei-hk-ui.woff2") format("woff2-variations");
-}
-
-@font-face {
-  font-family: "Chiron Sung HK UI";
-  font-style: normal;
-  font-weight: 200 900;
-  font-display: swap;
-  src: url("/fonts/chiron-sung-hk-ui.woff2") format("woff2-variations");
-}
-
 /* ---- Token ---------------------------------------------------------------- */
 
 :root {
@@ -74,9 +56,9 @@
   --on-dark-78: rgba(251, 249, 244, 0.78);
   --on-dark-88: rgba(251, 249, 244, 0.88);
 
-  /* 字體：子集先行，全量 fontsource 接罕用字 */
-  --font-serif: "Chiron Sung HK UI", "Chiron Sung HK Variable", "Noto Serif TC", "Songti TC", serif;
-  --font-sans: "Inter Variable", "Chiron Hei HK UI", "Chiron Hei HK Variable", "Noto Sans TC", "PingFang HK", sans-serif;
+  /* 字體：Google Fonts（Base.astro 非阻塞載入）；連唔到就用系統字 */
+  --font-serif: "Chiron Sung HK", "Noto Serif TC", "Songti TC", serif;
+  --font-sans: Inter, "Chiron Hei HK", "Noto Sans TC", "PingFang HK", sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, monospace;
 
   /* 版面 */

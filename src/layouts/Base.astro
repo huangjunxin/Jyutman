@@ -1,7 +1,5 @@
 ---
-import "@fontsource-variable/inter";
 import "../styles/global.css";
-import cjkFallbackFonts from "../styles/cjk-fallback-fonts.css?url";
 
 import Icon from "../components/Icon.astro";
 
@@ -19,6 +17,10 @@ interface Props {
 
 const { title, description, current, noindex = false, headerSearch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
+
+/** Google Fonts：CJK 字體按 unicode-range 切片，頁面用到邊啲字先下載邊片。 */
+const googleFonts =
+  "https://fonts.googleapis.com/css2?family=Chiron+Hei+HK:wght@300..800&family=Chiron+Sung+HK:wght@400..900&family=Inter:wght@400..700&display=swap";
 
 const navItems = [
   { key: "browse", href: "/browse/", label: "書目庫" },
@@ -39,11 +41,11 @@ const navItems = [
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
-    <link rel="preload" href="/fonts/chiron-sung-hk-ui.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/chiron-hei-hk-ui.woff2" as="font" type="font/woff2" crossorigin />
-    {/* 全量 CJK 後備字體（約 270 KB 嘅 @font-face 表）唔阻塞首次渲染；UI 子集只收約 900 字，其餘字靠佢按需切片載入 */}
-    <link rel="stylesheet" href={cjkFallbackFonts} media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href={cjkFallbackFonts} /></noscript>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    {/* 非阻塞：Google Fonts 連唔到（例如中國大陸）唔會卡住首次渲染，直接用系統字 */}
+    <link rel="stylesheet" href={googleFonts} media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href={googleFonts} /></noscript>
     <slot name="head" />
   </head>
   <body>
