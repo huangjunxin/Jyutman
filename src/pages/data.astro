@@ -629,6 +629,12 @@ const steps = [
     padding: 14px 16px 14px 0;
   }
 
+  /* 留 4px 畀焦點框（2px + offset 2px），唔係會俾滾動容器裁走左邊 */
+  th:first-child,
+  td:first-child {
+    padding-left: 4px;
+  }
+
   td.source {
     padding-right: 0;
     font-size: 13px;
