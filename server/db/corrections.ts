@@ -11,6 +11,9 @@ export interface CorrectionInput {
   fragment: string;
   selectedText: string;
   paragraphIndex: number;
+  /** 篇內正文碼點區間 [spanStart, spanEnd)；舊客戶端唔送就係 null。 */
+  spanStart: number | null;
+  spanEnd: number | null;
   type: string;
   suggestion: string | null;
 }
@@ -58,8 +61,8 @@ export async function insertCorrection(db: D1Database, input: CorrectionInput): 
   const result = await db
     .prepare(
       `INSERT INTO corrections
-         (article_id, page_id, span_start, span_end, fragment, selected_text, paragraph_index, type, suggestion, note, status, created_at)
-       VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, NULL, 'pending', ?)`,
+         (article_id, page_id, fragment, selected_text, paragraph_index, type, suggestion, span_start, span_end, note, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', ?)`,
     )
     .bind(
       input.articleId,
@@ -69,6 +72,8 @@ export async function insertCorrection(db: D1Database, input: CorrectionInput): 
       input.paragraphIndex,
       input.type,
       input.suggestion,
+      input.spanStart,
+      input.spanEnd,
       new Date().toISOString(),
     )
     .run();

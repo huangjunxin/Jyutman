@@ -1,29 +1,35 @@
 ---
 import type { GetStaticPaths } from "astro";
 
-import StatusBadge from "../../../../components/StatusBadge.astro";
 import JsonLd from "../../../../components/JsonLd.astro";
+import StatusBadge from "../../../../components/StatusBadge.astro";
 import Base from "../../../../layouts/Base.astro";
+import { buildCitations } from "../../../../utils/citation.ts";
+import { issueLabel, issueNumeral } from "../../../../utils/corpus-meta.ts";
 import {
   getCorpus,
+  getFirstReadablePage,
   getIssue,
+  getIssues,
+  getIssueToc,
   getJyutping,
   getPage,
   getPageRoutes,
   getPages,
   getTranslations,
 } from "../../../../utils/corpus.ts";
-import { buildCitations, type Citations } from "../../../../utils/citation.ts";
 import {
+  isLatinDominant,
   markerNote,
   mergeParagraphSpans,
   pageParam,
   pairTranslations,
   readingsByIndex,
-  renderMergedParagraph,
   splitParagraphSpans,
-  type TranslatedParagraph,
+  statusBadge,
+  withoutTranslations,
 } from "../../../../utils/reader.ts";
+import { CORRECTION_TYPES, renderParagraphSegments, renderTranslation } from "../../../../utils/reader-view.ts";
 
 export const getStaticPaths = (() =>
   getPageRoutes().map((route) => ({
@@ -46,88 +52,112 @@ const index = pages.findIndex((record) => record.page === pageNumber);
 const previous = index > 0 ? pages[index - 1] : undefined;
 const next = index >= 0 && index < pages.length - 1 ? pages[index + 1] : undefined;
 
-const readUrl = (page: number) => `/read/${corpusSlug}/${issueSlug}/${pageParam(page)}/`;
+const readUrl = (issueKey: string, page: number) => `/read/${corpusSlug}/${issueKey}/${pageParam(page)}/`;
+const pageNo = pageParam(pageNumber);
+const issueText = issueLabel(corpus.issueCount, issueSlug);
+const dateText = issue.issue_date ?? "日期待考";
+const badge = statusBadge(leaf.status);
 
-/** 本葉粵拼音表：文章 id → 正文下標 → 粵拼；冇音表嘅文章唔注音。 */
+/** 期號切換（多期語料先有）：每期跳去首個可讀葉。 */
+const issueLinks =
+  corpus.issueCount > 1
+    ? getIssues(corpusSlug).map((record) => ({
+        href: readUrl(record.issue, getFirstReadablePage(corpusSlug, record.issue)),
+        numeral: issueNumeral(record.issue),
+        date: record.issue_date?.slice(5) ?? "待考",
+        full: `${issueLabel(corpus.issueCount, record.issue)}（${record.issue_date ?? "日期待考"}）`,
+        current: record.issue === issueSlug,
+      }))
+    : [];
+
+/** 期號篇目；當前篇 = 葉碼 ≤ 本葉嘅最後一條。 */
+const toc = getIssueToc(corpusSlug, issueSlug);
+const currentToc = toc.findLastIndex((entry) => entry.page <= pageNumber);
+
 const jyutping = getJyutping(corpusSlug, issueSlug);
-const readingsByArticle = new Map<string, Map<number, string>>();
-for (const block of leaf.blocks) {
-  if (block.type === "article") readingsByArticle.set(block.id, readingsByIndex(jyutping[block.id]));
-}
-const noReadings = new Map<number, string>();
-
-const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
-
-/** 本葉今譯：原文各段與譯文同步分組；冇今譯層嘅語料唔顯示開關。 */
 const translations = getTranslations(corpusSlug, issueSlug);
-const hasTranslations = Object.keys(translations).length > 0;
+
+interface ParagraphView {
+  html: string;
+  /** 該組今譯 HTML（譯註已包好）；冇譯文為 null。 */
+  translation: string | null;
+}
 
 interface ArticleView {
   kind: "article";
   id: string;
   title: string | null;
-  paragraphs: TranslatedParagraph[];
+  /** 英文為主嘅篇章一律橫排。 */
+  latin: boolean;
+  paragraphs: ParagraphView[];
   /** 譯文段數對唔上：跳過今譯，喺 HTML 註釋標記。 */
   translationMismatch: boolean;
-  /** 引用格式（純文字 / BibTeX / RIS），構建期砌好。 */
-  citations: Citations;
+  /** 第一段有譯文嘅組序（逐段今譯只喺呢段出標頭）；冇譯文為 -1。 */
+  firstTranslated: number;
 }
 
 interface MarkerView {
   kind: "marker";
   text: string;
+  note: string | null;
 }
 
-const leafUrl = `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageParam(pageNumber)}/`;
-
-const citationsFor = (id: string, title: string | null): Citations =>
-  buildCitations({
-    articleId: id,
-    title,
-    corpusTitle: corpus.title,
-    issueDate: issue.issue_date,
-    page: pageNumber,
-    url: `${leafUrl}#${id}`,
-  });
-
 const views: (ArticleView | MarkerView)[] = leaf.blocks.map((block) => {
-  if (block.type !== "article") return { kind: "marker", text: block.text };
+  if (block.type !== "article") return { kind: "marker", text: block.text, note: markerNote(block.text) };
   const groups = mergeParagraphSpans(splitParagraphSpans(block.text));
   const paired = pairTranslations(groups, translations[block.id]?.paragraphs);
-  const citations = citationsFor(block.id, block.title);
-  if (paired === null) {
-    console.warn(`今譯段數對唔上，已跳過：${block.id}`);
-    return {
-      kind: "article",
-      id: block.id,
-      title: block.title,
-      paragraphs: pairTranslations(groups, undefined) ?? [],
-      translationMismatch: true,
-      citations,
-    };
-  }
+  if (paired === null) console.warn(`今譯段數對唔上，已跳過：${block.id}`);
+  const readings = readingsByIndex(jyutping[block.id]);
+  const paragraphs = (paired ?? withoutTranslations(groups)).map((entry) => ({
+    html: renderParagraphSegments(entry.paragraph, readings),
+    translation: entry.translation ? renderTranslation(entry.translation) : null,
+  }));
   return {
     kind: "article",
     id: block.id,
     title: block.title,
-    paragraphs: paired,
-    translationMismatch: false,
-    citations,
+    latin: isLatinDominant(block.text),
+    paragraphs,
+    translationMismatch: paired === null,
+    firstTranslated: paragraphs.findIndex((paragraph) => paragraph.translation !== null),
   };
 });
+
+const hasTranslation = views.some((view) => view.kind === "article" && view.firstTranslated >= 0);
+
+const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
+const leafUrl = `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageNo}/`;
 
 /** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
 const firstArticle = leaf.blocks.find((block) => block.type === "article");
 const leafTitle = firstArticle?.type === "article" ? firstArticle.title : null;
 const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle} · ${corpus.title}` : corpus.title;
 
+/** 引用本葉第一篇文章。 */
+const citations =
+  firstArticle?.type === "article"
+    ? buildCitations({
+        articleId: firstArticle.id,
+        title: firstArticle.title,
+        corpusTitle: corpus.title,
+        issueDate: issue.issue_date,
+        page: pageNumber,
+        url: `${leafUrl}#${firstArticle.id}`,
+      })
+    : null;
+
+const citeFormats = citations
+  ? [
+      { key: "text", label: "文本", body: citations.text },
+      { key: "bibtex", label: "BibTeX", body: citations.bibtex },
+      { key: "ris", label: "RIS", body: citations.ris },
+    ]
+  : [];
+
 const articleJsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
-  headline:
-    leafTitle !== null && leafTitle !== corpus.title
-      ? leafTitle
-      : `${corpus.title} 第 ${pageParam(pageNumber)} 葉`,
+  headline: leafTitle !== null && leafTitle !== corpus.title ? leafTitle : `${corpus.title} 第 ${pageNo} 葉`,
   isPartOf: {
     "@type": "Book",
     name: corpus.title,
@@ -136,376 +166,591 @@ const articleJsonLd = {
   ...(issue.issue_date !== null ? { datePublished: issue.issue_date } : {}),
   inLanguage: "zh-Hant",
   license: "https://creativecommons.org/licenses/by-sa/4.0/",
-  url: `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageParam(pageNumber)}/`,
+  url: leafUrl,
 };
 ---
 
 <Base
-  title={`${pageName} · 第 ${pageParam(pageNumber)} 葉 · 粵語文叢`}
-  description={`${corpus.title}${issue.issue_date ? `（${issue.issue_date}）` : ""}第 ${pageParam(pageNumber)} 葉的 OCR 文本，附底本來源、OCR 狀態與文本授權。`}
+  title={`${pageName} · 第 ${pageNo} 葉 · 粵語文叢`}
+  description={`${corpus.title}${issue.issue_date ? `（${issue.issue_date}）` : ""}第 ${pageNo} 葉的 OCR 文本，附底本來源、OCR 狀態與文本授權。`}
+  current="browse"
 >
   <Fragment slot="head">
     <script is:inline>
+      // 閱讀偏好喺首次渲染之前落 class（rd-h 橫排、rd-nojp 唔注音、rd-notr 唔出今譯），冇閃爍。
       (function () {
         try {
-          if (window.localStorage.getItem("jm-dir") === "vertical") {
-            document.documentElement.classList.add("dir-vertical");
-          }
+          var prefs = JSON.parse(window.localStorage.getItem("jyutman:reader-prefs") || "{}") || {};
+          var list = document.documentElement.classList;
+          if (prefs.layout === "horizontal") list.add("rd-h");
+          if (prefs.jp === false) list.add("rd-nojp");
+          if (prefs.tr === false) list.add("rd-notr");
         } catch (error) {
-          /* 本機儲存唔可用時按橫排顯示 */
+          /* 本機儲存唔可用：用預設（豎排、開粵拼、開今譯） */
         }
       })();
     </script>
     <JsonLd data={articleJsonLd} />
   </Fragment>
 
-  <div class="toolbar">
-    <div class="inner">
+  <div class="rd-toolbar" id="rd-toolbar">
+    <div class="rd-toolbar__inner">
       <nav class="crumb" aria-label="位置">
-        <a href="/browse/">書目庫</a><span class="sep">›</span>
-        <a href={`/browse/${corpus.slug}/`}>{corpus.title}</a><span class="sep">›</span>
-        <span class="cur">{issue.issue}{issue.issue_date ? `（${issue.issue_date}）` : ""}</span>
+        <a href="/browse/">書目庫</a><span aria-hidden="true">›</span>
+        <a href={`/browse/${corpus.slug}/`}>{corpus.title}</a><span aria-hidden="true">›</span>
+        <span>{issueText}（{dateText}）</span><span aria-hidden="true">›</span>
+        <span class="crumb__cur" aria-current="page">第 {pageNo} 葉</span>
       </nav>
-
-      <StatusBadge status={leaf.status} />
-      <span class="tb-spacer"></span>
-
-      <div class="tb-group">
-        <span>行款</span>
-        <div class="seg" role="group" aria-label="行款方向">
-          <button type="button" data-dir="vertical" aria-pressed="false">豎排</button>
-          <button type="button" data-dir="horizontal" aria-pressed="true">橫排</button>
+      <div class="rd-controls">
+        <button type="button" class="chip chip--kapok hl-chip" id="hl-chip" hidden></button>
+        <span class="rd-label" id="rd-layout-label">行款</span>
+        <div class="seg" role="group" aria-labelledby="rd-layout-label">
+          <button type="button" data-layout="vertical" aria-pressed="true">豎排</button>
+          <button type="button" data-layout="horizontal" aria-pressed="false">橫排</button>
         </div>
-      </div>
-
-      <div class="tb-group">
-        <span>注音</span>
-        <button type="button" class="chip" data-jyutping aria-pressed="false">粵拼注音</button>
-      </div>
-
-      {
-        hasTranslations && (
-          <div class="tb-group">
-            <span>譯文</span>
-            <button type="button" class="chip" data-modtrans aria-pressed="false">
+        <button type="button" class="toggle" data-pref="jp" aria-pressed="true">粵拼注音</button>
+        {
+          hasTranslation ? (
+            <button type="button" class="toggle" data-pref="tr" aria-pressed="true">
               今譯
             </button>
-          </div>
-        )
-      }
+          ) : (
+            <button type="button" class="toggle" aria-pressed="false" disabled title="本葉冇今譯">
+              今譯
+            </button>
+          )
+        }
+      </div>
     </div>
   </div>
+  <script is:inline>
+    // 開關狀態跟返 <html> 上嘅偏好 class（同步執行，避免掣先亮錯再跳）。
+    (function () {
+      var list = document.documentElement.classList;
+      document.querySelectorAll("#rd-toolbar [data-layout]").forEach(function (button) {
+        button.setAttribute("aria-pressed", String((button.dataset.layout === "horizontal") === list.contains("rd-h")));
+      });
+      document.querySelectorAll("#rd-toolbar [data-pref]").forEach(function (button) {
+        button.setAttribute("aria-pressed", String(!list.contains("rd-no" + button.dataset.pref)));
+      });
+    })();
+  </script>
 
-  <div class="reader">
-    <section class="pane-text">
-      <div class="doc">
+  <div class="rd-grid">
+    <aside class="rd-toc" id="rd-toc" aria-label="目錄">
+      <div class="toc-head">
+        <p class="eyebrow eyebrow--sm">Contents · 目錄</p>
+        <p class="toc-title">{corpus.title}</p>
+        <p class="toc-meta">{issueText} · {dateText} · {pages.length} 葉</p>
+        {
+          issueLinks.length > 0 && (
+            <nav class="issue-switch" aria-label="期號">
+              {issueLinks.map((link) => (
+                <a href={link.href} title={link.full} aria-label={link.full} aria-current={link.current ? "true" : undefined}>
+                  <span class="issue-switch__num">{link.numeral}</span>
+                  <span class="issue-switch__date">{link.date}</span>
+                </a>
+              ))}
+            </nav>
+          )
+        }
+        {
+          toc.length > 0 && (
+            <button
+              type="button"
+              class="toc-toggle"
+              aria-expanded="false"
+              aria-controls="toc-list"
+              data-closed-label={`展開目錄（${toc.length} 篇）`}
+            >
+              展開目錄（{toc.length} 篇）
+            </button>
+          )
+        }
+      </div>
+      {
+        toc.length > 0 && (
+          <ol class="toc-list" id="toc-list">
+            {toc.map((entry, i) => (
+              <li>
+                <a
+                  class:list={["toc-item", i === currentToc && "is-current"]}
+                  href={`${readUrl(issueSlug, entry.page)}#${entry.id}`}
+                  aria-current={i === currentToc ? "true" : undefined}
+                >
+                  <span class="toc-num">{pageParam(entry.page)}</span>
+                  <span>{entry.title}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+    </aside>
+
+    <article class="rd-card">
+      <header class="card-head">
+        <h1 class="leaf-no">
+          <span class="visually-hidden">{corpus.title}</span>
+          <span class="leaf-no__num">{pageNo}</span>
+          <span class="leaf-no__pos">葉 · 第 {index + 1} / {pages.length} 葉</span>
+        </h1>
+        <StatusBadge status={leaf.status} size="md" label={badge.tone === "ok" ? undefined : "OCR 未校 · 歡迎報錯"} />
+      </header>
+
+      <div class="card-body" id="rd-body">
         {
           views.map((view) =>
             view.kind === "article" ? (
-              <article class="art" id={view.id}>
-                <div class="art-head">
-                  {view.title !== null && <h2>{view.title}</h2>}
-                  <button
-                    type="button"
-                    class="cite-btn"
-                    data-cite={view.id}
-                    aria-expanded="false"
-                    aria-controls={`cite-${view.id}`}
-                  >
-                    引用
-                  </button>
-                  <a class="anchor" href={`#${view.id}`} data-copy-anchor={view.id} aria-label="複製本篇連結">
-                    #
+              <section class:list={["art", view.latin ? "art--latin" : "art--cjk"]} id={view.id} data-article>
+                <header class:list={["art-head", view.title === null && "art-head--bare"]}>
+                  {view.title !== null && <h2 class="art-title">{view.title}</h2>}
+                  <a class="art-anchor" href={`#${view.id}`} data-copy-anchor title="撳一下複製本篇連結">
+                    #{view.id}
                   </a>
-                </div>
-                <div class="cite-pop" id={`cite-${view.id}`} data-cite-pop={view.id} hidden>
-                  <p class="cite-head">引用本篇</p>
-                  {[
-                    { key: "text", label: "純文字", body: view.citations.text },
-                    { key: "bibtex", label: "BibTeX", body: view.citations.bibtex },
-                    { key: "ris", label: "RIS", body: view.citations.ris },
-                  ].map((format) => (
-                    <div class="cite-block">
-                      <div class="cite-row">
-                        <span class="cite-label">{format.label}</span>
-                        <button type="button" class="cite-copy" data-copy-format={format.key}>
-                          複製
-                        </button>
-                      </div>
-                      <pre class="cite-pre">{format.body}</pre>
+                </header>
+                {view.translationMismatch && <Fragment set:html={`<!-- 今譯段數對唔上，已跳過：${view.id} -->`} />}
+                {view.paragraphs.length === 0 ? (
+                  <p class="art-empty">（呢篇冇正文）</p>
+                ) : (
+                  <div class="art-text">
+                    <div class="art-flow">
+                      {view.paragraphs.map((paragraph, i) => (
+                        <Fragment>
+                          <p class="para" data-pi={i} set:html={paragraph.html} />
+                          {paragraph.translation !== null && (
+                            <div class="tr tr-inline">
+                              {i === view.firstTranslated && (
+                                <div class="tr-head">
+                                  <span class="tr-tag">今譯 · Modern Cantonese</span>
+                                  <span class="tr-ver">譯 v0 · 未校訂</span>
+                                </div>
+                              )}
+                              <p data-pi={i} set:html={paragraph.translation} />
+                            </div>
+                          )}
+                        </Fragment>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {view.translationMismatch && (
-                  <Fragment set:html={`<!-- 今譯段數對唔上，已跳過：${view.id} -->`} />
+                  </div>
                 )}
-                {view.paragraphs.map((entry) => (
-                  <Fragment>
-                    <p
-                      class="para"
-                      set:html={renderMergedParagraph(entry.paragraph, readingsByArticle.get(view.id) ?? noReadings)}
-                    />
-                    {entry.translation !== null && (
-                      <div class="modtrans">
-                        <div class="modtrans-head">
-                          <span class="mt-tag">今譯</span>
-                          <span class="mt-meta">譯 v0 · 未校訂</span>
-                        </div>
-                        <p class="mt-body">{entry.translation}</p>
-                      </div>
+                {view.firstTranslated >= 0 && (
+                  <div class="tr tr-whole">
+                    <div class="tr-head">
+                      <span class="tr-tag">今譯 · Modern Cantonese</span>
+                      <span class="tr-ver">譯 v0 · 未校訂</span>
+                    </div>
+                    {view.paragraphs.map(
+                      (paragraph, i) =>
+                        paragraph.translation !== null && <p data-pi={i} set:html={paragraph.translation} />,
                     )}
-                  </Fragment>
-                ))}
-              </article>
+                  </div>
+                )}
+              </section>
             ) : (
               <div class="ph">
-                <b>{view.text}</b>
-                {markerNote(view.text) !== null && <span>{markerNote(view.text)}</span>}
+                <span class="ph__text">{view.text}</span>
+                {view.note !== null && <span class="ph__note">{view.note}</span>}
               </div>
             ),
           )
         }
       </div>
-    </section>
 
-    <aside class="pane-source">
-      <div class="source-card">
-        <h2>本葉來源</h2>
-        <dl>
+      <footer class="card-foot">
+        {
+          previous ? (
+            <a class="btn btn--ink-outline pg pg--prev" href={readUrl(issueSlug, previous.page)} rel="prev" data-nav="prev">
+              ‹ 上一葉
+            </a>
+          ) : (
+            <span class="btn btn--ink-outline pg pg--prev" aria-disabled="true">
+              ‹ 上一葉
+            </span>
+          )
+        }
+        <p class="pg-info">
+          掃描序號 <b>{pageNo}</b> · 第 {index + 1} / {pages.length} 葉<br />
+          <span class="pg-hint">← → 鍵都可以揭頁</span>
+        </p>
+        {
+          next ? (
+            <a class="btn btn--solid pg pg--next" href={readUrl(issueSlug, next.page)} rel="next" data-nav="next">
+              下一葉 ›
+            </a>
+          ) : (
+            <span class="btn btn--solid pg pg--next" aria-disabled="true">
+              下一葉 ›
+            </span>
+          )
+        }
+      </footer>
+    </article>
+
+    <aside class="rd-side" aria-label="本葉資料">
+      <section class="src-card" aria-labelledby="src-title">
+        <h2 id="src-title">本葉來源</h2>
+        <dl class="src-list">
           <dt>語料</dt>
           <dd><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></dd>
           <dt>期號</dt>
-          <dd>{issue.issue}{issue.issue_date ? `（${issue.issue_date}）` : "（日期待考）"}</dd>
+          <dd>{issueText}（{dateText}）</dd>
           <dt>葉序號</dt>
-          <dd>{pageParam(pageNumber)}</dd>
+          <dd class="mono">{pageNo}</dd>
           <dt>OCR 狀態</dt>
-          <dd><StatusBadge status={leaf.status} /></dd>
+          <dd>{badge.label}</dd>
           <dt>底本來源</dt>
           <dd>{corpus.sourceLine}</dd>
           <dt>文本授權</dt>
           <dd>CC BY-SA 4.0</dd>
         </dl>
-      </div>
+      </section>
+
+      {
+        citations && (
+          <section class="cite-card" aria-labelledby="cite-title">
+            <div class="cite-head">
+              <h2 id="cite-title">引用</h2>
+              <button type="button" class="btn btn--outline btn--sm cite-copy" id="cite-copy">
+                複製
+              </button>
+            </div>
+            <div class="cite-tabs" role="tablist" aria-label="引用格式">
+              {citeFormats.map((format, i) => (
+                <button
+                  type="button"
+                  role="tab"
+                  id={`cite-tab-${format.key}`}
+                  aria-controls={`cite-panel-${format.key}`}
+                  aria-selected={i === 0 ? "true" : "false"}
+                  tabindex={i === 0 ? 0 : -1}
+                >
+                  {format.label}
+                </button>
+              ))}
+            </div>
+            {citeFormats.map((format, i) => (
+              <pre
+                class="cite-pre"
+                role="tabpanel"
+                id={`cite-panel-${format.key}`}
+                aria-labelledby={`cite-tab-${format.key}`}
+                tabindex="0"
+                hidden={i !== 0}
+                set:text={format.body}
+              />
+            ))}
+          </section>
+        )
+      }
+
+      {
+        firstArticle && (
+          <section class="rp-card" aria-labelledby="rp-title">
+            <h2 id="rp-title">報錯</h2>
+            <form class="rp-form" id="rp-form" novalidate>
+              <p class="rp-hint" id="rp-hint" tabindex="-1">喺正文揀選有問題嘅字，就會自動帶入呢度。</p>
+              <p class="rp-sel" id="rp-sel" hidden />
+              <fieldset class="rp-types">
+                <legend>問題類型</legend>
+                <div class="rp-chips">
+                  {CORRECTION_TYPES.map((type) => (
+                    <label class="rp-chip">
+                      <input class="visually-hidden" type="radio" name="type" value={type} />
+                      <span class="chip chip--outline">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label class="visually-hidden" for="rp-note">
+                建議讀法或說明（選填）
+              </label>
+              <textarea class="rp-note" id="rp-note" name="suggestion" rows="3" maxlength="1000" placeholder="建議讀法或說明（選填）" />
+              <div class="rp-hp" aria-hidden="true">
+                <label>
+                  網址（唔好填）
+                  <input type="text" name="website" tabindex="-1" autocomplete="off" />
+                </label>
+              </div>
+              <button type="submit" class="btn btn--solid rp-submit" id="rp-submit" disabled>
+                揀選正文同問題類型先可以提交
+              </button>
+              <p class="rp-error" id="rp-error" role="alert" hidden />
+              <p class="rp-foot">匿名上報，唔會收集任何聯繫方式；提交後由維護者人工審閱。</p>
+            </form>
+            <div class="rp-done" id="rp-done" hidden>
+              <p class="rp-ok" tabindex="-1">多謝！已經收到你嘅上報，維護者會人工審閱。</p>
+              <button type="button" class="btn btn--ink-outline btn--sm rp-again" id="rp-again">
+                再報一個
+              </button>
+            </div>
+          </section>
+        )
+      }
     </aside>
   </div>
 
-  <nav class="pager" aria-label="翻葉">
-    <div class="inner">
-      {
-        previous ? (
-          <a class="pg" href={readUrl(previous.page)}>‹ 上一葉</a>
-        ) : (
-          <span class="pg is-disabled" aria-disabled="true">‹ 上一葉</span>
-        )
-      }
-      <span class="pg-info">
-        掃描序號 <b>{pageParam(pageNumber)}</b> · 第 {index + 1} / {pages.length} 葉
-      </span>
-      {
-        next ? (
-          <a class="pg" href={readUrl(next.page)}>下一葉 ›</a>
-        ) : (
-          <span class="pg is-disabled" aria-disabled="true">下一葉 ›</span>
-        )
-      }
-    </div>
-  </nav>
-
-  <div class="dict-card" id="dictCard" hidden>
-    <p class="dc-word" id="dcWord"></p>
-    <a class="dc-link" id="dcLink" href="#" target="_blank" rel="noopener">去辭叢查「…」</a>
-    <p class="dc-hint">釋義以辭叢為準</p>
+  <div class="dict-card" id="dict-card" hidden>
+    <p class="dict-card__word" id="dict-word"></p>
+    <a class="dict-card__link" id="dict-link" href="https://jyutjyu.com/" target="_blank" rel="noopener">去辭叢查</a>
+    <p class="dict-card__hint">釋義以辭叢為準</p>
   </div>
-
-  <div class="selbar" id="selbar" role="toolbar" aria-label="選字操作" hidden>
-    <button type="button" class="sb" data-act="copy">複製</button>
-    <button type="button" class="sb" data-act="dict">查辭叢</button>
-    <button type="button" class="sb" data-act="report">回報此處</button>
-  </div>
-
-  <div
-    class="report-mask"
-    id="reportMask"
-    data-from={`${corpus.title} · ${issue.issue} · 第 ${pageParam(pageNumber)} 葉`}
-    hidden
-  >
-    <div
-      class="report-card"
-      id="reportCard"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="reportTitle"
-      tabindex="-1"
-    >
-      <div class="rc-head">
-        <h2 id="reportTitle">回報此處</h2>
-        <button type="button" class="rc-close" id="reportClose" aria-label="閂咗佢">×</button>
-      </div>
-
-      <dl class="rc-facts">
-        <dt>所選文字</dt>
-        <dd><span class="hl" id="rcSel"></span></dd>
-        <dt>出處</dt>
-        <dd id="rcFrom"></dd>
-        <dt>前後文</dt>
-        <dd class="ctx" id="rcCtx"></dd>
-      </dl>
-
-      <form id="reportForm" novalidate>
-        <fieldset class="rc-types">
-          <legend>問題類型</legend>
-          <label class="rchip"><input type="radio" name="rtype" value="錯字" checked /><span>錯字</span></label>
-          <label class="rchip"><input type="radio" name="rtype" value="缺字" /><span>缺字</span></label>
-          <label class="rchip"><input type="radio" name="rtype" value="標點分段" /><span>標點分段</span></label>
-          <label class="rchip"><input type="radio" name="rtype" value="今譯疑問" /><span>今譯疑問</span></label>
-          <label class="rchip"><input type="radio" name="rtype" value="其他" /><span>其他</span></label>
-        </fieldset>
-
-        <label class="rc-field">
-          <span>建議讀法或說明（選填）</span>
-          <textarea id="rcNote" rows="3" placeholder="例：呢個字似係「冇」多過「有」。"></textarea>
-        </label>
-
-        <label class="rc-hp" aria-hidden="true">
-          <span>網址（唔好填）</span>
-          <input type="text" id="rcSite" tabindex="-1" autocomplete="off" />
-        </label>
-
-        <div class="rc-foot">
-          <button type="submit" class="btn primary" id="rcSubmit">提交</button>
-          <p class="rc-hint">匿名上報，唔會收集任何聯繫方式；提交後由維護者人工審閱。</p>
-        </div>
-      </form>
-    </div>
-  </div>
+  <p class="visually-hidden" id="rd-live" role="status"></p>
 
   <script>
-    const buttons = document.querySelectorAll<HTMLButtonElement>(".seg button[data-dir]");
+    import { wordAround } from "../../../../utils/reader.ts";
+    import {
+      clipText,
+      fragmentAround,
+      highlightRanges,
+      selectionSpan,
+      type SelectionPiece,
+    } from "../../../../utils/reader-view.ts";
+
     const root = document.documentElement;
+    const body = document.getElementById("rd-body");
+    const live = document.getElementById("rd-live");
 
-    const applyDirection = (direction: string) => {
-      root.classList.toggle("dir-vertical", direction === "vertical");
-      for (const button of buttons) {
-        button.setAttribute("aria-pressed", String(button.dataset.dir === direction));
+    const announce = (message: string): void => {
+      if (live === null) return;
+      live.textContent = "";
+      window.setTimeout(() => (live.textContent = message), 60);
+    };
+
+    const elementOf = (node: Node | null): Element | null =>
+      node === null ? null : node instanceof Element ? node : node.parentElement;
+
+    /** scope 之內嘅文字節點；skip 命中嘅祖先（例如 rt）唔要。 */
+    const textNodes = (scope: Node, skip: string): Text[] => {
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        if (node.parentElement?.closest(skip) == null) nodes.push(node as Text);
+      }
+      return nodes;
+    };
+
+    /** 可見文字（唔計粵拼），空白收窄。 */
+    const textOf = (scope: Node): string =>
+      textNodes(scope, "rt")
+        .map((node) => node.data)
+        .join("")
+        .replace(/\s+/gu, " ")
+        .trim();
+
+    /** 按 nodes 串埋之後嘅 UTF-16 區間，逐個文字節點包一層（字喺 <ruby> 入面，唔可以成段包）。 */
+    const wrapRanges = (nodes: Text[], ranges: [number, number][], make: () => HTMLElement): HTMLElement[] => {
+      const pieces: { node: Text; from: number; to: number }[] = [];
+      let base = 0;
+      for (const node of nodes) {
+        const end = base + node.data.length;
+        for (const [start, stop] of ranges) {
+          const from = Math.max(start, base);
+          const to = Math.min(stop, end);
+          if (from < to) pieces.push({ node, from: from - base, to: to - base });
+        }
+        base = end;
+      }
+      const made: HTMLElement[] = [];
+      // 由尾向頭切，前面嘅下標唔會因為 splitText 而走位。
+      for (const piece of pieces.reverse()) {
+        const target = piece.from > 0 ? piece.node.splitText(piece.from) : piece.node;
+        if (piece.to - piece.from < target.data.length) target.splitText(piece.to - piece.from);
+        const element = make();
+        target.replaceWith(element);
+        element.append(target);
+        made.unshift(element);
+      }
+      return made;
+    };
+
+    /* ---- 閱讀偏好：行款、粵拼、今譯（存 localStorage） ---- */
+
+    const syncControls = (): void => {
+      const horizontal = root.classList.contains("rd-h");
+      for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-layout]")) {
+        button.setAttribute("aria-pressed", String((button.dataset.layout === "horizontal") === horizontal));
+      }
+      for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-pref]")) {
+        button.setAttribute("aria-pressed", String(!root.classList.contains(`rd-no${button.dataset.pref}`)));
       }
     };
 
-    applyDirection(root.classList.contains("dir-vertical") ? "vertical" : "horizontal");
+    const savePrefs = (): void => {
+      try {
+        window.localStorage.setItem(
+          "jyutman:reader-prefs",
+          JSON.stringify({
+            layout: root.classList.contains("rd-h") ? "horizontal" : "vertical",
+            jp: !root.classList.contains("rd-nojp"),
+            tr: !root.classList.contains("rd-notr"),
+          }),
+        );
+      } catch {
+        /* 本機儲存唔可用：切換只作用於今次瀏覽 */
+      }
+    };
 
-    for (const button of buttons) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-layout]")) {
       button.addEventListener("click", () => {
-        const direction = button.dataset.dir ?? "horizontal";
-        applyDirection(direction);
-        try {
-          window.localStorage.setItem("jm-dir", direction);
-        } catch (error) {
-          /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
-        }
+        root.classList.toggle("rd-h", button.dataset.layout === "horizontal");
+        syncControls();
+        savePrefs();
       });
     }
+    for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-pref]")) {
+      button.addEventListener("click", () => {
+        root.classList.toggle(`rd-no${button.dataset.pref}`);
+        syncControls();
+        savePrefs();
+      });
+    }
+    syncControls();
 
-    const jyutpingButton = document.querySelector<HTMLButtonElement>("button[data-jyutping]");
-    let jyutpingOn = false;
-    try {
-      jyutpingOn = window.localStorage.getItem("jm-jyutping") === "on";
-    } catch (error) {
-      /* 本機儲存唔可用時按預設關閉 */
+    /* ---- 黏頂：工具列高度寫入 --toolbar-h，側欄同錨點避開佢 ---- */
+
+    const toolbar = document.getElementById("rd-toolbar");
+    if (toolbar !== null && "ResizeObserver" in window) {
+      new ResizeObserver(() => root.style.setProperty("--toolbar-h", `${toolbar.offsetHeight}px`)).observe(toolbar);
     }
 
-    /** 注音開關：body.show-jyutping 時 <rt> 先顯示；預設關。 */
-    const applyJyutping = (enabled: boolean) => {
-      document.body.classList.toggle("show-jyutping", enabled);
-      jyutpingButton?.setAttribute("aria-pressed", String(enabled));
-    };
+    /* ---- 目錄：闊螢幕側欄自己捲到當前篇；窄螢幕開合 ---- */
 
-    applyJyutping(jyutpingOn);
-
-    jyutpingButton?.addEventListener("click", () => {
-      jyutpingOn = !jyutpingOn;
-      applyJyutping(jyutpingOn);
-      try {
-        window.localStorage.setItem("jm-jyutping", jyutpingOn ? "on" : "off");
-      } catch (error) {
-        /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
-      }
-    });
-
-    const modtransButton = document.querySelector<HTMLButtonElement>("button[data-modtrans]");
-    let modtransOn = false;
-    try {
-      modtransOn = window.localStorage.getItem("jm-modtrans") === "on";
-    } catch (error) {
-      /* 本機儲存唔可用時按預設關閉 */
+    const tocAside = document.getElementById("rd-toc");
+    const tocCurrent = tocAside?.querySelector<HTMLElement>(".toc-item.is-current");
+    if (tocAside && tocCurrent && tocAside.scrollHeight > tocAside.clientHeight) {
+      tocAside.scrollTop = tocCurrent.offsetTop - tocAside.clientHeight / 3;
     }
 
-    /** 今譯開關：body.show-modtrans 時譯塊先顯示；預設關。 */
-    const applyModtrans = (enabled: boolean) => {
-      document.body.classList.toggle("show-modtrans", enabled);
-      modtransButton?.setAttribute("aria-pressed", String(enabled));
-    };
-
-    applyModtrans(modtransOn);
-
-    modtransButton?.addEventListener("click", () => {
-      modtransOn = !modtransOn;
-      applyModtrans(modtransOn);
-      try {
-        window.localStorage.setItem("jm-modtrans", modtransOn ? "on" : "off");
-      } catch (error) {
-        /* 本機儲存唔可用時，切換只作用於本次瀏覽 */
-      }
+    const tocToggle = document.querySelector<HTMLButtonElement>(".toc-toggle");
+    tocToggle?.addEventListener("click", () => {
+      const open = tocAside?.classList.toggle("is-open") ?? false;
+      tocToggle.setAttribute("aria-expanded", String(open));
+      tocToggle.textContent = open ? "收埋目錄" : (tocToggle.dataset.closedLabel ?? "展開目錄");
     });
 
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.setAttribute("role", "status");
-    document.body.append(toast);
-    let toastTimer = 0;
+    /* ---- ← → 揭頁（同一期之內） ---- */
 
-    const showToast = (message: string) => {
-      toast.textContent = message;
-      toast.classList.add("is-on");
-      window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
-    };
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest("input, textarea, select, [role='tab'], .art-flow, .cite-pre") !== null)
+      ) {
+        return;
+      }
+      const link = document.querySelector<HTMLAnchorElement>(
+        `a[data-nav="${event.key === "ArrowLeft" ? "prev" : "next"}"]`,
+      );
+      if (link === null) return;
+      event.preventDefault();
+      window.location.href = link.href;
+    });
 
-    /** 篇級錨鏈：照跳錨點，同時複製絕對連結。 */
+    /* ---- 篇級錨點：照跳，同時複製絕對連結 ---- */
+
     for (const anchor of document.querySelectorAll<HTMLAnchorElement>("a[data-copy-anchor]")) {
-      anchor.addEventListener("click", async () => {
-        const id = anchor.dataset.copyAnchor ?? "";
-        const url = `${window.location.origin}${window.location.pathname}#${id}`;
-        try {
-          await navigator.clipboard.writeText(url);
-          showToast("已複製本篇連結");
-        } catch (error) {
-          /* 剪貼板唔可用時照跳錨點 */
-        }
+      anchor.addEventListener("click", () => {
+        const url = `${window.location.origin}${window.location.pathname}${anchor.hash}`;
+        navigator.clipboard?.writeText(url).then(
+          () => {
+            anchor.classList.add("is-copied");
+            announce("已複製本篇連結");
+            window.setTimeout(() => anchor.classList.remove("is-copied"), 1600);
+          },
+          () => undefined,
+        );
       });
     }
-  </script>
 
-  <script>
-    const doc = document.querySelector(".doc");
-    const selbar = document.getElementById("selbar");
-    const mask = document.getElementById("reportMask");
-    const card = document.getElementById("reportCard");
-    const form = document.getElementById("reportForm");
-    const selLine = document.getElementById("rcSel");
-    const fromLine = document.getElementById("rcFrom");
-    const ctxLine = document.getElementById("rcCtx");
-    const closeBtn = document.getElementById("reportClose");
-    const siteInput = document.getElementById("rcSite");
-    const STORE_KEY = "jm-reports";
-    const CTX_CHARS = 20;
-    const SKIP = "rt, .selbar, .report-card, .report-mask, .ph";
+    /* ---- 引用：分頁同複製 ---- */
 
-    interface SelectionInfo {
-      range: Range;
-      text: string;
-      fragment: string;
-      articleId: string;
-      paragraphIndex: number;
+    const citeCopy = document.getElementById("cite-copy");
+    const citeTabs = [...document.querySelectorAll<HTMLButtonElement>('.cite-tabs [role="tab"]')];
+    let citeActive = 0;
+
+    const selectCite = (next: number, focus: boolean): void => {
+      citeActive = next;
+      citeTabs.forEach((tab, i) => {
+        const on = i === next;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+        const panel = document.getElementById(tab.getAttribute("aria-controls") ?? "");
+        if (panel !== null) panel.hidden = !on;
+      });
+      if (focus) citeTabs[next]?.focus();
+      if (citeCopy !== null) citeCopy.textContent = "複製";
+    };
+
+    citeTabs.forEach((tab, i) => tab.addEventListener("click", () => selectCite(i, false)));
+    document.querySelector(".cite-tabs")?.addEventListener("keydown", (event) => {
+      if (!(event instanceof KeyboardEvent)) return;
+      const keys: Record<string, number> = {
+        ArrowRight: citeActive + 1,
+        ArrowLeft: citeActive - 1,
+        Home: 0,
+        End: citeTabs.length - 1,
+      };
+      if (!(event.key in keys)) return;
+      event.preventDefault();
+      selectCite((keys[event.key] + citeTabs.length) % citeTabs.length, true);
+    });
+    citeCopy?.addEventListener("click", async () => {
+      const panel = document.getElementById(citeTabs[citeActive]?.getAttribute("aria-controls") ?? "");
+      try {
+        await navigator.clipboard.writeText(panel?.textContent?.trim() ?? "");
+        citeCopy.textContent = "已複製";
+        announce("已複製引用");
+      } catch {
+        citeCopy.textContent = "複製唔到";
+      }
+    });
+
+    /* ---- ?hl= 檢索高亮 ---- */
+
+    const params = new URLSearchParams(window.location.search);
+    const hl = params.get("hl")?.trim() ?? "";
+    const hlChip = document.getElementById("hl-chip");
+
+    if (hl !== "" && body !== null && hlChip !== null) {
+      const marks: HTMLElement[] = [];
+      for (const unit of body.querySelectorAll(".art-title, .art-flow")) {
+        const nodes = textNodes(unit, "rt, .tr");
+        const ranges = highlightRanges(nodes.map((node) => node.data).join(""), hl);
+        marks.push(
+          ...wrapRanges(nodes, ranges, () => {
+            const mark = document.createElement("mark");
+            mark.className = "hl";
+            return mark;
+          }),
+        );
+      }
+      hlChip.textContent = `標示「${hl}」 ✕`;
+      hlChip.setAttribute("aria-label", `清除標示「${hl}」`);
+      hlChip.hidden = false;
+      marks[0]?.scrollIntoView({ block: "center", inline: "center" });
+
+      hlChip.addEventListener("click", () => {
+        for (const mark of document.querySelectorAll("mark.hl")) {
+          const parent = mark.parentNode;
+          mark.replaceWith(...mark.childNodes);
+          parent?.normalize();
+        }
+        hlChip.hidden = true;
+        params.delete("hl");
+        const query = params.toString();
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+        );
+      });
     }
+
+    /* ---- 已回報標記（本機記錄 + /api/reports） ---- */
 
     interface StoredReport {
       id?: number | null;
@@ -515,236 +760,12 @@ const articleJsonLd = {
       created_at?: string;
     }
 
-    let pending: SelectionInfo | null = null;
-    let debounceId = 0;
-    let reportToastTimer = 0;
-
-    const elementOf = (node: Node | null): Element | null =>
-      node === null ? null : node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
-
-    const textOf = (root: Node): string => {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      let out = "";
-      let node = walker.nextNode();
-      while (node !== null) {
-        const parent = elementOf(node);
-        if (parent !== null && parent.closest("rt") === null) out += node.nodeValue;
-        node = walker.nextNode();
-      }
-      return out.replace(/\s+/gu, " ").trim();
-    };
-
-    const toastNode = () => {
-      const found = document.querySelector(".toast");
-      if (found !== null) return found;
-      const created = document.createElement("div");
-      created.className = "toast";
-      created.setAttribute("role", "status");
-      document.body.append(created);
-      return created;
-    };
-
-    const showReportToast = (message: string): void => {
-      const toast = toastNode();
-      toast.textContent = message;
-      toast.classList.add("is-on");
-      window.clearTimeout(reportToastTimer);
-      reportToastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
-    };
-
-    /** 由選區推出上報上下文：文章 id、段落序號、前後文（前 20 + 選 + 後 20）。 */
-    const selectionInfo = (): SelectionInfo | null => {
-      const selection = window.getSelection();
-      if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
-      const range = selection.getRangeAt(0);
-      if (doc === null || !doc.contains(range.commonAncestorContainer)) return null;
-      const start = elementOf(range.startContainer);
-      const end = elementOf(range.endContainer);
-      if (start === null || end === null || start.closest(SKIP) !== null || end.closest(SKIP) !== null) {
-        return null;
-      }
-      const article = start.closest("article.art");
-      if (article === null) return null;
-      const text = textOf(range.cloneContents());
-      if (text === "") return null;
-
-      const paragraphs = [...article.querySelectorAll("p.para")];
-      let paragraphIndex = paragraphs.findIndex((node) => node.contains(range.startContainer));
-      if (paragraphIndex < 0) {
-        paragraphIndex =
-          paragraphs.filter(
-            (node) =>
-              (node.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-          ).length - 1;
-      }
-      paragraphIndex = Math.max(0, paragraphIndex);
-
-      const host =
-        start.closest("p.para") ?? start.closest(".modtrans") ?? paragraphs[paragraphIndex] ?? article;
-      const hostText = textOf(host);
-      const at = hostText.indexOf(text);
-      const fragment = at < 0 ? text : hostText.slice(Math.max(0, at - CTX_CHARS), at + text.length + CTX_CHARS);
-
-      return { range: range.cloneRange(), text, fragment, articleId: article.id, paragraphIndex };
-    };
-
-    /** 選字條位置：橫排擺上方，豎排擺左側；夾返落視窗之內。 */
-    const placeBar = (rect: DOMRect): void => {
-      if (selbar === null) return;
-      const width = selbar.offsetWidth;
-      const height = selbar.offsetHeight;
-      const vertical = document.documentElement.classList.contains("dir-vertical");
-      let x;
-      let y;
-      if (vertical) {
-        x = rect.left - width - 8;
-        if (x < 8) x = rect.right + 8;
-        y = rect.top + rect.height / 2 - height / 2;
-      } else {
-        x = rect.left + rect.width / 2 - width / 2;
-        y = rect.top - height - 8;
-        if (y < 8) y = rect.bottom + 8;
-      }
-      x = Math.max(8, Math.min(x, window.innerWidth - width - 8));
-      y = Math.max(8, Math.min(y, window.innerHeight - height - 8));
-      selbar.style.left = `${Math.round(x)}px`;
-      selbar.style.top = `${Math.round(y)}px`;
-    };
-
-    const hideBar = () => {
-      if (selbar !== null) selbar.hidden = true;
-    };
-
-    const closeReport = () => {
-      if (mask !== null) mask.hidden = true;
-    };
-
-    const openReport = () => {
-      if (pending === null || mask === null || selLine === null || fromLine === null || ctxLine === null) return;
-      selLine.textContent = pending.text;
-      fromLine.textContent = `${mask.dataset.from ?? ""} · ${pending.articleId}`;
-      ctxLine.textContent = pending.fragment;
-      if (siteInput instanceof HTMLInputElement) siteInput.value = "";
-      mask.hidden = false;
-      hideBar();
-      card?.focus();
-    };
-
-    document.addEventListener("selectionchange", () => {
-      window.clearTimeout(debounceId);
-      debounceId = window.setTimeout(() => {
-        if (mask !== null && !mask.hidden) {
-          hideBar();
-          return;
-        }
-        const info = selectionInfo();
-        if (info === null || selbar === null) {
-          hideBar();
-          return;
-        }
-        pending = info;
-        selbar.hidden = false;
-        placeBar(info.range.getBoundingClientRect());
-      }, 300);
-    });
-
-    document.addEventListener("scroll", hideBar, true);
-    window.addEventListener("resize", hideBar);
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      if (mask !== null && !mask.hidden) closeReport();
-      else hideBar();
-    });
-    document.addEventListener(
-      "mousedown",
-      (event) => {
-        if (event.target instanceof Element && event.target.closest(".selbar") !== null) return;
-        hideBar();
-      },
-      true,
-    );
-    selbar?.addEventListener("mousedown", (event) => event.preventDefault());
-
-    selbar?.addEventListener("click", (event) => {
-      const button = event.target instanceof Element ? event.target.closest(".sb") : null;
-      if (button === null || pending === null) return;
-      const action = button.getAttribute("data-act");
-      if (action === "copy") {
-        void navigator.clipboard?.writeText(pending.text).then(
-          () => {
-            const label = button.textContent;
-            button.textContent = "已複製";
-            button.classList.add("is-done");
-            window.setTimeout(() => {
-              button.textContent = label;
-              button.classList.remove("is-done");
-            }, 1200);
-          },
-          () => undefined,
-        );
-      } else if (action === "dict") {
-        window.open(`https://jyutjyu.com/word/${encodeURIComponent(pending.text)}`, "_blank", "noopener");
-      } else if (action === "report") {
-        openReport();
-      }
-    });
-
-    closeBtn?.addEventListener("click", closeReport);
-    mask?.addEventListener("click", (event) => {
-      if (event.target === mask) closeReport();
-    });
-
-    /** 已回報標記：喺文章內搵返該段文字包一層 .reported。 */
-    const markReported = (article: HTMLElement, text: string, label: string): boolean => {
-      if (text === "") return false;
-      const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
-      const nodes: { node: Text; start: number }[] = [];
-      let full = "";
-      let node = walker.nextNode();
-      while (node !== null) {
-        const parent = elementOf(node);
-        if (parent !== null && parent.closest("rt") === null) {
-          nodes.push({ node: node as Text, start: full.length });
-          full += node.nodeValue ?? "";
-        }
-        node = walker.nextNode();
-      }
-      const at = full.indexOf(text);
-      if (at < 0) return false;
-      const locate = (offset: number): { node: Text; offset: number } | null => {
-        for (const entry of nodes) {
-          const end = entry.start + entry.node.data.length;
-          if (offset >= entry.start && offset < end) {
-            return { node: entry.node, offset: offset - entry.start };
-          }
-        }
-        return null;
-      };
-      const first = locate(at);
-      const last = locate(at + text.length - 1);
-      if (first === null || last === null) return false;
-      const range = document.createRange();
-      range.setStart(first.node, first.offset);
-      range.setEnd(last.node, last.offset + 1);
-      const span = document.createElement("span");
-      span.className = "reported";
-      span.dataset.label = label;
-      try {
-        range.surroundContents(span);
-        return true;
-      } catch {
-        return false;
-      }
-    };
-
-    /** 由元素取值：唔係 input 就回空字串（蜜罐欄位用）。 */
-    const inputValue = (node: HTMLElement | null): string =>
-      node instanceof HTMLInputElement ? node.value : "";
+    const STORE_KEY = "jm-reports";
+    const marked = new Set<string>();
 
     const readStore = (): StoredReport[] => {
       try {
-        const raw = window.localStorage.getItem(STORE_KEY);
-        const parsed = raw === null ? [] : JSON.parse(raw);
+        const parsed: unknown = JSON.parse(window.localStorage.getItem(STORE_KEY) ?? "[]");
         return Array.isArray(parsed) ? parsed : [];
       } catch {
         return [];
@@ -759,75 +780,45 @@ const articleJsonLd = {
       }
     };
 
+    /** 喺篇內正文搵返所選文字，逐字包 .reported（金褐底、虛線）。 */
+    const markReported = (articleId: string, text: string, type: string): void => {
+      const key = `${articleId}\u0000${text}`;
+      const flow = document.getElementById(articleId)?.querySelector(".art-flow");
+      if (text === "" || marked.has(key) || flow == null) return;
+      const nodes = textNodes(flow, "rt, .tr");
+      const at = nodes.map((node) => node.data).join("").indexOf(text);
+      if (at < 0) return;
+      marked.add(key);
+      wrapRanges(nodes, [[at, at + text.length]], () => {
+        const span = document.createElement("span");
+        span.className = "reported";
+        span.title = `已回報（${type}）· 待審`;
+        return span;
+      });
+    };
+
     const markAll = (entries: StoredReport[]): void => {
       for (const entry of entries) {
-        if (typeof entry?.article_id !== "string" || typeof entry?.selected_text !== "string") continue;
-        const article = document.getElementById(entry.article_id);
-        if (article === null) continue;
-        markReported(article, entry.selected_text, entry.type ?? "已回報");
+        if (typeof entry?.article_id === "string" && typeof entry?.selected_text === "string") {
+          markReported(entry.article_id, entry.selected_text, entry.type ?? "已回報");
+        }
       }
     };
 
-    form?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (pending === null) return;
-      const type = form.querySelector<HTMLInputElement>('input[name="rtype"]:checked')?.value ?? "其他";
-      const note = document.getElementById("rcNote");
-      const payload = {
-        article_id: pending.articleId,
-        selected_text: pending.text,
-        fragment: pending.fragment,
-        type,
-        suggestion: note instanceof HTMLTextAreaElement ? note.value : "",
-        paragraph_index: pending.paragraphIndex,
-        website: inputValue(siteInput),
-      };
-      const submit = document.getElementById("rcSubmit");
-      if (submit instanceof HTMLButtonElement) submit.disabled = true;
-      try {
-        const response = await fetch("/api/correct", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok || body?.ok !== true) throw new Error("submit failed");
-        const entries = readStore().filter(
-          (entry) => !(entry.article_id === payload.article_id && entry.selected_text === payload.selected_text),
-        );
-        entries.push({
-          id: body.id ?? null,
-          article_id: payload.article_id,
-          selected_text: payload.selected_text,
-          type,
-          created_at: new Date().toISOString(),
-        });
-        writeStore(entries);
-        const article = document.getElementById(payload.article_id);
-        if (article !== null) markReported(article, payload.selected_text, type);
-        closeReport();
-        showReportToast("已收到，多謝指正");
-      } catch {
-        showReportToast("送出失敗，請稍後再試");
-      } finally {
-        if (submit instanceof HTMLButtonElement) submit.disabled = false;
-      }
-    });
-
-    /** 重載之後：本機記錄先標，再同服務端 pending 合併（簡版）。 */
-    const restoreReports = async () => {
+    const restoreReports = async (): Promise<void> => {
       markAll(readStore());
-      const articleIds = [...document.querySelectorAll("article.art")].map((node) => node.id);
-      for (const id of articleIds) {
+      for (const article of document.querySelectorAll<HTMLElement>("[data-article]")) {
         try {
-          const response = await fetch(`/api/reports?article_id=${encodeURIComponent(id)}`);
+          const response = await fetch(`/api/reports?article_id=${encodeURIComponent(article.id)}`);
           if (!response.ok) continue;
-          const body = await response.json();
-          const reports: Record<string, unknown>[] = Array.isArray(body?.reports) ? body.reports : [];
+          const result: unknown = await response.json();
+          const reports =
+            typeof result === "object" && result !== null && Array.isArray((result as { reports?: unknown }).reports)
+              ? ((result as { reports: Record<string, unknown>[] }).reports)
+              : [];
           markAll(
             reports.map((report) => ({
-              id: typeof report.id === "number" ? report.id : null,
-              article_id: id,
+              article_id: article.id,
               selected_text: typeof report.selected_text === "string" ? report.selected_text : "",
               type: typeof report.type === "string" ? report.type : "已回報",
             })),
@@ -839,83 +830,188 @@ const articleJsonLd = {
     };
 
     void restoreReports();
-  </script>
 
-  <script>
-    import { wordAround } from "../../../../utils/reader.ts";
+    /* ---- 揀字報錯 ---- */
 
-    const docRoot = document.querySelector(".doc");
-    const citeButtons = [...document.querySelectorAll<HTMLButtonElement>("button[data-cite]")];
-    const dictCard = document.getElementById("dictCard");
-    const dcWord = document.getElementById("dcWord");
-    const dcLink = document.getElementById("dcLink");
-
-    const toastFor = (): HTMLElement => {
-      const found = document.querySelector<HTMLElement>(".toast");
-      if (found !== null) return found;
-      const created = document.createElement("div");
-      created.className = "toast";
-      created.setAttribute("role", "status");
-      document.body.append(created);
-      return created;
-    };
-
-    let toastTimer = 0;
-    const say = (message: string): void => {
-      const toast = toastFor();
-      toast.textContent = message;
-      toast.classList.add("is-on");
-      window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toast.classList.remove("is-on"), 2000);
-    };
-
-    /** 引用彈出層：開一個就閂其他。 */
-    const closeCites = (except?: string): void => {
-      for (const pop of document.querySelectorAll<HTMLElement>("[data-cite-pop]")) {
-        if (pop.dataset.citePop === except) continue;
-        pop.hidden = true;
-      }
-      for (const button of citeButtons) {
-        if (button.dataset.cite === except) continue;
-        button.setAttribute("aria-expanded", "false");
-      }
-    };
-
-    for (const button of citeButtons) {
-      button.addEventListener("click", () => {
-        const id = button.dataset.cite ?? "";
-        const pop = document.querySelector<HTMLElement>(`[data-cite-pop="${id}"]`);
-        if (pop === null) return;
-        const open = pop.hidden;
-        closeCites(open ? id : undefined);
-        pop.hidden = !open;
-        button.setAttribute("aria-expanded", String(open));
-      });
+    interface Picked {
+      text: string;
+      fragment: string;
+      articleId: string;
+      paragraphIndex: number;
+      span: { start: number; end: number } | null;
     }
 
-    for (const copy of document.querySelectorAll<HTMLButtonElement>("button[data-copy-format]")) {
-      copy.addEventListener("click", async () => {
-        const block = copy.closest(".cite-block");
-        const body = block?.querySelector(".cite-pre")?.textContent ?? "";
-        try {
-          await navigator.clipboard.writeText(body);
-          say("已複製引用");
-        } catch {
-          say("複製唔成功，請手動選取");
+    const form = document.getElementById("rp-form");
+    const hint = document.getElementById("rp-hint");
+    const selBox = document.getElementById("rp-sel");
+    const submit = document.getElementById("rp-submit");
+    const errorBox = document.getElementById("rp-error");
+    const done = document.getElementById("rp-done");
+    let picked: Picked | null = null;
+    let sending = false;
+
+    /** 由選區推出上報資料：篇 id、段序、正文碼點區間、前後文（前後各 20 字）。 */
+    const capture = (): Picked | null => {
+      const selection = window.getSelection();
+      if (body === null || selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
+      const range = selection.getRangeAt(0);
+      const start = elementOf(range.startContainer);
+      const end = elementOf(range.endContainer);
+      if (start === null || end === null || !body.contains(start) || !body.contains(end)) return null;
+      if (start.closest("rt") !== null && end.closest("rt") !== null) return null;
+      const article = start.closest<HTMLElement>("[data-article]");
+      if (article === null || article !== end.closest("[data-article]")) return null;
+      const text = textOf(range.cloneContents());
+      if (text === "") return null;
+
+      const pieces: SelectionPiece[] = [];
+      for (const segment of article.querySelectorAll<HTMLElement>(".para [data-o]")) {
+        if (!range.intersectsNode(segment)) continue;
+        let offset = Number(segment.dataset.o);
+        for (const node of textNodes(segment, "rt")) {
+          if (range.intersectsNode(node)) {
+            const from = node === range.startContainer ? range.startOffset : 0;
+            const to = node === range.endContainer ? range.endOffset : node.data.length;
+            pieces.push({ start: offset + [...node.data.slice(0, from)].length, text: node.data.slice(from, to) });
+          }
+          offset += [...node.data].length;
         }
-      });
-    }
+      }
 
-    document.addEventListener("click", (event) => {
-      if (event.target instanceof Element && event.target.closest(".cite-pop, button[data-cite]") !== null) return;
-      closeCites();
+      const host = start.closest(".para, .tr p, .art-title");
+      return {
+        text,
+        fragment: fragmentAround(host === null ? text : textOf(host), text),
+        articleId: article.id,
+        paragraphIndex: Number(start.closest<HTMLElement>("[data-pi]")?.dataset.pi ?? 0),
+        span: selectionSpan(pieces),
+      };
+    };
+
+    const checkedType = (): string =>
+      form?.querySelector<HTMLInputElement>('input[name="type"]:checked')?.value ?? "";
+
+    const render = (): void => {
+      if (hint !== null) {
+        hint.textContent = picked
+          ? "所選文字（喺正文再揀可以更換）："
+          : "喺正文揀選有問題嘅字，就會自動帶入呢度。";
+      }
+      if (selBox !== null) {
+        const shown = picked ? clipText(picked.text, 40) : "";
+        selBox.textContent = picked ? `「${shown}${shown.length < picked.text.length ? "…" : ""}」` : "";
+        selBox.hidden = picked === null;
+      }
+      if (submit instanceof HTMLButtonElement) {
+        const ready = picked !== null && checkedType() !== "";
+        submit.disabled = !ready || sending;
+        submit.textContent = sending ? "提交緊…" : ready ? "提交上報" : "揀選正文同問題類型先可以提交";
+      }
+    };
+
+    const onSelection = (): void => {
+      const next = capture();
+      if (next === null) return;
+      if (picked?.text === next.text && picked.articleId === next.articleId && picked.span?.start === next.span?.start) {
+        return;
+      }
+      picked = next;
+      if (errorBox !== null) errorBox.hidden = true;
+      if (form !== null && done !== null && !done.hidden) {
+        done.hidden = true;
+        form.hidden = false;
+      }
+      render();
+    };
+
+    let selectionTimer = 0;
+    document.addEventListener("selectionchange", () => {
+      window.clearTimeout(selectionTimer);
+      selectionTimer = window.setTimeout(onSelection, 250);
+    });
+    document.addEventListener("mouseup", (event) => {
+      if (body !== null && event.target instanceof Node && body.contains(event.target)) onSelection();
     });
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeCites();
+    form?.addEventListener("change", render);
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const type = checkedType();
+      if (!(form instanceof HTMLFormElement) || picked === null || type === "" || sending) return;
+      const data = new FormData(form);
+      const report = picked;
+      const payload = {
+        article_id: report.articleId,
+        fragment: clipText(report.fragment, 600),
+        selected_text: clipText(report.text, 200),
+        paragraph_index: report.paragraphIndex,
+        span_start: report.span?.start ?? null,
+        span_end: report.span?.end ?? null,
+        type,
+        suggestion: String(data.get("suggestion") ?? "").trim(),
+        website: String(data.get("website") ?? ""),
+      };
+      sending = true;
+      if (errorBox !== null) errorBox.hidden = true;
+      render();
+      // 只顯示服務端講嘅原因（例如限流）；網絡錯誤一律用通用文案。
+      let failure = "送出失敗，請稍後再試。";
+      try {
+        const response = await fetch("/api/correct", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result: { ok?: unknown; id?: unknown; error?: unknown } = await response.json().catch(() => ({}));
+        if (!response.ok || result.ok !== true) {
+          if (typeof result.error === "string" && result.error !== "") failure = result.error;
+          throw new Error(failure);
+        }
+        const entries = readStore().filter(
+          (entry) => !(entry.article_id === payload.article_id && entry.selected_text === payload.selected_text),
+        );
+        entries.push({
+          id: typeof result.id === "number" ? result.id : null,
+          article_id: payload.article_id,
+          selected_text: payload.selected_text,
+          type,
+          created_at: new Date().toISOString(),
+        });
+        writeStore(entries);
+        markReported(payload.article_id, payload.selected_text, type);
+        form.hidden = true;
+        if (done !== null) {
+          done.hidden = false;
+          done.querySelector<HTMLElement>(".rp-ok")?.focus();
+        }
+      } catch {
+        if (errorBox !== null) {
+          errorBox.textContent = failure;
+          errorBox.hidden = false;
+        }
+      } finally {
+        sending = false;
+        render();
+      }
     });
 
-    /** 辭叢懸浮卡：mouseup 取詞，300ms 後浮出；移動、滾動或按 Esc 收起。 */
+    document.getElementById("rp-again")?.addEventListener("click", () => {
+      picked = null;
+      if (form instanceof HTMLFormElement) {
+        form.reset();
+        form.hidden = false;
+      }
+      if (done !== null) done.hidden = true;
+      window.getSelection()?.removeAllRanges();
+      render();
+      hint?.focus();
+    });
+
+    /* ---- 辭叢查詞：撳正文一個字，300ms 後浮出詞卡（觸控機唔出） ---- */
+
+    const dictCard = document.getElementById("dict-card");
+    const dictWord = document.getElementById("dict-word");
+    const dictLink = document.getElementById("dict-link");
     let dictTimer = 0;
     let dictPoint: { x: number; y: number } | null = null;
 
@@ -947,33 +1043,31 @@ const articleJsonLd = {
       }
       if (node === null || node.nodeType !== Node.TEXT_NODE) return null;
       const parent = node.parentElement;
-      if (parent === null || parent.closest("rt, .dict-card, .selbar, .report-mask, .cite-pop") !== null) return null;
+      if (parent === null || parent.closest("rt") !== null || parent.closest(".para, .tr p") === null) return null;
       const word = wordAround(node.nodeValue ?? "", offset);
       if (word === null) return null;
       return { word, rect: rect ?? parent.getBoundingClientRect() };
     };
 
     const showDict = (word: string, rect: DOMRect): void => {
-      if (dictCard === null || dcWord === null || dcLink === null) return;
-      dcWord.textContent = word;
-      dcLink.textContent = `去辭叢查「${word}」`;
-      dcLink.setAttribute("href", `https://jyutjyu.com/word/${encodeURIComponent(word)}`);
+      if (dictCard === null || dictWord === null || dictLink === null) return;
+      dictWord.textContent = word;
+      dictLink.textContent = `去辭叢查「${word}」`;
+      dictLink.setAttribute("href", `https://jyutjyu.com/word/${encodeURIComponent(word)}`);
       dictCard.hidden = false;
       const width = dictCard.offsetWidth;
       const height = dictCard.offsetHeight;
       const x = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 8));
       let y = rect.top - height - 8;
       if (y < 8) y = rect.bottom + 8;
-      dictCard.style.left = `${Math.round(x)}px`;
-      dictCard.style.top = `${Math.round(Math.min(y, window.innerHeight - height - 8))}px`;
+      dictCard.style.setProperty("--x", `${Math.round(x)}px`);
+      dictCard.style.setProperty("--y", `${Math.round(Math.min(y, window.innerHeight - height - 8))}px`);
     };
 
     document.addEventListener("mouseup", (event) => {
       if (window.matchMedia("(hover: none)").matches) return;
-      if (event.target instanceof Element && event.target.closest(".dict-card, .selbar, .report-mask, .cite-pop") !== null) {
-        return;
-      }
-      if (docRoot === null || !(event.target instanceof Node) || !docRoot.contains(event.target)) {
+      if (event.target instanceof Element && event.target.closest(".dict-card") !== null) return;
+      if (body === null || !(event.target instanceof Node) || !body.contains(event.target)) {
         hideDict();
         return;
       }
@@ -1006,3 +1100,815 @@ const articleJsonLd = {
     });
   </script>
 </Base>
+
+<style>
+  /* ---- 工具列：黏喺頁首下面 ---- */
+
+  .rd-toolbar {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 20;
+    background: rgba(251, 249, 244, 0.95);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-10);
+  }
+
+  .rd-toolbar__inner {
+    max-width: var(--wrap-wide);
+    margin: 0 auto;
+    padding: 10px var(--gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 24px;
+  }
+
+  .crumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--graphite);
+  }
+
+  .crumb__cur {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .rd-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hl-chip {
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+
+  .hl-chip[hidden] {
+    display: none;
+  }
+
+  .rd-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--graphite);
+  }
+
+  /* ---- 版面：≥1080 三欄，否則單欄 ---- */
+
+  .rd-grid {
+    max-width: var(--wrap-wide);
+    margin: 0 auto;
+    padding: 28px var(--gutter) 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+  }
+
+  .rd-toc,
+  .rd-side {
+    min-width: 0;
+  }
+
+  @media (min-width: 1080px) {
+    .rd-grid {
+      grid-template-columns: 248px minmax(0, 1fr) 300px;
+    }
+
+    .rd-toc,
+    .rd-side {
+      position: sticky;
+      top: calc(var(--header-h) + var(--toolbar-h, 58px));
+      max-height: calc(100vh - var(--header-h) - var(--toolbar-h, 58px) - 24px);
+      overflow: auto;
+    }
+  }
+
+  /* ---- 左欄：目錄 ---- */
+
+  .toc-head {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line-10);
+  }
+
+  .toc-head p {
+    margin: 0;
+  }
+
+  .toc-head .toc-title {
+    margin-top: 8px;
+    font-family: var(--font-serif);
+    font-size: 21px;
+    line-height: 1.3;
+  }
+
+  .toc-meta {
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .issue-switch {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .issue-switch a {
+    padding: 6px 0;
+    line-height: 1.25;
+    text-align: center;
+    border: 1px solid rgba(3, 22, 50, 0.15);
+    background: var(--card);
+    color: var(--ink);
+    transition:
+      background-color 200ms,
+      border-color 200ms;
+  }
+
+  .issue-switch a:hover {
+    text-decoration: none;
+    border-color: var(--kapok);
+  }
+
+  .issue-switch a[aria-current] {
+    border-color: var(--kapok);
+    background: var(--kapok);
+    color: #fff;
+  }
+
+  .issue-switch__num,
+  .issue-switch__date {
+    display: block;
+  }
+
+  .issue-switch__num {
+    font-family: var(--font-serif);
+    font-size: 18px;
+  }
+
+  .issue-switch__date {
+    font-size: 10px;
+  }
+
+  .toc-toggle {
+    display: none;
+    margin-top: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--line-20);
+    background: transparent;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 200ms;
+  }
+
+  .toc-toggle:hover {
+    background: var(--surface-mid);
+  }
+
+  .toc-list {
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+  }
+
+  .toc-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    padding: 7px 10px;
+    border-left: 3px solid transparent;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+    transition: background-color 200ms;
+  }
+
+  .toc-item:hover {
+    background: var(--surface-mid);
+    text-decoration: none;
+  }
+
+  .toc-item:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .toc-item.is-current {
+    border-left-color: var(--kapok);
+    background: var(--surface-high);
+    font-weight: 700;
+  }
+
+  .toc-num {
+    padding-top: 1px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--graphite);
+  }
+
+  @media (max-width: 1079px) {
+    .toc-toggle {
+      display: inline-block;
+    }
+
+    .toc-list {
+      display: none;
+    }
+
+    .rd-toc.is-open .toc-list {
+      display: block;
+    }
+  }
+
+  /* ---- 中欄：正文卡 ---- */
+
+  .rd-card {
+    min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--line-10);
+  }
+
+  .card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding: 22px clamp(20px, 3vw, 40px);
+    border-bottom: 1px solid var(--line-08);
+  }
+
+  .leaf-no {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .leaf-no__num {
+    font-family: var(--font-serif);
+    font-size: 56px;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--kapok);
+  }
+
+  .leaf-no__pos {
+    color: var(--graphite);
+  }
+
+  .card-body {
+    padding: clamp(24px, 3vw, 44px) clamp(20px, 3vw, 44px) 8px;
+  }
+
+  .art {
+    margin-bottom: 44px;
+    scroll-margin-top: calc(var(--header-h) + var(--toolbar-h, 58px) + 16px);
+  }
+
+  .art-head {
+    margin: 0 0 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+  }
+
+  /* 無題篇章：淨係錨點，貼近正文 */
+  .art-head--bare {
+    margin-bottom: 8px;
+  }
+
+  .art-title {
+    font-size: clamp(28px, 3vw, 38px);
+    line-height: 1.25;
+    letter-spacing: 0.02em;
+  }
+
+  .art-anchor {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--graphite);
+  }
+
+  .art-anchor.is-copied::after {
+    content: " · 已複製連結";
+    color: var(--archive-green);
+  }
+
+  .art-empty {
+    margin: 0;
+    font-size: 15px;
+    color: var(--graphite);
+  }
+
+  /* 正文：預設橫排（CJK 21px）；英文為主 18px；豎排只畀 CJK 篇章 */
+  .art-text {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .art-flow {
+    width: 100%;
+    font-family: var(--font-serif);
+    font-size: 21px;
+    line-height: 2.35;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  .art--latin .art-flow {
+    font-size: 18px;
+    letter-spacing: 0;
+  }
+
+  :global(html.rd-nojp) .art-flow {
+    line-height: 1.95;
+  }
+
+  :global(html.rd-nojp) .art--latin .art-flow {
+    line-height: 1.8;
+  }
+
+  :global(html:not(.rd-h)) .art--cjk .art-flow {
+    writing-mode: vertical-rl;
+    width: auto;
+    max-width: 100%;
+    height: clamp(420px, 64vh, 700px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+    font-size: 24px;
+    line-height: 2.5;
+    letter-spacing: 0.08em;
+  }
+
+  :global(html.rd-nojp:not(.rd-h)) .art--cjk .art-flow {
+    line-height: 2;
+  }
+
+  .para {
+    margin: 0;
+    margin-block-end: 0.9em;
+  }
+
+  .art-flow :global(rt) {
+    font-family: var(--font-sans);
+    font-size: 0.42em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--kapok);
+  }
+
+  :global(html.rd-nojp) .art-flow :global(rt) {
+    display: none;
+  }
+
+  /* □ 缺字；已回報字（金褐）。text-decoration 喺豎排會自動轉去字側 */
+  .art-flow :global(.miss) {
+    color: var(--kapok);
+    text-decoration: underline dashed var(--kapok);
+    text-underline-offset: 0.2em;
+    cursor: help;
+  }
+
+  .card-body :global(.reported) {
+    background: var(--gold-a12);
+    text-decoration: underline dashed var(--muted-gold);
+    text-underline-offset: 0.25em;
+    cursor: help;
+  }
+
+  /* ---- 今譯：橫排逐段、豎排成篇 callout；關今譯時全部收起 ---- */
+
+  .tr {
+    padding: 20px 24px;
+    background: var(--surface-low);
+    border-left: 4px solid var(--muted-gold);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.9;
+    letter-spacing: 0;
+    color: var(--ink);
+  }
+
+  .tr-whole {
+    margin-top: 28px;
+  }
+
+  .tr-inline {
+    margin: -0.2em 0 1.4em;
+    padding: 14px 20px;
+  }
+
+  .tr-inline,
+  .tr-whole {
+    display: none;
+  }
+
+  :global(html:not(.rd-notr)) .tr-inline {
+    display: block;
+  }
+
+  :global(html:not(.rd-notr):not(.rd-h)) .art--cjk .tr-inline {
+    display: none;
+  }
+
+  :global(html:not(.rd-notr):not(.rd-h)) .art--cjk .tr-whole {
+    display: block;
+  }
+
+  .tr-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: var(--muted-gold);
+    line-height: 1.5;
+  }
+
+  .tr-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .tr-ver {
+    font-size: 12px;
+  }
+
+  .tr p {
+    margin: 0 0 0.8em;
+    text-wrap: pretty;
+  }
+
+  .tr-inline p {
+    margin: 0;
+  }
+
+  .tr :global(.tr-note) {
+    font-size: 13px;
+    color: var(--muted-gold);
+  }
+
+  /* ---- 插圖等版面標記 ---- */
+
+  .ph {
+    margin-bottom: 44px;
+    min-height: 180px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    background: var(--surface-mid);
+    border: 1.5px dashed rgba(3, 22, 50, 0.22);
+  }
+
+  .ph__text {
+    font-family: var(--font-serif);
+    font-size: 22px;
+  }
+
+  .ph__note {
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  /* ---- 卡底：揭頁 ---- */
+
+  .card-foot {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 16px clamp(20px, 3vw, 40px);
+    border-top: 1px solid var(--line-08);
+    background: var(--parchment);
+  }
+
+  .pg {
+    padding: 10px 18px;
+    white-space: nowrap;
+  }
+
+  .pg--prev {
+    justify-self: start;
+  }
+
+  .pg--next {
+    justify-self: end;
+  }
+
+  .pg-info {
+    margin: 0;
+    font-size: 13px;
+    text-align: center;
+    color: var(--graphite);
+  }
+
+  .pg-info b {
+    color: var(--ink);
+  }
+
+  .pg-hint {
+    font-size: 11px;
+  }
+
+  @media (max-width: 519px) {
+    .pg {
+      padding: 10px 12px;
+    }
+  }
+
+  /* ---- 右欄：來源、引用、報錯 ---- */
+
+  .rd-side {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .src-card {
+    padding: 22px 24px;
+    background: var(--surface-low);
+  }
+
+  /* 側欄標題：設計系統 h3 行高 1.3 */
+  .rd-side h2 {
+    line-height: 1.3;
+  }
+
+  .src-card h2 {
+    margin: 0 0 14px;
+    font-size: 22px;
+  }
+
+  .src-list {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 9px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .src-list dt {
+    color: var(--graphite);
+  }
+
+  .src-list dd {
+    margin: 0;
+  }
+
+  .cite-card,
+  .rp-card {
+    background: var(--card);
+    border: 1px solid var(--line-10);
+  }
+
+  .cite-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 18px 0;
+  }
+
+  .cite-head h2,
+  .rp-card h2 {
+    font-size: 20px;
+  }
+
+  .cite-copy {
+    padding: 3px 12px;
+    border-color: rgba(181, 58, 37, 0.35);
+  }
+
+  .cite-tabs {
+    display: flex;
+    padding: 6px 18px 0;
+    border-bottom: 1px solid var(--line-10);
+  }
+
+  .cite-tabs [role="tab"] {
+    margin-bottom: -1px;
+    padding: 8px 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--graphite);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      color 200ms,
+      border-color 200ms;
+  }
+
+  .cite-tabs [role="tab"][aria-selected="true"] {
+    border-bottom-color: var(--kapok);
+    color: var(--kapok);
+  }
+
+  .cite-pre {
+    margin: 0;
+    padding: 14px 18px;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+
+  .cite-pre:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .rp-card {
+    padding: 18px;
+  }
+
+  .rp-card h2 {
+    margin: 0 0 8px;
+  }
+
+  .rp-form p {
+    margin: 0;
+  }
+
+  .rp-hint {
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .rp-form .rp-sel {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--kapok-container);
+    color: var(--kapok);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .rp-types {
+    min-width: 0;
+    margin: 14px 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .rp-types legend {
+    float: left;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .rp-chips {
+    clear: both;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .rp-chip {
+    position: relative;
+  }
+
+  .rp-chip .chip {
+    padding: 3px 12px;
+    border-color: rgba(3, 22, 50, 0.18);
+    font-weight: 400;
+  }
+
+  .rp-chip input:checked + .chip {
+    border-color: var(--kapok);
+    background: var(--kapok);
+    color: #fff;
+  }
+
+  .rp-chip input:focus-visible + .chip {
+    outline: 2px solid rgba(181, 58, 37, 0.55);
+    outline-offset: 2px;
+  }
+
+  .rp-note {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(3, 22, 50, 0.18);
+    border-radius: 0;
+    background: var(--parchment);
+    font-size: 14px;
+    resize: vertical;
+  }
+
+  .rp-note:focus {
+    border-color: var(--kapok);
+  }
+
+  .rp-hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .rp-submit {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .rp-form .rp-error {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--kapok);
+  }
+
+  .rp-form .rp-foot {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--graphite);
+  }
+
+  .rp-ok {
+    margin: 0;
+    padding: 14px 16px;
+    background: var(--green-a12);
+    color: var(--archive-green);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .rp-again {
+    margin-top: 10px;
+    padding: 6px 12px;
+    font-weight: 400;
+  }
+
+  /* ---- 辭叢詞卡（位置由 --x / --y 設定） ---- */
+
+  .dict-card {
+    position: fixed;
+    left: var(--x, 0px);
+    top: var(--y, 0px);
+    z-index: 65;
+    max-width: min(280px, calc(100vw - 16px));
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--line-20);
+  }
+
+  .dict-card[hidden] {
+    display: none;
+  }
+
+  .dict-card__word {
+    margin: 0 0 8px;
+    font-family: var(--font-serif);
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+  }
+
+  .dict-card__link {
+    font-size: 13px;
+  }
+
+  .dict-card__hint {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: var(--graphite);
+  }
+</style>

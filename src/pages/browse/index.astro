@@ -1,23 +1,34 @@
 ---
-import Progress from "../../components/Progress.astro";
-import Yuwai from "../../components/Yuwai.astro";
+import LeafGrid from "../../components/LeafGrid.astro";
 import Base from "../../layouts/Base.astro";
-import { getCorpora, getIssues, getPages, getSiteTotals } from "../../utils/corpus.ts";
-import { pageParam } from "../../utils/reader.ts";
+import {
+  getCorpora,
+  getFirstReadablePage,
+  getIssues,
+  getPages,
+  getSiteTotals,
+} from "../../utils/corpus.ts";
+import { corpusMeta, issueLabel } from "../../utils/corpus-meta.ts";
+import { pageParam, percent } from "../../utils/reader.ts";
 
-const corpora = getCorpora();
 const totals = getSiteTotals();
 
-const rows = corpora.map((corpus) => {
-  const issues = getIssues(corpus.slug);
+const sections = getCorpora().map((corpus, index) => {
+  const issues = getIssues(corpus.slug).map((issue) => ({
+    issue,
+    // 原型書目庫：單冊語料標「全冊」
+    label: corpus.issueCount > 1 ? issueLabel(corpus.issueCount, issue.issue) : "全冊",
+    pages: getPages(corpus.slug, issue.issue),
+  }));
   const first = issues[0];
-  const firstPage = first ? getPages(corpus.slug, first.issue)[0] : undefined;
   return {
     corpus,
-    href:
-      first && firstPage
-        ? `/read/${corpus.slug}/${first.issue}/${pageParam(firstPage.page)}/`
-        : undefined,
+    meta: corpusMeta(corpus, index),
+    issues,
+    pct: percent(corpus.verifiedPages, corpus.pageCount),
+    readHref: first?.pages.length
+      ? `/read/${corpus.slug}/${first.issue.issue}/${pageParam(getFirstReadablePage(corpus.slug, first.issue.issue))}/`
+      : undefined,
   };
 });
 ---
@@ -27,65 +38,397 @@ const rows = corpora.map((corpus) => {
   description={`已發佈 ${totals.corpusCount} 個粵語語料，共 ${totals.pageCount} 葉 / ${totals.articleCount} 篇；逐葉列出底本年代、葉數與校對進度。`}
   current="browse"
 >
-  <div class="wrap">
-    <div class="page-head">
-      <div>
+  <section class="head">
+    <div class="wrap head__top">
+      <div class="head__text">
+        <div class="eyebrow">Catalogue · 書目庫</div>
         <h1>書目庫</h1>
-        <p>1842 至 1907 年粵語白話文獻 · 底本屬公有領域 · 掃描影像來自 Internet Archive</p>
+        <p class="lede">1842 至 1907 年粵語白話文獻 · 底本屬公有領域 · 掃描影像來自 Internet Archive</p>
       </div>
-      <p class="stat">
-        <b>{totals.corpusCount}</b> 個語料　·　已發佈 {totals.pageCount} 葉 / {totals.articleCount} 篇
-      </p>
+      <div class="totals">
+        <div class="total"><span class="total__num">{totals.corpusCount}</span><span class="total__unit">個語料</span></div>
+        <div class="total"><span class="total__num">{totals.pageCount}</span><span class="total__unit">葉</span></div>
+        <div class="total"><span class="total__num">{totals.articleCount}</span><span class="total__unit">篇</span></div>
+        <div class="total total--ok">
+          <span class="total__num">{totals.verifiedPages}</span><span class="total__unit">葉已核驗</span>
+        </div>
+      </div>
     </div>
+    <div class="wrap legend">
+      <span><i class="swatch swatch--ok" aria-hidden="true"></i>已核驗（上游 status 為 verified）</span>
+      <span><i class="swatch swatch--todo" aria-hidden="true"></i>待校葉</span>
+      <span>每一格係一葉 · 撳落去直接跳去嗰葉</span>
+    </div>
+  </section>
 
-    <div class="list">
-      {
-        rows.map(({ corpus, href }) => (
-          <article class="row">
-            <div class="row-body">
-              <div class="row-top">
-                <h2><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></h2>
-                <span class="yr">{corpus.year ?? "年代待考"}</span>
+  {
+    sections.map(({ corpus, meta, issues, pct, readHref }) => (
+      <section class="corpus" aria-labelledby={`c-${corpus.slug}`}>
+        <div class="wrap corpus__inner">
+          <div class:list={["spine", "tone-block", `tone-${meta.tone}`]}>
+            <div class="corner" aria-hidden="true" />
+            <div>
+              <div class="spine__kind">{meta.kind}</div>
+              <div class:list={["spine__year", { "spine__year--none": corpus.year == null }]}>{corpus.year ?? "年代待考"}</div>
+            </div>
+            <div class:list={["spine__title", { "spine__title--en": meta.script === "en" }]} aria-hidden="true">
+              {meta.spineTitle}
+            </div>
+            <div class="spine__slug">{corpus.slug}</div>
+          </div>
+
+          <div class="info">
+            <h2 id={`c-${corpus.slug}`} class:list={{ en: meta.script === "en" }}>
+              <a href={`/browse/${corpus.slug}/`}>{corpus.title}</a>
+            </h2>
+
+            <div class="facts">
+              <div class="fact"><span class="fact__num">{corpus.pageCount}</span><span class="fact__unit">葉（掃描）</span></div>
+              <div class="fact"><span class="fact__num">{corpus.articleCount}</span><span class="fact__unit">篇</span></div>
+              <div class="fact">
+                <span class="fact__num">{corpus.issueCount}</span>
+                <span class="fact__unit">{corpus.issueCount > 1 ? "期" : "冊"}</span>
               </div>
-              <p class="slug">
-                {corpus.slug}
-                {corpus.issueCount > 1 ? ` · ${corpus.issueCount} 期` : " · 單冊"}
-              </p>
-
-              <div class="facts">
-                <div class="fact"><b>{corpus.pageCount}</b>葉（掃描）</div>
-                <div class="fact"><b>{corpus.articleCount}</b>篇</div>
-                <div class="fact"><b>{corpus.issueCount}</b>{corpus.issueCount > 1 ? "期" : "冊"}</div>
-                <div class="fact"><b>{corpus.verifiedPages}</b>葉已核驗</div>
-              </div>
-
-              <Progress
-                verified={corpus.verifiedPages}
-                total={corpus.pageCount}
-                label={`葉級校對進度 · 已核驗 ${corpus.verifiedPages} / ${corpus.pageCount} 葉（另 ${corpus.needsReviewPages} 葉待校）`}
-              />
-
-              <div class="row-foot">
-                <span class="badge pub">已發佈</span>
-                <span class="note">底本來源：{corpus.sourceLine}</span>
-                <a class="btn secondary" href={`/browse/${corpus.slug}/`}>期號目錄 →</a>
-                {href && <a class="btn secondary" href={href}>進入閱讀 →</a>}
+              <div class="fact fact--ok">
+                <span class="fact__num">{corpus.verifiedPages}</span><span class="fact__unit">葉已核驗</span>
               </div>
             </div>
-          </article>
-        ))
-      }
-    </div>
 
-    <div class="legend" style="margin-top:22px">
-      <span><i style="background:var(--ok)"></i>已核驗（上游 status 為 verified）</span>
-      <span><i style="background:var(--placeholder);border:1px solid var(--rule)"></i>待校葉</span>
-    </div>
+            <div class="progress">
+              <div class="progress__head">
+                <span class="progress__label">
+                  葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
+                </span>
+                <span class="progress__pct">{pct}%</span>
+              </div>
+              <div class="meter" style={`--pct:${pct}%`} aria-hidden="true"><i /></div>
+            </div>
 
-    <p class="note" style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-top:22px">
-      只列上游已發佈嘅語料；其餘底本仍喺資料管道整理，未進入發佈層，故此處唔顯示。
-    </p>
-  </div>
+            <div>
+              {issues.map(({ issue, label, pages }) => (
+                <div class="issue" role="group" aria-labelledby={`i-${corpus.slug}-${issue.issue}`}>
+                  <div class="issue__meta" id={`i-${corpus.slug}-${issue.issue}`}>
+                    <div class="issue__label">{label}</div>
+                    <div class="issue__date">{issue.issue_date ?? "日期待考"}</div>
+                    <div class="issue__stat">
+                      已核驗 {issue.verified_pages} / {issue.pages}
+                    </div>
+                  </div>
+                  <LeafGrid corpus={corpus.slug} issue={issue.issue} pages={pages} />
+                </div>
+              ))}
+            </div>
 
-  <Yuwai size="sm" />
+            <div class="foot">
+              <span class="foot__src">已發佈 · 底本來源：{corpus.sourceLine}</span>
+              <div class="foot__actions">
+                <a class="btn btn--outline" href={`/browse/${corpus.slug}/`}>期號目錄</a>
+                {readHref && <a class="btn btn--solid" href={readHref}>進入閱讀 →</a>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    ))
+  }
+
+  <p class="wrap note">只列上游已發佈嘅語料；其餘底本仍喺資料管道整理，未進入發佈層，故此處唔顯示。</p>
 </Base>
+
+<style>
+  .head,
+  .corpus {
+    border-bottom: 1px solid var(--line-10);
+  }
+
+  .head__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding-top: clamp(48px, 6vw, 88px);
+    padding-bottom: 28px;
+  }
+
+  .head__text {
+    flex: 1 1 460px;
+    min-width: 0;
+  }
+
+  h1 {
+    margin: 14px 0 18px;
+    font-size: clamp(56px, 8vw, 112px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+
+  /* 原型設計系統 p { line-height: 1.75rem }：導語同頁底註都係 28px 行高 */
+  .lede,
+  .note {
+    line-height: 1.75rem;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 34em;
+    font-size: 18px;
+    color: var(--graphite);
+    text-wrap: pretty;
+  }
+
+  .totals {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .total {
+    padding: 0 24px;
+    border-left: 1px solid var(--line-12);
+  }
+
+  .total__num,
+  .fact__num {
+    display: block;
+    font-family: var(--font-serif);
+  }
+
+  .total__num {
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .total__unit,
+  .fact__unit {
+    display: block;
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .total--ok .total__num,
+  .fact--ok .fact__num {
+    color: var(--archive-green);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 28px;
+    padding-bottom: 24px;
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .legend > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .swatch {
+    flex: none;
+    width: 13px;
+    height: 13px;
+  }
+
+  .swatch--ok {
+    background: var(--archive-green);
+  }
+
+  .swatch--todo {
+    border: 1px solid rgba(114, 91, 53, 0.6);
+  }
+
+  .corpus__inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    padding-block: 48px;
+  }
+
+  /* 書脊卡 */
+  .spine {
+    --corner-size: 90px;
+    --corner-offset: -36px;
+    flex: 0 1 240px;
+    min-width: 200px;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 26px;
+  }
+
+  .spine.tone-ink {
+    --corner-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .spine__kind {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .spine__year {
+    margin-top: 10px;
+    font-family: var(--font-serif);
+    font-size: 72px;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+  }
+
+  .spine__year--none {
+    font-size: 34px;
+    letter-spacing: 0;
+  }
+
+  .spine__title {
+    align-self: flex-end;
+    writing-mode: vertical-rl;
+    font-family: var(--font-serif);
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: 0.18em;
+  }
+
+  .spine__title--en {
+    font-size: 24px;
+    letter-spacing: 0.06em;
+  }
+
+  .spine__slug {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--on-dark-88);
+  }
+
+  /* 資料欄 */
+  .info {
+    flex: 1 1 560px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  h2 {
+    font-size: clamp(32px, 3.6vw, 48px);
+    line-height: 1.1;
+  }
+
+  h2.en {
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1.15;
+  }
+
+  h2 a {
+    color: var(--ink);
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    border-block: 1px solid var(--line-12);
+  }
+
+  .fact {
+    padding: 14px 16px;
+    border-left: 1px solid var(--line-08);
+  }
+
+  .fact:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .fact__num {
+    font-size: 40px;
+    line-height: 1.1;
+  }
+
+  .progress__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .progress__label {
+    font-size: 14px;
+  }
+
+  .progress__pct {
+    font-family: var(--font-serif);
+    font-size: 32px;
+    line-height: 1;
+    color: var(--archive-green);
+  }
+
+  .progress .meter {
+    --h: 10px;
+    margin-top: 10px;
+  }
+
+  /* 每期一列：期號／日期／核驗數 + 逐葉格 */
+  .issue {
+    display: grid;
+    grid-template-columns: 116px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+    padding: 12px 0;
+    border-top: 1px dashed var(--line-14);
+  }
+
+  .issue__meta {
+    line-height: 1.4;
+  }
+
+  .issue__label {
+    font-family: var(--font-serif);
+    font-size: 18px;
+  }
+
+  .issue__date,
+  .issue__stat {
+    font-size: 12px;
+  }
+
+  .issue__date {
+    color: var(--graphite);
+  }
+
+  .issue__stat {
+    font-weight: 600;
+    color: var(--archive-green);
+  }
+
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+
+  .foot__src {
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .foot__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .note {
+    margin-block: 0;
+    padding-block: 28px 72px;
+    font-size: 13px;
+    color: var(--graphite);
+  }
+</style>
