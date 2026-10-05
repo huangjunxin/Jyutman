@@ -147,7 +147,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
             {issue.date_note && (
               <details class="date-note">
                 <summary>
-                  <span class="date-note__show">日期考證 ▾</span>
+                  <span class="date-note__show">日期考證 <span aria-hidden="true">▾</span></span>
                   <span class="date-note__hide">收埋日期考證</span>
                 </summary>
                 <div class="date-note__body">{issue.date_note}</div>
@@ -155,7 +155,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
             )}
             {href ? (
               <a class="btn btn--solid issue__go" href={href}>
-                第一葉 →
+                第一葉 <span aria-hidden="true">→</span>
               </a>
             ) : (
               <span class="badge badge--gold">未開放</span>
@@ -204,6 +204,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
                     aria-expanded="true"
                     data-toc-toggle
                     data-total={toc.length}
+                    data-preview={TOC_PREVIEW}
                     hidden
                   >
                     收埋
@@ -219,17 +220,20 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     <p class="foot-note">
       頁數、篇數、校對進度均取自上游發佈層 <code>issues.jsonl</code>；葉碼用掃描序號，永遠連續。
     </p>
-    <a class="back" href="/browse/">← 返書目庫</a>
+    <a class="back" href="/browse/"><span aria-hidden="true">←</span> 返書目庫</a>
   </section>
 </Base>
 
 <script>
-  // 篇目摺疊：冇 JS 時全部顯示；有 JS 先收埋第 9 條起，並顯示「睇晒 N 條」掣。
+  // 篇目摺疊：冇 JS 時全部顯示；有 JS 先收埋 TOC_PREVIEW 條之後嘅，並顯示「睇晒 N 條」掣。
   for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-toc-toggle]")) {
     const list = document.getElementById(btn.getAttribute("aria-controls") ?? "");
     if (!list) continue;
+    const preview = Number(btn.dataset.preview);
     const set = (open: boolean) => {
-      list.toggleAttribute("data-collapsed", !open);
+      list.querySelectorAll<HTMLLIElement>(":scope > li").forEach((li, i) => {
+        li.hidden = !open && i >= preview;
+      });
       btn.setAttribute("aria-expanded", String(open));
       btn.textContent = open ? "收埋" : `睇晒 ${btn.dataset.total} 條`;
     };
@@ -542,10 +546,6 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     list-style: none;
   }
 
-  .toc[data-collapsed] > li:nth-child(n + 9) {
-    display: none;
-  }
-
   .toc a {
     display: grid;
     grid-template-columns: 36px minmax(0, 1fr);
@@ -573,6 +573,11 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 
   .toc__toggle {
     margin-top: 12px;
+  }
+
+  /* .btn 嘅 display 蓋過 UA [hidden]；冇 JS 時呢粒掣要真係唔見 */
+  .toc__toggle[hidden] {
+    display: none;
   }
 
   .foot-note {
