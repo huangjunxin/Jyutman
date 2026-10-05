@@ -129,7 +129,7 @@ CREATE INDEX idx_corrections_status   ON corrections (status);
 
 - 语义：所选非空白字在该篇文章正文（上游 `text`，未经合并渲染）中的 Unicode 码点下标，半开区间 `[span_start, span_end)`；不计粤拼注音。阅读器由正文各片的 `data-o` 起始下标换算（`selectionSpan`），选区落在篇名或今译时送 `null`。
 - 校验：两者须同时提供或同时缺省（`undefined` 与 `null` 都算缺省）；只给一个返回 400「區間起點同終點要一齊提供」；各自须为 0 至 100000 的整数（数字或数字字符串）；`span_end` 小于 `span_start` 返回 400；不按文章实际长度校验。
-- 存储：原样写入同名列；缺省则为 `NULL`（旧客户端兼容）。`GET /api/reports` 与 `GET /api/queue` 暂不返回这两列，工作台导出也不含。
+- 存储：原样写入同名列；缺省则为 `NULL`（旧客户端兼容）。`GET /api/reports` 返回这两列（`server/db/corrections.ts` 的 `listReports`），阅读器据此按区间标出已回报处；`GET /api/queue` 暂不返回，工作台导出也不含。
 
 **匿名与隐私**：不收任何联系方式；表内不存提交者、IP、UA 等可识别资料；防滥用只靠 IP 令牌桶（内存态）与蜜罐字段。
 

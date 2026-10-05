@@ -162,7 +162,7 @@
 | 中栏：正文卡 | 卡头大号叶序号 + 「葉 · 第 i / n 葉」+ 状态徽章；卡身逐篇正文；卡底翻页 | 同左 |
 | 右栏（300px） | 黏顶：本葉來源、引用、報錯三张卡 | 堆在正文下方 |
 
-- 每篇正文按 `isLatinDominant`（拉丁字母占比 ≥ 50%，阈值见 `src/utils/reader.ts`）分两类：汉字篇随「行款」偏好竖排或横排；拉丁为主的篇章（英文课文、传教士罗马字）不论偏好一律横排（18px）。
+- 每篇正文按 `isCjkDominant`（汉字数多于拉丁字母数，见 `src/utils/reader.ts`）分两类：汉文篇随「行款」偏好竖排或横排；其余篇章（英文课文、传教士罗马字、无汉字的目录点线与页码）不论偏好一律横排（18px）。
 - 竖排汉字篇：`writing-mode: vertical-rl`，24px，高度 `clamp(420px, 64vh, 700px)`，超出部分横向滚动；横排汉字篇 21px。关粤拼时行高收紧一档。
 - 篇头：篇名（无题则省略）+ 「#文章 id」锚链；点锚链照常跳转，同时把该篇绝对 URL 复制到剪贴板。
 
@@ -222,7 +222,7 @@
 
 - 必须先在正文选字；问题类型单选 chip：錯字 / 缺字 / 標點分段 / 今譯疑問 / 其他（与服务端共用 `CORRECTION_TYPES`）；「建議讀法或說明」选填（≤1000 字）；蜜罐字段 `website`。选区与类型齐备前提交按钮停用。
 - 提交 `POST /api/correct`：`article_id`、`fragment`（所选文字前后各 20 码点，≤600）、`selected_text`（≤200）、`paragraph_index`、`span_start` / `span_end`（所选非空白字在该篇正文中的码点区间，不计粤拼；选区落在篇名或今译时为 `null`）、`type`、`suggestion`。字段规则见 docs/03 第 7 节。
-- 成功后：本机记录（`localStorage` 键 `jm-reports`，保留最近 200 条）+ 页内即时标出 `.reported` + 「再報一個」；重载后合并本机记录与 `GET /api/reports` 还原标记。匿名，不收任何联系方式。
+- 成功后：本机记录（`localStorage` 键 `jm-reports`，保留最近 200 条）+ 页内即时标出 `.reported` + 「再報一個」；重载后合并本机记录与 `GET /api/reports` 还原标记：两者都带 `span_start` / `span_end`，有区间就按区间标；旧记录无区间时按 `selected_text` 在该篇正文中搜字（不计空白），标第一处。匿名，不收任何联系方式。
 
 未实现：复制时附带引用出处行、移动端长按查词入口。
 
@@ -282,14 +282,13 @@
 
 | 用途 | 字体栈（`:root`） | 加载方式 |
 |---|---|---|
-| 衬线（标题、正文） | `Chiron Sung HK UI` → `Chiron Sung HK Variable` → Noto Serif TC → Songti TC → serif | UI 子集自托管；全量按 `unicode-range` 切片接罕用字 |
-| 无衬线（UI、今译、粤拼 `rt`） | `Inter Variable` → `Chiron Hei HK UI` → `Chiron Hei HK Variable` → Noto Sans TC → PingFang HK → sans-serif | 同上；拉丁字母由 Inter 负责 |
+| 衬线（标题、正文） | Chiron Sung HK → Noto Serif TC → Songti TC → serif | Google Fonts（`unicode-range` 切片按需取字） |
+| 无衬线（UI、今译、粤拼 `rt`） | Inter → Chiron Hei HK → Noto Sans TC → PingFang HK → sans-serif | 同上；拉丁字母由 Inter 负责 |
 | 等宽（代码、目录叶码） | `ui-monospace`, Menlo, Consolas | 系统字体 |
 
-- 第一档：设计系统 UI 子集 `public/fonts/chiron-sung-hk-ui.woff2`（约 470 KB）与 `chiron-hei-hk-ui.woff2`（约 225 KB），可变字重 200–900，`font-display: swap`，`Base.astro` 内 `<link rel="preload">`。
-- 第二档：`@fontsource-variable/chiron-sung-hk` 与 `@fontsource-variable/chiron-hei-hk` 的 `unicode-range` 切片，经 `src/styles/cjk-fallback-fonts.css` 以 `media="print"` + `onload` 非阻塞方式加载（附 `<noscript>` 回退）；浏览器只下载页面实际用到的切片。
-- `astro.config.mjs` 的 PostCSS 插件 `drop-whole-cjk-face` 在构建时剔除 fontsource 包里覆盖 U+4E00–9FFF 全区的 `chinese-traditional` 整包 face（代码注释记约 4.7 MB）：它声明在最后、匹配优先，页面只要有一个 UI 子集没收的字就会触发整包下载。
-- Inter Variable 由 `@fontsource-variable/inter` 在 `Base.astro` 引入。三个字体包均为 OFL-1.1（见各包 `package.json`）。
+- 三套字体（Chiron Sung HK 400–900、Chiron Hei HK 300–800、Inter 400–700）合成一条 Google Fonts css2 请求（`display=swap`），`Base.astro` 预连接 `fonts.googleapis.com` / `fonts.gstatic.com`，样式表以 `media="print"` + `onload` 非阻塞加载（附 `<noscript>` 回退）；不自托管任何字体文件。
+- CJK 切片按页面实际用到的字向 Google 即时下载；连不到 Google Fonts 的读者（如中国大陆）页面照常渲染，只用系统字体。
+- 三套字体均为 SIL Open Font License。
 - 细节与取舍见 docs/02 第 8 节。
 - **已定 D3**：粤拼一律用 LSHK 数字调（如 `nei5`），这是粤拼唯一标准写法。传教士拼式的调号符号属底本原文，原样保留，不属粤拼层、不做现代化改写。
 - **待验证**：Chiron 两套字体对扩展区生僻字的覆盖；缺字时浏览器会回落到系统字体。
@@ -297,7 +296,7 @@
 ### 4.4 版式规则
 
 - 竖排用 `writing-mode: vertical-rl`：24px、行高 2.5、字距 0.08em；横排汉字 21px、行高 2.35。行高按粤拼 `rt` 预留，关粤拼时收紧（竖排 2、横排 1.95）。
-- 拉丁字母为主的篇章整篇横排，沿用衬线字体栈，不再改用等宽字体；阈值见 `src/utils/reader.ts`。
+- 非汉文为主的篇章（`isCjkDominant` 为假）整篇横排，沿用衬线字体栈，不再改用等宽字体；判定见 `src/utils/reader.ts`。
 - 标点与用字：禁破折号规则适用于本站自编文案；底本原文按数据契约逐字保留（含旧式标点），不在此限。
 - 尊重 `prefers-reduced-motion`：关闭平滑滚动与过渡动画。
 
@@ -351,7 +350,7 @@
 | D2 | corpus slug 取值 | 全站 URL、与外部站点互链 | 已定：沿用上游 slug |
 | D3 | 粤拼声调显示 | 注音层排版与字体 | 已定：数字调（LSHK 唯一标准） |
 | D4 | 罗马字与汉字对齐层级（行级 vs 词级） | 数据模型、校对工作量 | 先做行级 |
-| D5 | 字体子集化是否按语料自动生成 | 构建复杂度、缓存命中 | 现行：UI 子集 + fontsource 全量 `unicode-range` 切片按需加载，不按语料生成子集（见 4.3） |
+| D5 | 字体子集化是否按语料自动生成 | 构建复杂度、缓存命中 | 现行：Google Fonts `unicode-range` 切片按需加载，不按语料生成子集（见 4.3） |
 | D6 | 是否记忆每叶缩放级别 | 阅读器状态模型 | 只记忆模式，不记忆缩放 |
 | D7 | 低质量叶阈值（置信度／空文本比例） | 校对队列排序、提示条触发 | 待 OCR 样本质检后定 |
 | D8 | 阅读进度是否匿名本地存储 | 隐私与体验 | 本地存储，不上传 |

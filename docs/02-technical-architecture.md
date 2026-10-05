@@ -166,7 +166,7 @@ IIIF 值得采用，但第一版用静态形态：构建期预生成瓦片 / DZI
 
 | 关注点 | 方案 |
 |---|---|
-| 竖排 | `writing-mode: vertical-rl`；默认竖排（右起），可切横排，偏好存本机；拉丁字母为主的篇章一律横排（见 04 §1.1 M4、§3） |
+| 竖排 | `writing-mode: vertical-rl`；默认竖排（右起），可切横排，偏好存本机；汉字不多于拉丁字母的篇章（`isCjkDominant` 为假）一律横排（见 04 §1.1 M4、§3） |
 | 粤拼注音 | HTML `<ruby>`，竖排时自动置于字符右侧；不要用绝对定位模拟 |
 | 拉丁 / 数字 | 竖排下默认旋转 90°；需要保持横排的组合（如年份）用 `text-combine-upright` |
 | 字体 | 必须子集化 + `unicode-range` 分片；整字体加载会拖死首屏 |
@@ -174,17 +174,18 @@ IIIF 值得采用，但第一版用静态形态：构建期预生成瓦片 / DZI
 | 影像 | AVIF/WebP + `srcset` + 懒加载 + 预取下一页 |
 | SEO | 每叶可索引 URL + sitemap + schema.org Book |
 
-字体策略（现行，2026-10-05 改版落地）：「UI 子集先行 + 全量字体按 `unicode-range` 切片兜底」两档，正文与 UI 共用同一套字体栈（栈与用途见 docs/04 §4.3）。
+字体策略（现行，2026-10-05）：全部字体经 Google Fonts 加载，不自托管；正文与 UI 共用同一套字体栈（栈与用途见 docs/04 §4.3）。
 
-| 档 | 内容 | 加载 |
-|---|---|---|
-| UI 子集 | 设计系统自带的 `Chiron Sung HK UI` / `Chiron Hei HK UI`（`public/fonts/chiron-sung-hk-ui.woff2` 约 470 KB、`chiron-hei-hk-ui.woff2` 约 225 KB，可变字重 200–900；代码注释记只收约 900 字） | `global.css` 内 `@font-face`（`font-display: swap`），`Base.astro` 对两个文件 `<link rel="preload">` |
-| 全量兜底 | `@fontsource-variable/chiron-sung-hk` 与 `@fontsource-variable/chiron-hei-hk`（Chiron Sung / Hei HK Variable）按 `unicode-range` 切好的细片 | 汇总在 `src/styles/cjk-fallback-fonts.css`，`Base.astro` 以 `media="print"` + `onload` 切回 `all` 的方式非阻塞加载（附 `<noscript>` 回退）；构建产物是一张约 270 KB 的 `@font-face` 表，浏览器只下载页面实际用到的切片 |
-| 拉丁 UI | `@fontsource-variable/inter`（Inter Variable） | `Base.astro` 直接 import |
+| 项 | 现行做法 |
+|---|---|
+| 字体 | Chiron Sung HK（衬线，请求字重 400–900）、Chiron Hei HK（无衬线，300–800）、Inter（拉丁 UI，400–700），一条 css2 请求：`family=Chiron+Hei+HK:wght@300..800&family=Chiron+Sung+HK:wght@400..900&family=Inter:wght@400..700&display=swap` |
+| 切片 | Google Fonts 已把 CJK 字体按 `unicode-range` 切成细片，浏览器只按页面实际用到的字下载对应切片 |
+| 加载 | `src/layouts/Base.astro`：对 `fonts.googleapis.com` / `fonts.gstatic.com` 预连接（`preconnect`）；样式表以 `media="print"` + `onload` 切回 `all` 的方式非阻塞加载，附 `<noscript>` 回退 |
+| 回退 | `src/styles/global.css` 的字体栈在 Google 字体之后接系统字体（Noto Serif / Sans TC、Songti TC、PingFang HK） |
 
-- **整包 face 剔除**：fontsource 的 Chiron 包除细片外还有一个覆盖 U+4E00–9FFF 全区的 `chinese-traditional` 整包 face（代码注释记约 4.7 MB），声明在最后、匹配优先，页面只要出现一个 UI 子集没收的字就会触发整包下载。`astro.config.mjs` 的 PostCSS 插件 `drop-whole-cjk-face` 在构建时删除含 `chinese-traditional` 的 `@font-face`，细片已覆盖全部字形。
-- 不按语料现算子集（docs/04 D5）：全量切片已能按需取字，免去每个语料一份子集的构建与缓存成本。
-- 授权：三个 fontsource 包均为 OFL-1.1（各包 `package.json`）；UI 子集为设计系统随附的 woff2（按名称为 Chiron 字体子集），其授权书面记录**待验证**。
+- 取舍：CJK 切片按字向 Google 即时取，本站不控制缓存与可用性；连不到 Google Fonts 的读者（如中国大陆）页面照常渲染，但只见系统字体。
+- 不按语料现算子集（docs/04 D5）：Google Fonts 切片已能按需取字，免去每个语料一份子集的构建与缓存成本。
+- 授权：Chiron Sung HK、Chiron Hei HK 与 Inter 均以 SIL Open Font License 在 Google Fonts 发布。
 - **待验证**：Chiron 两套字体对扩展区生僻字的覆盖；缺字时回落到系统字体（Noto Serif / Sans TC、Songti TC、PingFang HK），见 §10 第 5 项。
 
 ## 9. 仓库布局

@@ -172,10 +172,10 @@ Phase 3 进度（3a）：
 全站视觉改版（2026-10-05，分支 `feat/jyutjyu-redesign`，PR #1；上线时间以部署为准）：
 
 - 按 design handoff 原型改用粤语辞丛设计系统（Scholar's Ink · Kapok Edition）：新 token（木棉红 / 墨蓝 / 羊皮纸 / 档案绿 / 金褐 / 四级 surface）、只出浅色（暗色主题移除）、除徽章 8px 与 chip 999px 外无圆角、无阴影；「鱼尾」分隔元素删除，改用「其一／一」编号分隔线（见 docs/04 §4）。
-- 字体：自托管 Chiron Sung / Hei HK UI 子集 + `@fontsource-variable` 全量 Chiron 字体按 `unicode-range` 切片非阻塞加载 + Inter Variable；构建时剔除约 4.7 MB 的整包 CJK face（见 docs/02 §8）。
-- 全部页面按新结构重做：首页（构建期原文样张、数字带、语料卡）、书目库与书目详情（书脊色块卡、逐叶格）、阅读器（≥1080px 三栏、逐篇按 `isLatinDominant` 竖横排、`?hl=` 高亮、右栏内嵌引用卡与报错表单、`←` `→` 翻叶）、检索（KWIC 列、单选语料 pill 带篇数）、关于 / 数据开放（长文版面）、校对工作台（见 docs/04 §2.3、§3）。
+- 字体：Chiron Sung HK、Chiron Hei HK 与 Inter 改经 Google Fonts 一条 css2 请求非阻塞加载（`unicode-range` 切片按需取字），不再自托管；连不到 Google Fonts 时用系统字体（见 docs/02 §8）。
+- 全部页面按新结构重做：首页（构建期原文样张、数字带、语料卡）、书目库与书目详情（书脊色块卡、逐叶格）、阅读器（≥1080px 三栏、逐篇按 `isCjkDominant` 竖横排、`?hl=` 高亮、右栏内嵌引用卡与报错表单、`←` `→` 翻叶）、检索（KWIC 列、单选语料 pill 带篇数）、关于 / 数据开放（长文版面）、校对工作台（见 docs/04 §2.3、§3）。
 - 阅读偏好改存 `jyutman:reader-prefs`，缺省为竖排、开粤拼、开今译（此前缺省为横排、关粤拼、关今译；旧键 `jm-dir` / `jm-jyutping` / `jm-modtrans` 不再读取）；报错表单改为常驻右栏，正文选字自动带入（必须有选区才可提交），原选字浮出操作条（複製 / 查辭叢 / 回報此處）取消；引用由每篇标题行按钮的弹出层改为右栏内嵌卡（引用本叶第一篇）。
-- 接口：`/api/search` 增加 `facets`（逐语料篇数，一条 `GROUP BY`，不受 corpus 过滤影响，`total` 由其推出）与每条结果的 `status`；`POST /api/correct` 接受选填 `span_start` / `span_end` 并入库（见 docs/02 §6.3、docs/03 §7）。
+- 接口：`/api/search` 增加 `facets`（逐语料篇数，一条 `GROUP BY`，不受 corpus 过滤影响，`total` 由其推出）与每条结果的 `status`；`POST /api/correct` 接受选填 `span_start` / `span_end` 并入库，`GET /api/reports` 一并返回、阅读器按区间标出已回报处（见 docs/02 §6.3、docs/03 §7）。
 
 下一步行动：按上方 Phase 2 任务表推进（2.1 繁简映射扩充、2.3 历史拼式对齐），并在 Phase 2 内补 deploy workflow。
 
