@@ -1,0 +1,4 @@
+/* 全量 CJK 後備字體（Chiron Sung／Hei HK Variable，按 unicode-range 分片）：
+   接 UI 子集冇收嘅罕用字。Base.astro 以非阻塞方式載入呢個檔。 */
+@import "@fontsource-variable/chiron-sung-hk";
+@import "@fontsource-variable/chiron-hei-hk";

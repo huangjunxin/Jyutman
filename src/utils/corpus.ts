@@ -5,6 +5,8 @@
 
 import manifestJson from "../data/generated/manifest.json";
 
+import { countCharacters, countTranslated, firstReadablePage, issueToc, type TocEntry } from "./corpus-stats.ts";
+
 import type {
   CorpusSummary,
   IssueSummary,
@@ -21,6 +23,7 @@ export type {
   PageDocument,
   TranslationTable,
 } from "./types.ts";
+export type { TocEntry } from "./corpus-stats.ts";
 
 interface JsonModule<T> {
   default: T;
@@ -131,22 +134,55 @@ export function getPageRoutes(): PageRoute[] {
   return routes;
 }
 
-/** 全站合計，供首頁與書目庫展示。 */
-export function getSiteTotals(): {
+export interface SiteTotals {
   corpusCount: number;
   issueCount: number;
   pageCount: number;
   articleCount: number;
   verifiedPages: number;
-} {
-  return manifest.corpora.reduce(
-    (totals, corpus) => ({
-      corpusCount: totals.corpusCount + 1,
-      issueCount: totals.issueCount + corpus.issueCount,
-      pageCount: totals.pageCount + corpus.pageCount,
-      articleCount: totals.articleCount + corpus.articleCount,
-      verifiedPages: totals.verifiedPages + corpus.verifiedPages,
+  /** 正文字數（去空白後嘅碼點數）。 */
+  characterCount: number;
+  /** 附今譯嘅篇數（各期 translations.json 鍵數之和）。 */
+  translatedArticleCount: number;
+}
+
+let siteTotals: SiteTotals | undefined;
+
+/** 全站合計，供首頁與書目庫展示；build 期只計一次。 */
+export function getSiteTotals(): SiteTotals {
+  siteTotals ??= computeSiteTotals();
+  return siteTotals;
+}
+
+function computeSiteTotals(): SiteTotals {
+  const totals = manifest.corpora.reduce(
+    (sum, corpus) => ({
+      corpusCount: sum.corpusCount + 1,
+      issueCount: sum.issueCount + corpus.issueCount,
+      pageCount: sum.pageCount + corpus.pageCount,
+      articleCount: sum.articleCount + corpus.articleCount,
+      verifiedPages: sum.verifiedPages + corpus.verifiedPages,
     }),
     { corpusCount: 0, issueCount: 0, pageCount: 0, articleCount: 0, verifiedPages: 0 },
   );
+  return {
+    ...totals,
+    characterCount: countCharacters([...pagesByIssue.values()].flat()),
+    translatedArticleCount: countTranslated([...translationsByIssue.values()]),
+  };
+}
+
+/** 某語料附今譯嘅篇數。 */
+export function getCorpusTranslatedCount(slug: string): number {
+  return countTranslated(getIssues(slug).map((issue) => getTranslations(slug, issue.issue)));
+}
+
+/** 「進入閱讀」落腳葉：首個有 40 字以上正文嘅葉，避開封面；冇就第一葉。 */
+export function getFirstReadablePage(slug: string, issue: string): number {
+  return firstReadablePage(getPages(slug, issue)) ?? 1;
+}
+
+/** 期號篇目（有篇名嘅文章，按葉序）。 */
+export function getIssueToc(slug: string, issue: string): TocEntry[] {
+  return issueToc(getPages(slug, issue));
 }

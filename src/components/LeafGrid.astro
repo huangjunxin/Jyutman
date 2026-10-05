@@ -1,0 +1,33 @@
+---
+/**
+ * 逐葉格：每葉一格（13×13），已核驗實心綠、待校空心金褐，撳落去直達該葉。
+ * 補充導航（目錄同上一葉／下一葉係等效途徑），每格有 aria-label。
+ */
+import { pageParam } from "../utils/reader.ts";
+
+interface Props {
+  corpus: string;
+  issue: string;
+  pages: readonly { page: number; status: string }[];
+  class?: string;
+}
+
+const { corpus, issue, pages, class: className } = Astro.props;
+---
+
+<div class:list={["leaf-grid", className]}>
+  {
+    pages.map(({ page, status }) => {
+      const verified = status === "verified";
+      const label = `第 ${pageParam(page)} 葉 · ${verified ? "已核驗" : "待校"}`;
+      return (
+        <a
+          class:list={["leaf", verified ? "leaf--ok" : "leaf--todo"]}
+          href={`/read/${corpus}/${issue}/${pageParam(page)}/`}
+          title={label}
+          aria-label={label}
+        ></a>
+      );
+    })
+  }
+</div>

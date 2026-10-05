@@ -1,4 +1,5 @@
 ---
+/** 舊版進度條（過渡期保留畀未改版頁面編譯）；新頁面直接用 .meter。 */
 import { percent } from "../utils/reader.ts";
 
 interface Props {
@@ -11,12 +12,10 @@ const { verified, total, label } = Astro.props;
 const ratio = percent(verified, total);
 ---
 
-<div class="prog">
-  <div class="prog-head">
+<div>
+  <div>
     <span>{label}</span>
-    <span class="pct">{ratio}%</span>
+    <span>{ratio}%</span>
   </div>
-  <div class="track">
-    <i style={`width:${ratio}%`}></i>
-  </div>
+  <div class="meter" style={`--pct:${ratio}%`} aria-hidden="true"><i></i></div>
 </div>

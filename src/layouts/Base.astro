@@ -1,17 +1,23 @@
 ---
+import "@fontsource-variable/inter";
 import "../styles/global.css";
+import cjkFallbackFonts from "../styles/cjk-fallback-fonts.css?url";
+
+import Icon from "../components/Icon.astro";
 
 interface Props {
   /** 完整 title 文字（含站名），由頁面自行決定。 */
   title: string;
   description: string;
-  /** 當前導覽項，用於高亮。 */
+  /** 當前導覽項，用於高亮；書目庫、期號目錄、閱讀頁都傳 "browse"。 */
   current?: "browse" | "search" | "about" | "data";
   /** 檢索結果等頁面標記 noindex。 */
   noindex?: boolean;
+  /** 頁首精簡檢索框；首頁傳 false。 */
+  headerSearch?: boolean;
 }
 
-const { title, description, current, noindex = false } = Astro.props;
+const { title, description, current, noindex = false, headerSearch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
 
 const navItems = [
@@ -27,23 +33,32 @@ const navItems = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#b53a25" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
+    <link rel="preload" href="/fonts/chiron-sung-hk-ui.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/chiron-hei-hk-ui.woff2" as="font" type="font/woff2" crossorigin />
+    {/* 全量 CJK 後備字體（約 270 KB 嘅 @font-face 表）唔阻塞首次渲染；UI 子集只收約 900 字，其餘字靠佢按需切片載入 */}
+    <link rel="stylesheet" href={cjkFallbackFonts} media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href={cjkFallbackFonts} /></noscript>
     <slot name="head" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳去正文</a>
 
-    <header class="site-head">
-      <div class="inner">
+    <header class="site-header">
+      <div class="site-header__inner wrap">
         <a class="brand" href="/">
-          <b>粵語文叢</b>
-          <small>歷史粵語文獻數碼閱讀</small>
+          <span class="brand__mark" aria-hidden="true">叢</span>
+          <span class="brand__text">
+            <span class="brand__name">粵語文叢</span>
+            <span class="brand__sub">歷史粵語文獻數碼閱讀</span>
+          </span>
         </a>
-        <nav class="nav" aria-label="主導覽">
+        <nav class="site-nav" aria-label="主導覽">
           {
             navItems.map((item) => (
               <a href={item.href} aria-current={current === item.key ? "page" : undefined}>
@@ -52,26 +67,54 @@ const navItems = [
             ))
           }
         </nav>
+        {
+          headerSearch && (
+            <form class="header-search" action="/search/" method="get" role="search">
+              <Icon name="search" size={16} />
+              <input
+                type="search"
+                id="site-q"
+                name="q"
+                aria-label="檢索字詞"
+                placeholder="檢索字詞"
+                autocomplete="off"
+                enterkeyhint="search"
+              />
+            </form>
+          )
+        }
       </div>
     </header>
+    <script is:inline>
+      // 頁首換行會變高：同步 --header-h，閱讀頁工具列同側欄黏頂位靠佢（後備 72px）。
+      (() => {
+        const header = document.querySelector(".site-header");
+        if (!header || !("ResizeObserver" in window)) return;
+        const root = document.documentElement;
+        new ResizeObserver(() => root.style.setProperty("--header-h", `${header.offsetHeight}px`)).observe(header);
+      })();
+    </script>
 
     <main id="main">
       <slot />
     </main>
 
-    <footer class="site-foot">
-      <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
-      <p class="foot-copy">
-        粵語文叢 · 歷史粵語文獻數碼閱讀<br />
-        底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0
-      </p>
-      <nav class="foot-nav" aria-label="頁腳導覽">
-        {
-          navItems.map((item) => (
-            <a href={item.href}>{item.label}</a>
-          ))
-        }
-      </nav>
+    <footer class="site-footer">
+      <div class="site-footer__main wrap">
+        <div class="foot-brand">
+          <span class="foot-brand__mark" aria-hidden="true">叢</span>
+          <div>
+            <div class="foot-brand__name">粵語文叢</div>
+            <div class="foot-brand__sub">歷史粵語文獻數碼閱讀 · Jyutman</div>
+          </div>
+        </div>
+        <nav class="foot-nav" aria-label="頁尾導覽">
+          {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
+        </nav>
+      </div>
+      <div class="site-footer__base wrap">
+        <span>底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0</span>
+      </div>
     </footer>
   </body>
 </html>
