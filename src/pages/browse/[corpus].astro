@@ -2,11 +2,18 @@
 import type { GetStaticPaths } from "astro";
 
 import JsonLd from "../../components/JsonLd.astro";
-import Progress from "../../components/Progress.astro";
-import Yuwai from "../../components/Yuwai.astro";
+import LeafGrid from "../../components/LeafGrid.astro";
 import Base from "../../layouts/Base.astro";
-import { getCorpora, getCorpus, getIssues, getPages } from "../../utils/corpus.ts";
-import { pageParam } from "../../utils/reader.ts";
+import {
+  getCorpora,
+  getCorpus,
+  getFirstReadablePage,
+  getIssueToc,
+  getIssues,
+  getPages,
+} from "../../utils/corpus.ts";
+import { corpusMeta, issueLabel } from "../../utils/corpus-meta.ts";
+import { pageParam, percent } from "../../utils/reader.ts";
 
 export const getStaticPaths = (() => {
   return getCorpora().map((corpus) => ({
@@ -15,18 +22,33 @@ export const getStaticPaths = (() => {
   }));
 }) satisfies GetStaticPaths;
 
+/** 篇目預設顯示條數；多出嘅由「睇晒 N 條」展開（冇 JS 時全部顯示）。 */
+const TOC_PREVIEW = 8;
+
 const { slug } = Astro.props;
 const corpus = getCorpus(slug);
 if (!corpus) {
   throw new Error(`manifest 冇語料 ${slug}`);
 }
 
+const meta = corpusMeta(
+  corpus,
+  getCorpora().findIndex((c) => c.slug === slug),
+);
+const single = corpus.issueCount <= 1;
+
 const issues = getIssues(slug).map((issue) => {
   const pages = getPages(slug, issue.issue);
-  const first = pages[0];
   return {
     issue,
-    href: first ? `/read/${slug}/${issue.issue}/${pageParam(first.page)}/` : undefined,
+    pages,
+    // 原型單冊語料期號標籤寫「全冊」
+    label: single ? "全冊" : issueLabel(corpus.issueCount, issue.issue),
+    href:
+      pages.length > 0
+        ? `/read/${slug}/${issue.issue}/${pageParam(getFirstReadablePage(slug, issue.issue))}/`
+        : undefined,
+    toc: getIssueToc(slug, issue.issue),
   };
 });
 
@@ -52,89 +74,524 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     />
   </Fragment>
 
-  <div class="wrap">
-    <div class="page-head">
-      <div>
-        <h1>{corpus.title}</h1>
-        <p>
-          {corpus.year ?? "年代待考"} · {corpus.sourceLine}
-        </p>
+  <section class:list={["band", "tone-block", `tone-${meta.tone}`]}>
+    <div class="corner" aria-hidden="true"></div>
+    <div class="wrap band__inner">
+      <nav class="crumbs" aria-label="麵包屑">
+        <a href="/browse/">書目庫</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">{corpus.title}</span>
+      </nav>
+
+      <div class="band__head">
+        <div class="band__title">
+          <div class="band__year">
+            {corpus.year !== null && <span class="band__yearnum">{corpus.year}</span>}
+            <span class="band__kind">{meta.kind}</span>
+          </div>
+          <h1>{corpus.title}</h1>
+          <p class="band__source">底本來源：{corpus.sourceLine}</p>
+        </div>
+        <dl class="band__stats">
+          <div><dt>葉（掃描）</dt><dd>{corpus.pageCount}</dd></div>
+          <div><dt>篇</dt><dd>{corpus.articleCount}</dd></div>
+          <div><dt>{single ? "冊" : "期"}</dt><dd>{corpus.issueCount}</dd></div>
+          <div><dt>葉已核驗</dt><dd>{corpus.verifiedPages}</dd></div>
+        </dl>
       </div>
-      <p class="stat">
-        <b>{corpus.pageCount}</b> 葉　·　{corpus.articleCount} 篇
-      </p>
+
+      <div class="band__progress">
+        <div class="progress-row">
+          <span>
+            葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
+          </span>
+          <span class="band__pct">{percent(corpus.verifiedPages, corpus.pageCount)}%</span>
+        </div>
+        <div
+          class="meter meter--on-dark"
+          style={`--pct:${percent(corpus.verifiedPages, corpus.pageCount)}%`}
+          aria-hidden="true"
+        >
+          <i></i>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap issues" aria-labelledby="issues-title">
+    <div class="issues__head">
+      <h2 id="issues-title">期號目錄</h2>
+      <div class="legend">
+        <span><i class="legend__ok" aria-hidden="true"></i>已核驗</span>
+        <span><i class="legend__todo" aria-hidden="true"></i>待校</span>
+        <span>每一格係一葉 · 撳落去直接閱讀</span>
+      </div>
     </div>
 
-    <table class="issue-table">
-      <caption>
-        共 {corpus.issueCount} {corpus.issueCount > 1 ? "期" : "冊"} · 已核驗 {corpus.verifiedPages} 葉 · 待校 {corpus.needsReviewPages} 葉
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">期號</th>
-          <th scope="col">出版日期</th>
-          <th scope="col">葉數</th>
-          <th scope="col">篇數</th>
-          <th scope="col">校對進度</th>
-          <th scope="col">閱讀</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          issues.map(({ issue, href }) => (
-            <tr>
-              <td>
-                {href ? (
-                  <a class="issue-name" href={href}>
-                    {issue.issue}
-                  </a>
-                ) : (
-                  <span class="issue-name">{issue.issue}</span>
-                )}
-              </td>
-              <td>
-                {issue.issue_date ? (
-                  <span class="num">{issue.issue_date}</span>
-                ) : (
-                  <span class="date-missing">日期待考</span>
-                )}
-                {issue.date_note && (
-                  <details class="date-note">
-                    <summary>日期考證</summary>
-                    <p>{issue.date_note}</p>
-                  </details>
-                )}
-              </td>
-              <td class="num">{issue.pages}</td>
-              <td class="num">{issue.articles}</td>
-              <td class="cell-prog">
-                <Progress
-                  verified={issue.verified_pages}
-                  total={issue.pages}
-                  label={`已核驗 ${issue.verified_pages} / ${issue.pages} 葉`}
-                />
-              </td>
-              <td>
-                {href ? (
-                  <a class="btn secondary" href={href}>
-                    第一葉 →
-                  </a>
-                ) : (
-                  <span class="badge wip">未開放</span>
-                )}
-              </td>
-            </tr>
-          ))
-        }
-      </tbody>
-    </table>
+    {
+      issues.map(({ issue, pages, label, href, toc }) => (
+        <section class="issue" id={issue.issue} aria-labelledby={`${issue.issue}-label`}>
+          <div class="issue__meta">
+            <h3 class="issue__label" id={`${issue.issue}-label`}>
+              {label}
+            </h3>
+            <div class="issue__code mono">{issue.issue}</div>
+            {issue.issue_date ? (
+              <div class="issue__date">{issue.issue_date}</div>
+            ) : (
+              <span class="badge badge--gold issue__nodate">日期待考</span>
+            )}
+            <div class="issue__count">
+              {issue.pages} 葉 · {issue.articles} 篇
+            </div>
+            {issue.date_note && (
+              <details class="date-note">
+                <summary>
+                  <span class="date-note__show">日期考證 ▾</span>
+                  <span class="date-note__hide">收埋日期考證</span>
+                </summary>
+                <div class="date-note__body">{issue.date_note}</div>
+              </details>
+            )}
+            {href ? (
+              <a class="btn btn--solid issue__go" href={href}>
+                第一葉 →
+              </a>
+            ) : (
+              <span class="badge badge--gold">未開放</span>
+            )}
+          </div>
 
-    <p class="note" style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-top:22px">
+          <div class="issue__body">
+            <div>
+              <div class="progress-row">
+                <span>
+                  已核驗 {issue.verified_pages} / {issue.pages} 葉
+                </span>
+                <span class="issue__pct">{percent(issue.verified_pages, issue.pages)}%</span>
+              </div>
+              <div
+                class="meter issue__meter"
+                style={`--pct:${percent(issue.verified_pages, issue.pages)}%`}
+                aria-hidden="true"
+              >
+                <i></i>
+              </div>
+            </div>
+
+            <LeafGrid corpus={slug} issue={issue.issue} pages={pages} />
+
+            {toc.length > 0 && (
+              <div>
+                <p class="eyebrow eyebrow--sm eyebrow--muted toc__label" id={`${issue.issue}-toc-label`}>
+                  篇目 · {toc.length} 條
+                </p>
+                <ol class="toc" id={`${issue.issue}-toc`} aria-labelledby={`${issue.issue}-toc-label`}>
+                  {toc.map((entry) => (
+                    <li>
+                      <a href={`/read/${slug}/${issue.issue}/${pageParam(entry.page)}/#${entry.id}`}>
+                        <span class="toc__page">{pageParam(entry.page)}</span>
+                        <span>{entry.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+                {toc.length > TOC_PREVIEW && (
+                  <button
+                    type="button"
+                    class="btn btn--outline btn--sm toc__toggle"
+                    aria-controls={`${issue.issue}-toc`}
+                    aria-expanded="true"
+                    data-toc-toggle
+                    data-total={toc.length}
+                    hidden
+                  >
+                    收埋
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      ))
+    }
+
+    <p class="foot-note">
       頁數、篇數、校對進度均取自上游發佈層 <code>issues.jsonl</code>；葉碼用掃描序號，永遠連續。
     </p>
-
-    <p style="margin-top:26px"><a href="/browse/">← 返書目庫</a></p>
-  </div>
-
-  <Yuwai size="sm" />
+    <a class="back" href="/browse/">← 返書目庫</a>
+  </section>
 </Base>
+
+<script>
+  // 篇目摺疊：冇 JS 時全部顯示；有 JS 先收埋第 9 條起，並顯示「睇晒 N 條」掣。
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-toc-toggle]")) {
+    const list = document.getElementById(btn.getAttribute("aria-controls") ?? "");
+    if (!list) continue;
+    const set = (open: boolean) => {
+      list.toggleAttribute("data-collapsed", !open);
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "收埋" : `睇晒 ${btn.dataset.total} 條`;
+    };
+    set(false);
+    btn.hidden = false;
+    btn.addEventListener("click", () => set(btn.getAttribute("aria-expanded") !== "true"));
+  }
+</script>
+
+<style>
+  /* ---- 色帶頁頭 ---- */
+  .band {
+    --corner-size: 180px;
+    --corner-offset: -70px;
+    --corner-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .band__inner {
+    position: relative;
+    padding-top: 28px;
+    padding-bottom: clamp(40px, 5vw, 64px);
+  }
+
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 14px;
+    /* 原型 .82（同數字標籤 .85）；提到 .88 先喺木棉紅、檔案綠底夠 4.5:1 */
+    color: var(--on-dark-88);
+  }
+
+  .crumbs a {
+    color: var(--parchment);
+  }
+
+  /* 全站焦點環係木棉紅，喺色帶上睇唔到 */
+  .crumbs a:focus-visible {
+    outline-color: var(--parchment);
+  }
+
+  .band__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 28px 48px;
+    margin-top: clamp(28px, 4vw, 48px);
+  }
+
+  .band__title {
+    flex: 1 1 520px;
+    min-width: 0;
+  }
+
+  .band__year {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 24px;
+  }
+
+  .band__yearnum {
+    font-family: var(--font-serif);
+    font-size: clamp(72px, 9vw, 120px);
+    line-height: 0.82;
+    letter-spacing: -0.04em;
+  }
+
+  .band__kind {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--on-dark-88);
+  }
+
+  .band h1 {
+    margin-top: 22px;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    color: var(--parchment);
+  }
+
+  .band__source {
+    margin: 14px 0 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--on-dark-88);
+  }
+
+  .band__stats {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+
+  .band__stats > div {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    padding: 0 22px;
+    border-left: 1px solid var(--on-dark-30);
+  }
+
+  .band__stats dd {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 44px;
+    line-height: 1;
+  }
+
+  .band__stats dt {
+    font-size: 13px;
+    color: var(--on-dark-88);
+  }
+
+  .band__progress {
+    margin-top: 32px;
+  }
+
+  .progress-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .band__pct {
+    font-family: var(--font-serif);
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .band .meter {
+    --meter-track: rgba(251, 249, 244, 0.22);
+    margin-top: 10px;
+  }
+
+  /* ---- 期號目錄 ---- */
+  .issues {
+    padding-top: 40px;
+    padding-bottom: 96px;
+  }
+
+  .issues__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    margin-bottom: 14px;
+  }
+
+  .issues__head h2 {
+    font-size: clamp(28px, 3vw, 38px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 22px;
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .legend > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .legend i {
+    width: 13px;
+    height: 13px;
+  }
+
+  .legend__ok {
+    background: var(--archive-green);
+  }
+
+  .legend__todo {
+    border: 1px solid rgba(114, 91, 53, 0.6);
+  }
+
+  .issue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px 40px;
+    padding: 28px 0;
+    border-top: 2px solid var(--ink);
+    scroll-margin-top: var(--header-h);
+  }
+
+  .issue__meta {
+    display: flex;
+    flex: 0 1 260px;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+  }
+
+  .issue__label {
+    font-size: 40px;
+    line-height: 1;
+  }
+
+  .issue__code {
+    font-size: 13px;
+    color: var(--graphite);
+  }
+
+  .issue__date {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .issue__meta .badge {
+    align-self: flex-start;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .issue__count {
+    font-size: 14px;
+    color: var(--graphite);
+  }
+
+  .date-note summary {
+    display: block;
+    width: fit-content;
+    color: var(--muted-gold);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .date-note summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .date-note__hide,
+  .date-note[open] .date-note__show {
+    display: none;
+  }
+
+  .date-note[open] .date-note__hide {
+    display: inline;
+  }
+
+  .date-note__body {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--muted-gold);
+    background: rgba(114, 91, 53, 0.08);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .issue__go {
+    align-self: flex-start;
+    margin-top: 6px;
+    padding: 10px 18px;
+    border: 0;
+    font-size: 14px;
+  }
+
+  .issue__body {
+    display: flex;
+    flex: 1 1 560px;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+  }
+
+  .issue__pct {
+    font-family: var(--font-serif);
+    font-size: 30px;
+    line-height: 1;
+    color: var(--archive-green);
+  }
+
+  .issue__meter {
+    margin-top: 8px;
+  }
+
+  .toc__label {
+    margin: 0 0 4px;
+  }
+
+  .toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    column-gap: 28px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc[data-collapsed] > li:nth-child(n + 9) {
+    display: none;
+  }
+
+  .toc a {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+    height: 100%;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line-08);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink);
+    transition: color 200ms;
+  }
+
+  .toc a:hover {
+    color: var(--kapok);
+    text-decoration: none;
+  }
+
+  .toc__page {
+    padding-top: 1px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--graphite);
+  }
+
+  .toc__toggle {
+    margin-top: 12px;
+  }
+
+  .foot-note {
+    margin: 24px 0 0;
+    font-size: 13px;
+    line-height: 28px;
+    color: var(--graphite);
+  }
+
+  .foot-note code {
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  .back {
+    display: inline-block;
+    margin-top: 20px;
+    font-weight: 600;
+  }
+</style>
