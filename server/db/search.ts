@@ -19,6 +19,7 @@ export interface SearchRow {
   page: number;
   title: string | null;
   text: string;
+  status: string;
 }
 
 const INDEXES: Record<Exclude<SearchMode, "empty">, { table: string; column: string }> = {
@@ -27,16 +28,18 @@ const INDEXES: Record<Exclude<SearchMode, "empty">, { table: string; column: str
   unigram: { table: "articles_unigram_fts", column: "seg" },
 };
 
-/** 多取一條命中，用於判斷結果是否被 limit 截斷。 */
 export interface SearchPageResult {
   rows: SearchRow[];
-  /** 符合條件嘅總命中數（另跑一次 COUNT，唔受分頁影響）。 */
+  /** 符合條件（含 corpus 過濾）嘅總命中篇數，唔受分頁影響。 */
   total: number;
+  /** 逐語料命中篇數（唔受 corpus 過濾影響），供篩選 pill 顯示；冇命中嘅語料唔列。 */
+  facets: Record<string, number>;
 }
 
 /**
- * 分頁檢索：bm25 排序 + LIMIT/OFFSET，另跑 COUNT 取總數。
- * （FTS5 嘅 bm25() 唔可以同窗口函數一齊用，故總數要獨立查一次。）
+ * 分頁檢索：bm25 排序 + LIMIT/OFFSET；另跑一條 GROUP BY a.corpus（唔加 corpus 過濾）
+ * 取逐語料篇數，總數由篩選中嘅語料加埋得出。
+ * （FTS5 嘅 bm25() 唔可以同窗口函數一齊用，故計數要獨立查一次。）
  */
 export async function searchArticles(
   db: D1Database,
@@ -44,29 +47,32 @@ export async function searchArticles(
   corpora: readonly string[] = [],
   { page = 1, pageSize = RESULT_LIMIT }: { page?: number; pageSize?: number } = {},
 ): Promise<SearchPageResult> {
-  if (plan.mode === "empty") return { rows: [], total: 0 };
+  if (plan.mode === "empty") return { rows: [], total: 0, facets: {} };
   const { table, column } = INDEXES[plan.mode];
-  const params: unknown[] = [ftsPhrase(column, plan.query)];
-  let corpusFilter = "";
-  if (corpora.length > 0) {
-    corpusFilter = ` AND a.corpus IN (${corpora.map(() => "?").join(", ")})`;
-    params.push(...corpora);
-  }
+  const phrase = ftsPhrase(column, plan.query);
   const from =
     ` FROM ${table}` +
     ` JOIN articles AS a ON a.id = ${table}.id` +
-    ` WHERE ${table} MATCH ?${corpusFilter}`;
+    ` WHERE ${table} MATCH ?`;
+  const corpusFilter = corpora.length > 0 ? ` AND a.corpus IN (${corpora.map(() => "?").join(", ")})` : "";
   const offset = Math.max(0, (page - 1) * pageSize);
-  const rows =
-    (
-      await db
-        .prepare(`SELECT a.id, a.corpus, a.issue, a.page, a.title, a.text${from} ORDER BY bm25(${table}) LIMIT ? OFFSET ?`)
-        .bind(...params, pageSize, offset)
-        .all<SearchRow>()
-    ).results ?? [];
-  const counted = await db
-    .prepare(`SELECT COUNT(*) AS total${from}`)
-    .bind(...params)
-    .first<{ total: number }>();
-  return { rows, total: Number(counted?.total ?? 0) };
+  const [hits, counted] = await Promise.all([
+    db
+      .prepare(
+        `SELECT a.id, a.corpus, a.issue, a.page, a.title, a.text, a.status${from}${corpusFilter}` +
+          ` ORDER BY bm25(${table}) LIMIT ? OFFSET ?`,
+      )
+      .bind(phrase, ...corpora, pageSize, offset)
+      .all<SearchRow>(),
+    db
+      .prepare(`SELECT a.corpus AS corpus, COUNT(*) AS n${from} GROUP BY a.corpus`)
+      .bind(phrase)
+      .all<{ corpus: string; n: number }>(),
+  ]);
+  const facets: Record<string, number> = {};
+  for (const { corpus, n } of counted.results ?? []) facets[corpus] = Number(n);
+  const wanted = corpora.length > 0 ? new Set(corpora) : null;
+  let total = 0;
+  for (const [corpus, n] of Object.entries(facets)) if (wanted === null || wanted.has(corpus)) total += n;
+  return { rows: hits.results ?? [], total, facets };
 }

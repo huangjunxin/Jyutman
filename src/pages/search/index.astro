@@ -1,240 +1,551 @@
 ---
+/**
+ * 檢索頁：墨藍色帶頁頭 + 客戶端查 /api/search（KWIC 列、語料篩選 pill、逐頁追加）。
+ * 靜態頁，q / corpus 由客戶端讀 URL；後端只支援漢字同英文全文檢索，冇粵拼檢索。
+ */
 import SearchBar from "../../components/SearchBar.astro";
-import Yuwai from "../../components/Yuwai.astro";
 import Base from "../../layouts/Base.astro";
+import { corpusMeta } from "../../utils/corpus-meta.ts";
 import { getCorpora } from "../../utils/corpus.ts";
+import { searchHref } from "../../utils/search-view.ts";
 
-const corpora = getCorpora();
-const query = Astro.url.searchParams.get("q") ?? "";
+const corpora = getCorpora().map((corpus, index) => ({
+  slug: corpus.slug,
+  shortTitle: corpusMeta(corpus, index).shortTitle,
+  issueCount: corpus.issueCount,
+  year: corpus.year,
+}));
+const examples = ["廣東", "唔係", "广东"];
 ---
 
 <Base
   title="檢索 · 粵語文叢"
-  description="粵語文叢全文檢索：繁簡異體歸一之後，逐葉命中底本原文，並顯示命中上下文。"
+  description="粵語文叢全文檢索：簡體字歸一到繁體之後，逐葉命中底本原文，並顯示命中上下文。"
   current="search"
   noindex
 >
-  <div class="wrap">
-    <div class="page-head">
-      <div>
-        <h1>檢索</h1>
-        <p>全庫或單一語料範圍 · 命中定位到葉 · 展示層保留底本原字</p>
-      </div>
-    </div>
-
-    <div class="search-panel">
-      <SearchBar value={query} inputId="search-input" examples={query === ""} />
-
-      <div class="filters">
-        <h2 id="filter-title">範圍</h2>
-        <div class="filter-list" role="group" aria-labelledby="filter-title">
-          {
-            corpora.map((corpus) => (
-              <label>
-                <input type="checkbox" name="corpus" value={corpus.slug} />
-                {corpus.title}
-              </label>
-            ))
-          }
-        </div>
-        <p class="hint">勾選語料即收窄範圍；唔勾就搜全庫。</p>
-      </div>
-    </div>
-
-    <div class="results" id="results" aria-live="polite">
-      <p class="state">
-        <b>輸入字詞開始檢索</b>
-        可以搵漢字詞、專名或者傳教士拼式；命中會列出語料、期號同葉碼，並顯示上下文。
+  <section class="band watermark-host">
+    <div class="watermark band__wm" aria-hidden="true">檢</div>
+    <div class="wrap band__inner">
+      <p class="eyebrow eyebrow--on-dark">Search · 檢索</p>
+      <h1 class="band__title">檢索</h1>
+      <SearchBar variant="band" inputId="search-q" />
+      <p class="band__help">
+        漢字、簡體字都得——輸入「广东」，都搵到底本嘅「廣東」。英文課本嘅講解亦可以全文檢索。歸一只發生喺檢索層，展示永遠保留原字。
       </p>
+      <ul class="band__chips" aria-label="示例">
+        {
+          examples.map((word) => (
+            <li>
+              <a class="chip chip--on-dark" href={searchHref(word)}>
+                {word}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
     </div>
-  </div>
+  </section>
 
-  <Yuwai size="sm" />
+  <section class="wrap results" id="search-root" data-corpora={JSON.stringify(corpora)}>
+    <p class="visually-hidden" role="status" id="search-live"></p>
 
-  <script>
-    interface SearchHit {
-      id?: string;
-      corpus?: string;
-      issue?: string;
-      page?: number;
-      title?: string | null;
-      pre?: string;
-      highlight?: string | null;
-      post?: string | null;
-    }
+    <div class="hints" id="search-idle">
+      <div class="hint">
+        <h2 class="hint__title">漢字</h2>
+        <p>直接輸入，例如「唔係」「廣東」。</p>
+      </div>
+      <div class="hint">
+        <h2 class="hint__title">簡體</h2>
+        <p>「广东」會歸一做「廣東」。只會轉換同一個字嘅簡繁寫法，配對底本原字。</p>
+      </div>
+      <div class="hint">
+        <h2 class="hint__title">English</h2>
+        <p>兩本英文課本嘅講解都可以全文檢索，例如 tone。</p>
+      </div>
+    </div>
 
-    interface SearchPayload {
-      results?: SearchHit[];
-      total?: number;
-      page?: number;
-      more?: boolean;
-    }
+    <div id="search-results" hidden>
+      <div class="res-head">
+        <div>
+          <h2 class="res-head__q" id="search-heading"></h2>
+          <p class="res-head__meta">共 <b id="search-total"></b> 篇 · <span id="search-mode"></span></p>
+        </div>
+        <div class="pills" role="group" aria-label="按語料篩選" id="search-pills"></div>
+      </div>
+      <p class="notice" id="search-notice" hidden></p>
+      <ol class="kwic" id="search-list"></ol>
+      <div class="empty" id="search-empty" hidden>
+        <p class="empty__title" id="search-empty-title"></p>
+        <p class="empty__hint">試下用簡體字，或者短啲嘅詞。</p>
+      </div>
+      <div class="more" id="search-more-wrap" hidden>
+        <button type="button" class="btn btn--outline" id="search-more"></button>
+      </div>
+    </div>
 
-    const results = document.getElementById("results");
-    const input = document.getElementById("search-input");
-    if (results instanceof HTMLElement) {
-      const params = new URLSearchParams(window.location.search);
-      const query = params.get("q") ?? "";
-      if (input instanceof HTMLInputElement && query !== "") input.value = query;
-
-      const selectedCorpora = params.getAll("corpus");
-      const corpusBoxes = [...document.querySelectorAll('input[name="corpus"]')].filter(
-        (box): box is HTMLInputElement => box instanceof HTMLInputElement,
-      );
-      for (const box of corpusBoxes) box.checked = selectedCorpora.includes(box.value);
-
-      let listNode: HTMLUListElement | null = null;
-      let shown = 0;
-      let total = 0;
-      let currentPage = 0;
-
-      const stateNode = (title: string, body: string): HTMLElement => {
-        const wrapper = document.createElement("p");
-        wrapper.className = "state";
-        const strong = document.createElement("b");
-        strong.textContent = title;
-        wrapper.append(strong, document.createTextNode(body));
-        return wrapper;
-      };
-
-      /** 檢索服務未通（未部署、離線或者出錯）時先顯示呢段。 */
-      const unavailable = () =>
-        stateNode("檢索服務部署中", "全文索引暫時未通，可能正在部署或者維護，請稍後再試。");
-
-      /** 命中片段：有 highlight 就用 <mark> 包住命中處，其餘照文字節點拼返。 */
-      const snippetNode = (hit: SearchHit): HTMLElement | null => {
-        if (hit.highlight) {
-          const snippet = document.createElement("p");
-          snippet.className = "hit-snippet";
-          if (hit.pre) snippet.append(document.createTextNode(hit.pre));
-          const mark = document.createElement("mark");
-          mark.textContent = hit.highlight;
-          snippet.append(mark);
-          if (hit.post) snippet.append(document.createTextNode(hit.post));
-          return snippet;
-        }
-        if (!hit.pre) return null;
-        const snippet = document.createElement("p");
-        snippet.className = "hit-snippet";
-        snippet.textContent = hit.pre;
-        return snippet;
-      };
-
-      const hitNode = (hit: SearchHit): HTMLLIElement | null => {
-        if (!hit.corpus || !hit.issue || typeof hit.page !== "number") return null;
-        const page = String(hit.page).padStart(3, "0");
-        const item = document.createElement("li");
-        const link = document.createElement("a");
-        link.href = `/read/${hit.corpus}/${hit.issue}/${page}/${hit.id ? `#${hit.id}` : ""}`;
-        link.textContent = hit.title ?? "（無題）";
-        const meta = document.createElement("span");
-        meta.className = "hit-meta";
-        meta.textContent = `${hit.corpus} · ${hit.issue} · 第 ${page} 葉`;
-        item.append(link, meta);
-        const snippet = snippetNode(hit);
-        if (snippet) item.append(snippet);
-        return item;
-      };
-
-      const footer = document.createElement("div");
-      footer.className = "hits-foot";
-
-      const renderFooter = (): void => {
-        footer.replaceChildren();
-        if (shown === 0) return;
-        const count = document.createElement("p");
-        count.className = "hits-count";
-        count.textContent = `已顯示 ${shown} / 共 ${total} 條`;
-        footer.append(count);
-        if (shown < total) {
-          const more = document.createElement("button");
-          more.type = "button";
-          more.className = "btn";
-          more.textContent = "載入更多";
-          more.addEventListener("click", () => {
-            more.disabled = true;
-            void load(currentPage + 1, true).then((ok) => {
-              if (!ok) {
-                more.disabled = false;
-                results.replaceChildren(unavailable());
-              }
-            });
-          });
-          footer.append(more);
-        }
-        results.append(footer);
-      };
-
-      /** 檢索 API 由 Worker 提供；離線或出錯時顯示部署提示。 */
-      const load = async (page: number, append: boolean): Promise<boolean> => {
-        const url = new URL("/api/search", window.location.origin);
-        url.searchParams.set("q", query);
-        url.searchParams.set("page", String(page));
-        for (const slug of selectedCorpora) url.searchParams.append("corpus", slug);
-        try {
-          const response = await fetch(url, { headers: { accept: "application/json" } });
-          if (!response.ok) return false;
-          const payload = (await response.json()) as SearchPayload;
-          const hits = payload.results;
-          if (!Array.isArray(hits)) return false;
-
-          if (!append) {
-            listNode = null;
-            shown = 0;
-          }
-          if (hits.length === 0 && shown === 0) {
-            results.replaceChildren(stateNode("冇符合嘅結果", "試下換個寫法，簡體字都會歸一到繁體。"));
-            return true;
-          }
-          if (listNode === null) {
-            listNode = document.createElement("ul");
-            listNode.className = "hits";
-          }
-          for (const hit of hits) {
-            const item = hitNode(hit);
-            if (item !== null) listNode.append(item);
-          }
-          shown += hits.length;
-          total = typeof payload.total === "number" ? payload.total : shown;
-          currentPage = typeof payload.page === "number" ? payload.page : page;
-          results.replaceChildren(listNode);
-          renderFooter();
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      /** 把目前勾選嘅語料同步入 URL（唔留歷史紀錄）。 */
-      const syncCorpusParams = (): void => {
-        selectedCorpora.length = 0;
-        for (const box of corpusBoxes) {
-          if (box.checked) selectedCorpora.push(box.value);
-        }
-        const url = new URL(window.location.href);
-        url.searchParams.delete("corpus");
-        for (const slug of selectedCorpora) url.searchParams.append("corpus", slug);
-        window.history.replaceState(null, "", url);
-      };
-
-      /** 勾選範圍即重新檢索；冇查詢字時只同步 URL。 */
-      for (const box of corpusBoxes) {
-        box.addEventListener("change", () => {
-          syncCorpusParams();
-          if (query === "") return;
-          results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
-          void load(1, false).then((served) => {
-            if (!served) results.replaceChildren(unavailable());
-          });
-        });
-      }
-
-      if (query !== "") {
-        results.replaceChildren(stateNode("檢索中…", "正在查全庫。"));
-        void load(1, false).then((served) => {
-          if (!served) results.replaceChildren(unavailable());
-        });
-      }
-    }
-  </script>
+    <p class="loading" id="search-loading" aria-hidden="true" hidden>載入緊…</p>
+    <p class="error" id="search-error" hidden></p>
+  </section>
 </Base>
+
+<script>
+  import { pageParam, statusBadge } from "../../utils/reader.ts";
+  import {
+    facetPills,
+    hitHref,
+    hitIssueLabel,
+    normalizationNotice,
+    searchHref,
+    searchModeLabel,
+  } from "../../utils/search-view.ts";
+
+  interface CorpusInfo {
+    slug: string;
+    shortTitle: string;
+    issueCount: number;
+    year: number | null;
+  }
+
+  interface SearchHit {
+    id: string;
+    corpus: string;
+    issue: string;
+    page: number;
+    title: string | null;
+    status?: string;
+    pre: string;
+    highlight: string | null;
+    post: string | null;
+  }
+
+  interface SearchPayload {
+    normalized?: string;
+    total?: number;
+    facets?: Record<string, number>;
+    results?: SearchHit[];
+    more?: boolean;
+    error?: string;
+  }
+
+  const PAGE_SIZE = 40;
+  const FALLBACK_ERROR = "檢索服務暫時未能使用，請稍後再試。";
+
+  const byId = (id: string): HTMLElement => document.getElementById(id) as HTMLElement;
+  const root = byId("search-root");
+  const corpora = JSON.parse(root.dataset.corpora ?? "[]") as CorpusInfo[];
+  const corpusBySlug = new Map(corpora.map((corpus) => [corpus.slug, corpus]));
+
+  const live = byId("search-live");
+  const idle = byId("search-idle");
+  const results = byId("search-results");
+  const heading = byId("search-heading");
+  const totalNode = byId("search-total");
+  const modeNode = byId("search-mode");
+  const pills = byId("search-pills");
+  const notice = byId("search-notice");
+  const list = byId("search-list");
+  const empty = byId("search-empty");
+  const emptyTitle = byId("search-empty-title");
+  const moreWrap = byId("search-more-wrap");
+  const more = byId("search-more") as HTMLButtonElement;
+  const loading = byId("search-loading");
+  const error = byId("search-error");
+  const inputs = ["search-q", "site-q"]
+    .map((id) => document.getElementById(id))
+    .filter((node): node is HTMLInputElement => node instanceof HTMLInputElement);
+
+  let state = { q: "", corpus: null as string | null, page: 0, shown: 0, total: 0 };
+  /** 每次新檢索加一；舊請求返嚟時對唔上就丟棄，避免快速切換時結果錯位。 */
+  let ticket = 0;
+
+  const el = (tag: string, className = "", text?: string): HTMLElement => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  async function fetchPage(q: string, corpus: string | null, page: number): Promise<SearchPayload> {
+    const url = new URL("/api/search", window.location.origin);
+    url.searchParams.set("q", q);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("page_size", String(PAGE_SIZE));
+    if (corpus) url.searchParams.set("corpus", corpus);
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: { accept: "application/json" } });
+    } catch {
+      throw new Error(FALLBACK_ERROR);
+    }
+    const payload = (await response.json().catch(() => ({}))) as SearchPayload;
+    if (!response.ok || !Array.isArray(payload.results)) throw new Error(payload.error || FALLBACK_ERROR);
+    return payload;
+  }
+
+  /** 一條 KWIC 列：左上下文（左邊裁走）、命中字、右上下文（省略號），下面資料行。 */
+  function hitRow(hit: SearchHit, q: string): HTMLLIElement {
+    const item = document.createElement("li");
+    const link = el("a", "hit") as HTMLAnchorElement;
+    link.href = hitHref(hit, q);
+    let line: HTMLElement;
+    if (hit.highlight) {
+      const pre = el("span", "hit__pre");
+      pre.append(el("span", "", hit.pre));
+      line = el("span", "hit__line");
+      line.append(pre, el("mark", "hit__kw", hit.highlight), el("span", "hit__post", hit.post ?? ""));
+    } else {
+      line = el("span", "hit__line hit__line--plain", hit.pre);
+    }
+    const badge = statusBadge(hit.status ?? "");
+    const dot = el("span", badge.tone === "ok" ? "status-dot status-dot--ok" : "status-dot");
+    dot.setAttribute("aria-hidden", "true");
+    const corpus = corpusBySlug.get(hit.corpus);
+    const meta = el("span", "hit__meta");
+    meta.append(
+      dot,
+      el("span", "visually-hidden", badge.label),
+      el("span", "hit__corpus", corpus?.shortTitle ?? hit.corpus),
+      el("span", "", hitIssueLabel(corpus, hit.issue)),
+      el("span", "", `第 ${pageParam(hit.page)} 葉`),
+      el("span", "", hit.title || "（無題）"),
+    );
+    link.append(line, meta);
+    item.append(link);
+    return item;
+  }
+
+  function renderHead(payload: SearchPayload): void {
+    const { q, corpus } = state;
+    heading.textContent = `「${q}」`;
+    totalNode.textContent = String(state.total);
+    modeNode.textContent = searchModeLabel(q);
+    pills.replaceChildren(
+      ...facetPills(corpora, payload.facets ?? {}, corpus).map((pill) => {
+        const button = el("button", "chip chip--outline", `${pill.label} · ${pill.count}`);
+        button.setAttribute("type", "button");
+        button.setAttribute("aria-pressed", String(pill.slug === corpus));
+        button.dataset.slug = pill.slug ?? "";
+        button.addEventListener("click", () => {
+          if (pill.slug === state.corpus) return;
+          window.history.replaceState(null, "", searchHref(q, pill.slug));
+          void run(q, pill.slug, true);
+        });
+        return button;
+      }),
+    );
+    const message = normalizationNotice(q, payload.normalized ?? "");
+    notice.hidden = message === null;
+    notice.textContent = message ?? "";
+  }
+
+  /** 攞下一頁；fresh 即新檢索（重畫頁頭），否則追加。 */
+  async function loadNext(mine: number, fresh: boolean): Promise<void> {
+    more.disabled = true;
+    error.hidden = true;
+    try {
+      const payload = await fetchPage(state.q, state.corpus, state.page + 1);
+      if (mine !== ticket) return;
+      const hits = payload.results ?? [];
+      state.page += 1;
+      state.total = payload.total ?? 0;
+      state.shown += hits.length;
+      if (fresh) renderHead(payload);
+      list.append(...hits.map((hit) => hitRow(hit, state.q)));
+      results.hidden = false;
+      empty.hidden = state.total > 0;
+      emptyTitle.textContent = `搵唔到「${state.q}」`;
+      moreWrap.hidden = payload.more !== true;
+      more.textContent = `載入多 ${PAGE_SIZE} 條（已顯示 ${state.shown} / ${state.total}）`;
+      if (fresh) live.textContent = state.total > 0 ? `「${state.q}」共 ${state.total} 篇` : `搵唔到「${state.q}」`;
+    } catch (failure) {
+      if (mine !== ticket) return;
+      error.textContent = failure instanceof Error ? failure.message : FALLBACK_ERROR;
+      error.hidden = false;
+      live.textContent = error.textContent;
+    } finally {
+      if (mine === ticket) {
+        loading.hidden = true;
+        more.disabled = false;
+      }
+    }
+  }
+
+  /** 由第一頁重新檢索；keepHead 即同一個查詢字換篩選，保留頁頭免得跳。 */
+  async function run(q: string, corpus: string | null, keepHead: boolean): Promise<void> {
+    const mine = ++ticket;
+    state = { q, corpus, page: 0, shown: 0, total: 0 };
+    for (const input of inputs) input.value = q;
+    for (const pill of pills.querySelectorAll("button")) {
+      pill.setAttribute("aria-pressed", String((pill.dataset.slug || null) === corpus));
+    }
+    list.replaceChildren();
+    empty.hidden = true;
+    moreWrap.hidden = true;
+    error.hidden = true;
+    results.hidden = !keepHead || q === "";
+    idle.hidden = q !== "";
+    loading.hidden = q === "";
+    live.textContent = q === "" ? "" : "載入緊…";
+    if (q !== "") await loadNext(mine, true);
+  }
+
+  const fromLocation = (): void => {
+    const params = new URLSearchParams(window.location.search);
+    void run((params.get("q") ?? "").trim(), params.get("corpus") || null, false);
+  };
+
+  more.addEventListener("click", () => {
+    loading.hidden = false;
+    void loadNext(ticket, false);
+  });
+
+  for (const form of document.querySelectorAll<HTMLFormElement>('form[role="search"]')) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const q = String(new FormData(form).get("q") ?? "").trim();
+      const href = searchHref(q);
+      if (`${window.location.pathname}${window.location.search}` !== href) window.history.pushState(null, "", href);
+      void run(q, null, false);
+    });
+  }
+
+  window.addEventListener("popstate", fromLocation);
+  fromLocation();
+</script>
+
+<style>
+  /* 墨藍色帶頁頭 */
+  .band {
+    background: var(--ink);
+    color: var(--parchment);
+  }
+
+  .band__wm {
+    --wm-size: min(40vw, 520px);
+    --wm-color: rgba(241, 160, 140, 0.08);
+    --wm-right: -2vw;
+    --wm-bottom: -14vw;
+  }
+
+  .band__inner {
+    position: relative;
+    padding-top: clamp(40px, 5vw, 72px);
+    padding-bottom: clamp(40px, 5vw, 60px);
+  }
+
+  .band .eyebrow {
+    margin: 0;
+  }
+
+  .band__title {
+    margin: 12px 0 28px;
+    font-size: clamp(44px, 6vw, 80px);
+    line-height: 1;
+    color: var(--parchment);
+  }
+
+  .band__help {
+    margin: 16px 0 0;
+    max-width: 46em;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--on-dark-78);
+  }
+
+  .band__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* 結果區 */
+  .results {
+    padding-top: 32px;
+    padding-bottom: 96px;
+  }
+
+  .hints {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+
+  .hints[hidden],
+  .more[hidden] {
+    display: none;
+  }
+
+  .hint {
+    padding: 22px;
+    background: var(--surface-low);
+  }
+
+  .hint__title {
+    font-size: 22px;
+  }
+
+  .hint p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    color: var(--graphite);
+  }
+
+  .res-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px 32px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .res-head__q {
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1.2;
+  }
+
+  .res-head__meta {
+    margin: 6px 0 0;
+    font-size: 15px;
+    color: var(--graphite);
+  }
+
+  .res-head__meta b {
+    color: var(--kapok);
+  }
+
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .notice {
+    margin: 16px 0 0;
+    padding: 12px 16px;
+    background: rgba(114, 91, 53, 0.1);
+    color: var(--muted-gold);
+    font-size: 14px;
+  }
+
+  .kwic {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* KWIC 列由腳本生成，唔帶 scoped 屬性，故用 :global */
+  .kwic :global(.hit) {
+    display: block;
+    padding: 16px 8px;
+    border-bottom: 1px solid var(--line-08);
+    color: var(--ink);
+    transition: background-color 200ms;
+  }
+
+  .kwic :global(.hit:hover) {
+    background: var(--surface-low);
+    text-decoration: none;
+  }
+
+  .kwic :global(.hit__line) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px;
+    font-family: var(--font-serif);
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.6;
+    color: var(--graphite);
+  }
+
+  .kwic :global(.hit__line--plain) {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+
+  .kwic :global(.hit__pre) {
+    display: flex;
+    justify-content: flex-end;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .kwic :global(.hit__pre > span) {
+    flex: none;
+  }
+
+  .kwic :global(.hit__kw) {
+    padding: 0 6px;
+    background: var(--kapok);
+    color: #fff;
+  }
+
+  .kwic :global(.hit__post) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .kwic :global(.hit__meta) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 12px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--graphite);
+  }
+
+  .kwic :global(.hit__corpus) {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .more {
+    display: flex;
+    justify-content: center;
+    margin-top: 28px;
+  }
+
+  .empty {
+    padding: 56px 0;
+    text-align: center;
+  }
+
+  .empty__title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 24px;
+  }
+
+  .empty__hint {
+    margin: 8px 0 0;
+    color: var(--graphite);
+  }
+
+  .loading {
+    margin: 0;
+    padding: 64px 0;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-size: 24px;
+    color: var(--graphite);
+  }
+
+  .error {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--kapok);
+  }
+</style>
