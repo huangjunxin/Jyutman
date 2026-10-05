@@ -1,5 +1,25 @@
 ---
+import Icon from "../../components/Icon.astro";
 import Base from "../../layouts/Base.astro";
+import { getCorpora, getIssues } from "../../utils/corpus.ts";
+import { corpusMeta, issueLabel } from "../../utils/corpus-meta.ts";
+
+// build time 注入位置標籤：語料 slug → 簡題、「slug/issue」→ 期號標籤（第一期／單冊）。
+const labels = { titles: {} as Record<string, string>, issues: {} as Record<string, string> };
+getCorpora().forEach((corpus, index) => {
+  labels.titles[corpus.slug] = corpusMeta(corpus, index).shortTitle;
+  for (const { issue } of getIssues(corpus.slug)) {
+    labels.issues[`${corpus.slug}/${issue}`] = issueLabel(corpus.issueCount, issue);
+  }
+});
+
+const tiles = [
+  { status: "pending", label: "待審" },
+  { status: "accepted", label: "已採用" },
+  { status: "rejected", label: "已駁回" },
+  { status: "deferred", label: "已暫緩" },
+  { status: "", label: "全部" },
+];
 ---
 
 <Base
@@ -7,48 +27,108 @@ import Base from "../../layouts/Base.astro";
   description="內部校對隊列：審閱讀者上報，採用、駁回或暫緩；唔對外開放。"
   noindex
 >
-  <div class="wrap">
-    <div class="page-head">
-      <div>
-        <h1>校對工作台</h1>
-        <p>內部工具 · 匿名上報經此審閱 · 本站唔會直接回寫上游</p>
+  <div class="proof" id="proof" data-labels={JSON.stringify(labels)}>
+    <section class="head">
+      <div class="wrap head__inner">
+        <div>
+          <span class="badge badge--gold head__badge">內部工具 · 唔對外開放</span>
+          <h1>校對工作台</h1>
+          <p class="head__sub">匿名上報經此審閱 · 本站唔會直接回寫上游</p>
+        </div>
+        <div class="head__actions" id="actions" hidden>
+          <button type="button" class="btn tool-btn" id="exportJson">導出已採用 JSON</button>
+          <button type="button" class="btn tool-btn" id="exportCsv">導出已採用 CSV</button>
+          <button type="button" class="btn text-btn" id="signOut">離開</button>
+        </div>
       </div>
-    </div>
-
-    <section class="gate" id="gate">
-      <p class="gate-hint">輸入維護密碼（ADMIN_TOKEN）先可以讀取隊列；密碼只存喺本頁 session，閂咗分頁即清。</p>
-      <form id="gateForm">
-        <input type="password" id="gateInput" autocomplete="off" aria-label="維護密碼" placeholder="維護密碼" />
-        <button type="submit" class="btn primary">進入</button>
-      </form>
-      <p class="gate-error" id="gateError" hidden>密碼唔啱，或者伺服器未設定維護權杖。</p>
     </section>
 
-    <section id="panel" hidden>
-      <div class="bar">
-        <div class="filters" role="group" aria-label="狀態篩選">
-          <button type="button" class="fchip" data-status="pending" aria-pressed="true">待審</button>
-          <button type="button" class="fchip" data-status="accepted" aria-pressed="false">已採用</button>
-          <button type="button" class="fchip" data-status="rejected" aria-pressed="false">已駁回</button>
-          <button type="button" class="fchip" data-status="deferred" aria-pressed="false">已暫緩</button>
-          <button type="button" class="fchip" data-status="" aria-pressed="false">全部</button>
-        </div>
-        <span class="spacer"></span>
-        <button type="button" class="btn" id="exportJson">導出已採用 JSON</button>
-        <button type="button" class="btn" id="exportCsv">導出已採用 CSV</button>
-        <button type="button" class="btn" id="signOut">離開</button>
+    <section class="wrap gate" id="gate">
+      <form class="gate__card" id="gateForm">
+        <span class="gate__lock"><Icon name="lock" size={22} /></span>
+        <h2>輸入維護密碼</h2>
+        <p class="gate__hint" id="gateHint">
+          輸入維護密碼（ADMIN_TOKEN）先可以讀取隊列；密碼只存喺本頁 session，閂咗分頁即清。
+        </p>
+        <label class="visually-hidden" for="gateInput">維護密碼</label>
+        <input
+          class="gate__input"
+          type="password"
+          id="gateInput"
+          autocomplete="off"
+          placeholder="維護密碼"
+          required
+          aria-describedby="gateHint gateError"
+        />
+        <p class="gate__error" id="gateError" role="alert" hidden>密碼唔啱，或者伺服器未設定維護權杖。</p>
+        <button type="submit" class="btn btn--solid gate__go">進入</button>
+      </form>
+    </section>
+
+    <section class="wrap panel" id="panel" hidden>
+      <div class="tiles" role="group" aria-label="狀態篩選">
+        {
+          tiles.map((tile) => (
+            <button
+              type="button"
+              class={`tile tile--${tile.status || "all"}`}
+              data-status={tile.status}
+              aria-pressed={tile.status === "pending" ? "true" : "false"}
+            >
+              <span class="tile__n" data-count={tile.status}>–</span>
+              <span class="tile__label">{tile.label}</span>
+            </button>
+          ))
+        }
       </div>
 
-      <p class="note" id="note">導出檔供人手整理之後向上游提 PR；本站唔會自動回寫上游。</p>
-      <div id="queue" aria-live="polite"></div>
+      <div class="meta">
+        <span>導出檔供人手整理之後向上游提 PR；本站唔會自動回寫上游。</span>
+        <span class="meta__msg" id="msg" aria-live="polite"></span>
+      </div>
+
+      <p class="state" id="state" aria-live="polite" hidden></p>
+      <div class="empty" id="empty" hidden>呢個狀態之下冇上報。</div>
+      <div id="queue"></div>
+
+      <template id="rowTpl">
+        <article class="row">
+          <div class="row__main">
+            <div class="row__head">
+              <span class="row__type" data-slot="type"></span>
+              <span class="badge row__status" data-slot="status"></span>
+              <span class="row__where" data-slot="where"></span>
+              <time class="row__when" data-slot="when"></time>
+            </div>
+            <p class="row__frag" data-slot="frag"></p>
+            <p class="row__sugg" data-slot="sugg"></p>
+            <a class="row__go" data-slot="go">去原文 →</a>
+          </div>
+          <div class="row__actions">
+            <button type="button" class="act act--accept" data-action="accept">採用</button>
+            <button type="button" class="act act--reject" data-action="reject">駁回</button>
+            <button type="button" class="act act--defer" data-action="defer">暫緩</button>
+          </div>
+        </article>
+      </template>
     </section>
   </div>
 
   <script>
     const TOKEN_KEY = "jm-admin";
+    const CSV_COLUMNS = ["id", "article_id", "corpus", "issue", "page", "type", "selected_text", "fragment", "suggestion", "created_at"];
+    const STATUS_LABEL: Record<string, string> = {
+      pending: "待審",
+      accepted: "已採用",
+      rejected: "已駁回",
+      deferred: "已暫緩",
+    };
+
+    /** /api/queue 每一行（server/db/corrections.ts 嘅 QueueRow）。 */
     interface QueueItem {
       id: number;
       article_id: string;
+      page_id: string | null;
       type: string;
       fragment: string | null;
       selected_text: string | null;
@@ -61,21 +141,23 @@ import Base from "../../layouts/Base.astro";
       [key: string]: unknown;
     }
 
-    const STATUS_LABEL: Record<string, string> = {
-      pending: "待審",
-      accepted: "已採用",
-      rejected: "已駁回",
-      deferred: "已暫緩",
-    };
-
-    const gate = document.getElementById("gate");
-    const gateForm = document.getElementById("gateForm");
-    const gateInput = document.getElementById("gateInput");
-    const gateError = document.getElementById("gateError");
-    const panel = document.getElementById("panel");
-    const queue = document.getElementById("queue");
-    const note = document.getElementById("note");
-    const statusButtons = [...document.querySelectorAll(".fchip")];
+    const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+    const root = $("proof");
+    const gate = $("gate");
+    const gateForm = $<HTMLFormElement>("gateForm");
+    const gateInput = $<HTMLInputElement>("gateInput");
+    const gateError = $("gateError");
+    const panel = $("panel");
+    const actions = $("actions");
+    const queue = $("queue");
+    const state = $("state");
+    const empty = $("empty");
+    const msg = $("msg");
+    const rowTpl = $<HTMLTemplateElement>("rowTpl");
+    const tiles = [...document.querySelectorAll<HTMLButtonElement>(".tile")];
+    const labels: { titles: Record<string, string>; issues: Record<string, string> } = JSON.parse(
+      root.dataset.labels ?? "{}",
+    );
 
     let token = "";
     try {
@@ -85,378 +167,641 @@ import Base from "../../layouts/Base.astro";
     }
     let status = "pending";
 
-    const authedFetch = (url: string, options: RequestInit = {}): Promise<Response> => {
-      const headers = new Headers(options.headers);
-      headers.set("authorization", `Bearer ${token}`);
-      return fetch(url, { ...options, headers });
+    const setStored = (value: string | null): void => {
+      try {
+        if (value === null) window.sessionStorage.removeItem(TOKEN_KEY);
+        else window.sessionStorage.setItem(TOKEN_KEY, value);
+      } catch {
+        /* 本機儲存唔可用時只保留今次 */
+      }
     };
 
-    const showGate = (message = false): void => {
-      if (gate !== null) gate.hidden = false;
-      if (panel !== null) panel.hidden = true;
-      if (gateError !== null) gateError.hidden = !message;
+    const showGate = (error: boolean): void => {
+      gate.hidden = false;
+      panel.hidden = true;
+      actions.hidden = true;
+      gateError.hidden = !error;
+      msg.textContent = "";
     };
 
     const showPanel = (): void => {
-      if (gate !== null) gate.hidden = true;
-      if (panel !== null) panel.hidden = false;
+      gate.hidden = true;
+      panel.hidden = false;
+      actions.hidden = false;
     };
 
-    const el = (tag: string, className?: string, text?: string): HTMLElement => {
-      const node = document.createElement(tag);
-      if (className !== undefined) node.className = className;
-      if (text !== undefined) node.textContent = text;
-      return node;
+    const signOut = (error: boolean): void => {
+      setStored(null);
+      token = "";
+      showGate(error);
+      if (error) gateInput.focus();
     };
 
-    /** 隊列一列：類型徽章、出處、所選與前後文、建議、時間、狀態、三個動作。 */
+    /** 帶維護權杖請求；401 就登出並提示密碼錯，網絡錯誤返回 null。 */
+    const authedFetch = async (url: string, options: RequestInit = {}): Promise<Response | null> => {
+      const headers = new Headers(options.headers);
+      headers.set("authorization", `Bearer ${token}`);
+      const response = await fetch(url, { ...options, headers }).catch(() => null);
+      if (response?.status === 401) {
+        signOut(true);
+        return null;
+      }
+      return response;
+    };
+
+    /** 讀取隊列；失敗返回 null。 */
+    const fetchQueue = async (filter: string): Promise<QueueItem[] | null> => {
+      const response = await authedFetch(`/api/queue?status=${encodeURIComponent(filter)}`);
+      if (response === null || !response.ok) return null;
+      const body: { items?: QueueItem[] } = await response.json().catch(() => ({}));
+      return Array.isArray(body.items) ? body.items : null;
+    };
+
+    const pad3 = (page: number): string => String(page).padStart(3, "0");
+
+    /** 本地時間 YYYY-MM-DD HH:MM；解析唔到就照出原字串。 */
+    const formatTime = (iso: string): string => {
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return iso;
+      const z = (n: number) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${z(date.getMonth() + 1)}-${z(date.getDate())} ${z(date.getHours())}:${z(date.getMinutes())}`;
+    };
+
+    /** 位置：articles 左連冇結果時由 page_id（<corpus>/<issue>/<NNN>）推返。 */
+    const locate = (item: QueueItem) => {
+      const [pc, pi, pp] = (item.page_id ?? "").split("/");
+      const corpus = item.corpus ?? (pc || null);
+      const issue = item.issue ?? (pi || null);
+      const page = item.page ?? (pp ? Number(pp) : null);
+      const parts = [
+        corpus === null ? "（語料未登記）" : (labels.titles[corpus] ?? corpus),
+        issue === null || corpus === null ? null : (labels.issues[`${corpus}/${issue}`] ?? issue),
+        page === null || Number.isNaN(page) ? null : `第 ${pad3(page)} 葉`,
+        item.article_id,
+      ];
+      const href =
+        corpus !== null && issue !== null && page !== null && !Number.isNaN(page)
+          ? `/read/${corpus}/${issue}/${pad3(page)}/#${encodeURIComponent(item.article_id)}`
+          : null;
+      return { where: parts.filter((part) => part !== null).join(" · "), href };
+    };
+
+    const setStatusBadge = (badge: HTMLElement, value: string): void => {
+      badge.dataset.status = value;
+      badge.textContent = STATUS_LABEL[value] ?? value;
+    };
+
+    /** 由 template 砌一條；用戶內容一律 textContent。 */
     const renderRow = (item: QueueItem): HTMLElement => {
-      const row = el("article", "row");
+      const row = (rowTpl.content.firstElementChild as HTMLElement).cloneNode(true) as HTMLElement;
+      const slot = (name: string) => row.querySelector(`[data-slot="${name}"]`) as HTMLElement;
       row.dataset.id = String(item.id);
 
-      const head = el("div", "row-head");
-      head.append(el("span", "badge type", item.type));
-      head.append(el("span", "badge", STATUS_LABEL[item.status] ?? item.status));
-      const where = el("span", "where");
-      const corpus = item.corpus ?? "（語料未登記）";
-      const page = item.page === null ? "" : ` · 第 ${String(item.page).padStart(3, "0")} 葉`;
-      where.textContent = `${corpus} · ${item.issue ?? ""}${page} · ${item.article_id}`;
-      head.append(where);
-      head.append(el("span", "when", item.created_at.replace("T", " ").slice(0, 16)));
-      row.append(head);
+      slot("type").textContent = item.type;
+      setStatusBadge(slot("status"), item.status);
+      const { where, href } = locate(item);
+      const whereNode = slot("where");
+      whereNode.id = `report-${item.id}`;
+      whereNode.textContent = where;
+      const when = slot("when");
+      when.setAttribute("datetime", item.created_at);
+      when.textContent = formatTime(item.created_at);
 
-      const ctx = el("p", "ctx");
+      const frag = slot("frag");
       const fragment = item.fragment ?? "";
-      const at = item.selected_text ? fragment.indexOf(item.selected_text) : -1;
-      if (at >= 0 && item.selected_text !== null) {
-        ctx.append(document.createTextNode(fragment.slice(0, at)));
-        const mark = el("mark", undefined, item.selected_text);
-        ctx.append(mark);
-        ctx.append(document.createTextNode(fragment.slice(at + item.selected_text.length)));
+      const selected = item.selected_text ?? "";
+      const at = selected ? fragment.indexOf(selected) : -1;
+      if (at >= 0) {
+        const mark = document.createElement("mark");
+        mark.textContent = selected;
+        frag.append(fragment.slice(0, at), mark, fragment.slice(at + selected.length));
       } else {
-        ctx.textContent = fragment;
+        frag.textContent = fragment || selected;
       }
-      row.append(ctx);
 
-      if (item.suggestion) row.append(el("p", "sugg", `建議：${item.suggestion}`));
+      const sugg = slot("sugg");
+      if (item.suggestion) sugg.textContent = `建議：${item.suggestion}`;
+      else sugg.remove();
 
-      const actions = el("div", "row-actions");
-      for (const [action, label] of [
-        ["accept", "採用"],
-        ["reject", "駁回"],
-        ["defer", "暫緩"],
-      ]) {
-        const button = el("button", "btn small", label);
-        button.setAttribute("type", "button");
-        button.dataset.action = action;
-        actions.append(button);
-      }
-      row.append(actions);
+      const go = slot("go") as HTMLAnchorElement;
+      if (href === null) go.remove();
+      else go.href = href;
+
+      for (const button of row.querySelectorAll("button")) button.setAttribute("aria-describedby", whereNode.id);
       return row;
     };
 
-    const loadQueue = async () => {
-      if (queue === null) return;
-      queue.replaceChildren(el("p", "state", "讀取中…"));
-      const response = await authedFetch(`/api/queue?status=${encodeURIComponent(status)}`);
-      if (response.status === 401) {
-        try {
-          window.sessionStorage.removeItem(TOKEN_KEY);
-        } catch {
-          /* 本機儲存唔可用 */
-        }
-        token = "";
-        showGate(true);
-        return;
-      }
-      const body: { items?: QueueItem[] } = await response.json().catch(() => ({}));
-      const items = Array.isArray(body.items) ? body.items : [];
-      if (items.length === 0) {
-        queue.replaceChildren(el("p", "state", "呢個狀態之下冇上報。"));
-        return;
-      }
-      const list = el("div", "rows");
-      for (const item of items) list.append(renderRow(item));
-      queue.replaceChildren(list);
+    const showState = (text: string, error = false): void => {
+      state.textContent = text;
+      state.classList.toggle("state--error", error);
+      state.hidden = false;
     };
 
-    const adjudicate = async (id: string | undefined, action: string | undefined): Promise<void> => {
-      if (id === undefined || action === undefined) return;
+    const loadCounts = async (): Promise<void> => {
+      const items = await fetchQueue("");
+      if (items === null) return;
+      // ponytail: /api/queue 有 LIMIT 200，計數只計最近 200 條；隊列大過 200 要加 COUNT 端點。
+      for (const node of root.querySelectorAll<HTMLElement>("[data-count]")) {
+        const key = node.dataset.count ?? "";
+        const n = key === "" ? items.length : items.filter((item) => item.status === key).length;
+        node.textContent = key === "" && items.length >= 200 ? "200+" : String(n);
+      }
+    };
+
+    const loadQueue = async (): Promise<void> => {
+      empty.hidden = true;
+      queue.replaceChildren();
+      showState("載入緊…");
+      const items = await fetchQueue(status);
+      if (token === "") return;
+      if (items === null) {
+        showState("資料載入失敗，請重新整理。", true);
+        return;
+      }
+      state.hidden = true;
+      queue.replaceChildren(...items.map(renderRow));
+      empty.hidden = items.length > 0;
+    };
+
+    const adjudicate = async (row: HTMLElement, action: string): Promise<void> => {
       const response = await authedFetch("/api/adjudicate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: Number(id), action }),
+        body: JSON.stringify({ id: Number(row.dataset.id), action }),
       });
-      if (response.status === 401) {
-        showGate(true);
+      if (response === null) {
+        if (token !== "") msg.textContent = "操作失敗，請再試。";
         return;
       }
-      if (!response.ok) return;
+      if (!response.ok) {
+        msg.textContent = "操作失敗，請再試。";
+        return;
+      }
       const body: { status?: string } = await response.json().catch(() => ({}));
-      const row = queue?.querySelector(`.row[data-id="${id}"]`);
-      if (row === null || row === undefined) return;
-      const badge = row.querySelectorAll(".badge")[1];
-      if (badge !== null) badge.textContent = STATUS_LABEL[body.status ?? ""] ?? body.status ?? "";
-      if (status !== "" && body.status !== status) row.remove();
+      const next = body.status ?? "";
+      setStatusBadge(row.querySelector<HTMLElement>('[data-slot="status"]') as HTMLElement, next);
+      if (status !== "" && next !== status) {
+        row.remove();
+        empty.hidden = queue.childElementCount > 0;
+      }
+      msg.textContent = "";
+      void loadCounts();
     };
 
-    queue?.addEventListener("click", (event) => {
-      const button =
-        event.target instanceof Element ? event.target.closest<HTMLElement>("button[data-action]") : null;
+    queue.addEventListener("click", (event) => {
+      const button = event.target instanceof Element ? event.target.closest<HTMLElement>("button[data-action]") : null;
       const row = button?.closest<HTMLElement>(".row");
-      if (button === null || row === null || row === undefined) return;
-      void adjudicate(row.dataset.id, button.dataset.action);
+      if (button && row && button.dataset.action) void adjudicate(row, button.dataset.action);
     });
 
-    for (const button of statusButtons) {
-      button.addEventListener("click", () => {
-        status = button.getAttribute("data-status") ?? "";
-        for (const other of statusButtons) {
-          other.setAttribute("aria-pressed", String(other === button));
-        }
+    for (const tile of tiles) {
+      tile.addEventListener("click", () => {
+        status = tile.dataset.status ?? "";
+        for (const other of tiles) other.setAttribute("aria-pressed", String(other === tile));
         void loadQueue();
       });
     }
 
-    gateForm?.addEventListener("submit", async (event) => {
+    const enter = (): void => {
+      showPanel();
+      void loadCounts();
+      void loadQueue();
+    };
+
+    gateForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const value = gateInput instanceof HTMLInputElement ? gateInput.value.trim() : "";
+      const value = gateInput.value.trim();
       if (value === "") return;
       token = value;
-      try {
-        window.sessionStorage.setItem(TOKEN_KEY, value);
-      } catch {
-        /* 本機儲存唔可用時只保留今次 */
-      }
-      showPanel();
-      await loadQueue();
+      setStored(value);
+      gateInput.value = "";
+      enter();
     });
 
     const download = (name: string, mime: string, text: string): void => {
-      const blob = new Blob([text], { type: mime });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(new Blob([text], { type: mime }));
       const link = document.createElement("a");
       link.href = url;
       link.download = name;
       document.body.append(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
-    };
-
-    const fetchAccepted = async (): Promise<QueueItem[]> => {
-      const response = await authedFetch("/api/queue?status=accepted");
-      if (response.status === 401) {
-        showGate(true);
-        return [];
-      }
-      const body: { items?: QueueItem[] } = await response.json().catch(() => ({}));
-      return Array.isArray(body.items) ? body.items : [];
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     const csvCell = (value: unknown): string => `"${String(value ?? "").replaceAll('"', '""')}"`;
 
-    document.getElementById("exportJson")?.addEventListener("click", async () => {
-      const items = await fetchAccepted();
-      if (note !== null) note.textContent = `已導出 ${items.length} 條已採用上報（JSON）；本站唔會自動回寫上游。`;
-      download(`jyutman-corrections-accepted.json`, "application/json", `${JSON.stringify(items, null, 2)}\n`);
-    });
-
-    document.getElementById("exportCsv")?.addEventListener("click", async () => {
-      const items = await fetchAccepted();
-      const columns = ["id", "article_id", "corpus", "issue", "page", "type", "selected_text", "fragment", "suggestion", "created_at"];
-      const lines = [columns.join(",")];
-      for (const item of items) lines.push(columns.map((column) => csvCell(item[column])).join(","));
-      if (note !== null) note.textContent = `已導出 ${items.length} 條已採用上報（CSV）；本站唔會自動回寫上游。`;
-      download("jyutman-corrections-accepted.csv", "text/csv", `${lines.join("\n")}\n`);
-    });
-
-    document.getElementById("signOut")?.addEventListener("click", () => {
-      try {
-        window.sessionStorage.removeItem(TOKEN_KEY);
-      } catch {
-        /* 本機儲存唔可用 */
+    const exportAccepted = async (kind: "json" | "csv"): Promise<void> => {
+      const items = await fetchQueue("accepted");
+      if (items === null) {
+        if (token !== "") msg.textContent = "導出失敗，請再試。";
+        return;
       }
-      token = "";
-      showGate(false);
-    });
+      const text =
+        kind === "json"
+          ? `${JSON.stringify(items, null, 2)}\n`
+          : `${[CSV_COLUMNS.join(","), ...items.map((item) => CSV_COLUMNS.map((column) => csvCell(item[column])).join(","))].join("\n")}\n`;
+      download(`jyutman-corrections-accepted.${kind}`, kind === "json" ? "application/json" : "text/csv", text);
+      msg.textContent = `已導出 ${items.length} 條已採用上報（${kind.toUpperCase()}）`;
+    };
+
+    $("exportJson").addEventListener("click", () => void exportAccepted("json"));
+    $("exportCsv").addEventListener("click", () => void exportAccepted("csv"));
+    $("signOut").addEventListener("click", () => signOut(false));
 
     if (token === "") showGate(false);
-    else {
-      showPanel();
-      void loadQueue();
-    }
+    else enter();
   </script>
 
   <style>
-    .gate {
-      max-width: 34em;
-      margin: 0 0 28px;
-      padding: 22px 24px;
-      border: 1px dashed var(--rule);
-      border-radius: 4px;
-      background: var(--surface);
+    .proof [hidden] {
+      display: none !important;
     }
 
-    .gate-hint {
-      margin: 0 0 14px;
-      font-size: 13px;
-      line-height: 1.8;
-      color: var(--muted);
+    /* 頁頭 */
+    .head {
+      border-bottom: 1px solid var(--line-10);
     }
 
-    .gate form {
+    .head__inner {
       display: flex;
-      gap: 10px;
       flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px 32px;
+      padding-top: clamp(40px, 5vw, 72px);
+      padding-bottom: 28px;
     }
 
-    .gate input {
-      flex: 1;
-      min-width: 12em;
-      padding: 9px 12px;
-      border: 1px solid var(--rule);
-      border-radius: 4px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 14px;
+    .head__badge {
+      padding: 3px 10px;
+      font-weight: 700;
+      line-height: 1.75;
+      letter-spacing: 0.12em;
     }
 
-    .gate-error {
-      margin: 12px 0 0;
-      font-size: 13px;
-      color: var(--accent);
-    }
-
-    .bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .bar .spacer {
-      flex: 1;
-    }
-
-    .filters {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .fchip {
-      font-family: var(--sans);
-      font-size: 13px;
+    h1 {
+      margin-top: 16px;
+      font-size: clamp(48px, 7vw, 88px);
       line-height: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--rule);
-      border-radius: 999px;
-      background: var(--bg);
-      color: var(--muted);
-      cursor: pointer;
+      letter-spacing: -0.03em;
+      color: var(--ink);
     }
 
-    .fchip[aria-pressed="true"] {
-      background: var(--primary);
-      border-color: var(--primary);
-      color: var(--on-primary);
+    .head__sub {
+      margin: 14px 0 0;
+      font-size: 16px;
+      color: var(--graphite);
     }
 
-    .note {
-      margin: 0 0 18px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .state {
-      padding: 28px 24px;
-      border: 1px dashed var(--rule);
-      border-radius: 4px;
-      background: var(--surface);
-      text-align: center;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    .rows {
-      display: grid;
-      gap: 14px;
-    }
-
-    .row {
-      border: 1px solid var(--rule);
-      border-radius: 4px;
-      background: var(--surface);
-      padding: 14px 16px;
-    }
-
-    .row-head {
+    .head__actions {
       display: flex;
-      align-items: baseline;
-      gap: 10px;
       flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .badge {
-      font-family: var(--sans);
-      font-size: 11px;
-      line-height: 1;
-      padding: 4px 7px;
-      border: 1px solid var(--rule);
-      border-radius: 3px;
-      color: var(--muted);
-    }
-
-    .badge.type {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .where {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .when {
-      margin-left: auto;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .ctx {
-      margin: 0 0 8px;
-      font-size: 15px;
-      line-height: 1.9;
-    }
-
-    .ctx mark {
-      background: var(--highlight);
-      color: var(--text);
-      border-radius: 2px;
-      padding: 0 2px;
-    }
-
-    .sugg {
-      margin: 0 0 10px;
-      font-size: 14px;
-      line-height: 1.8;
-      color: var(--muted);
-    }
-
-    .row-actions {
-      display: flex;
       gap: 8px;
     }
 
-    .btn.small {
+    .tool-btn,
+    .text-btn {
+      padding: 9px 16px;
+      font-size: 14px;
+    }
+
+    .tool-btn {
+      border-color: rgba(3, 22, 50, 0.25);
+      background: var(--card);
+      color: var(--ink);
+    }
+
+    .tool-btn:hover {
+      background: var(--surface-low);
+    }
+
+    .text-btn {
+      border: 0;
+      color: var(--graphite);
+    }
+
+    .text-btn:hover {
+      color: var(--kapok);
+    }
+
+    /* 密碼頁 */
+    .gate {
+      display: flex;
+      justify-content: center;
+      padding-top: clamp(48px, 6vw, 88px);
+      padding-bottom: 120px;
+    }
+
+    .gate__card {
+      width: 100%;
+      max-width: 520px;
+      padding: clamp(28px, 4vw, 44px);
+      border: 1px solid var(--line-12);
+      background: var(--card);
+    }
+
+    .gate__lock {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      background: var(--ink);
+      color: var(--parchment);
+    }
+
+    h2 {
+      margin-top: 22px;
+      font-size: 30px;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+
+    .gate__hint {
+      margin: 10px 0 0;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--graphite);
+    }
+
+    .gate__input {
+      display: block;
+      width: 100%;
+      height: 52px;
+      margin-top: 22px;
+      padding: 0 16px;
+      border: 2px solid var(--ink);
+      border-radius: 0;
+      background: var(--parchment);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 16px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .gate__error {
+      margin: 10px 0 0;
       font-size: 13px;
-      padding: 7px 12px;
+      color: var(--kapok);
+    }
+
+    .gate__go {
+      width: 100%;
+      height: 52px;
+      margin-top: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    /* 已登入：狀態格 */
+    .panel {
+      padding-top: 28px;
+      padding-bottom: 96px;
+    }
+
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .tile {
+      --n: var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 18px 20px;
+      border: 1px solid var(--line-12);
+      background: var(--card);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        background-color 200ms,
+        border-color 200ms;
+    }
+
+    .tile:hover {
+      background: var(--surface-low);
+    }
+
+    .tile--pending {
+      --n: var(--kapok);
+    }
+
+    .tile--accepted {
+      --n: var(--archive-green);
+    }
+
+    .tile--rejected {
+      --n: var(--graphite);
+    }
+
+    .tile--deferred {
+      --n: var(--muted-gold);
+    }
+
+    .tile[aria-pressed="true"] {
+      --n: var(--parchment);
+      border-color: var(--ink);
+      background: var(--ink);
+      color: var(--parchment);
+    }
+
+    .tile__n {
+      font-family: var(--font-serif);
+      font-size: 44px;
+      line-height: 1;
+      color: var(--n);
+    }
+
+    .tile__label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      /* 冇 row-gap：空嘅導出訊息喺窄螢幕換行時唔好撐高 */
+      gap: 0 24px;
+      margin: 20px 0 4px;
+      font-size: 13px;
+      color: var(--graphite);
+    }
+
+    .meta__msg {
+      font-weight: 600;
+      color: var(--archive-green);
+    }
+
+    .state {
+      margin: 40px 0 0;
+      text-align: center;
+      font-family: var(--font-serif);
+      font-size: 24px;
+      color: var(--graphite);
+    }
+
+    .state--error {
+      color: var(--kapok);
+    }
+
+    .empty {
+      margin-top: 20px;
+      padding: 40px 24px;
+      border: 1px dashed var(--line-20);
+      background: var(--surface-low);
+      text-align: center;
+      font-size: 14px;
+      color: var(--graphite);
+    }
+
+    /* 隊列每條 */
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px 32px;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--line-10);
+    }
+
+    .row__main {
+      flex: 1 1 520px;
+      min-width: 0;
+    }
+
+    .row__head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .row__type {
+      padding: 1px 10px;
+      border: 1px solid var(--kapok);
+      border-radius: 8px;
+      color: var(--kapok);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.75;
+    }
+
+    .row__status {
+      font-weight: 700;
+      line-height: 1.75;
+    }
+
+    .row__status[data-status="pending"] {
+      background: var(--kapok-a10);
+      color: var(--kapok);
+    }
+
+    .row__status[data-status="accepted"] {
+      background: var(--green-a14);
+      color: var(--archive-green);
+    }
+
+    .row__status[data-status="rejected"] {
+      background: var(--graphite-a10);
+      color: var(--graphite);
+    }
+
+    .row__status[data-status="deferred"] {
+      background: var(--gold-a12);
+      color: var(--muted-gold);
+    }
+
+    .row__where,
+    .row__when {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--graphite);
+      overflow-wrap: anywhere;
+    }
+
+    .row__when {
+      margin-left: auto;
+    }
+
+    .row__frag {
+      margin: 12px 0 0;
+      font-family: var(--font-serif);
+      font-size: 21px;
+      line-height: 1.9;
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+
+    .row__frag :global(mark) {
+      padding: 0 3px;
+    }
+
+    .row__sugg {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--graphite);
+      overflow-wrap: anywhere;
+    }
+
+    .row__go {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .row__actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .act {
+      padding: 8px 16px;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 200ms;
+    }
+
+    .act--accept {
+      padding: 9px 16px;
+      border: 0;
+      background: var(--archive-green);
+      color: #fff;
+    }
+
+    .act--accept:hover {
+      background: var(--archive-green-hover);
+    }
+
+    .act--reject {
+      border-color: var(--kapok-a40);
+      color: var(--kapok);
+    }
+
+    .act--reject:hover {
+      background: rgba(181, 58, 37, 0.08);
+    }
+
+    .act--defer {
+      border-color: rgba(114, 91, 53, 0.45);
+      color: var(--muted-gold);
+    }
+
+    .act--defer:hover {
+      background: rgba(114, 91, 53, 0.08);
     }
   </style>
 </Base>
