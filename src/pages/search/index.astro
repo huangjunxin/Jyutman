@@ -85,6 +85,13 @@ const examples = ["廣東", "唔係", "广东"];
     </div>
 
     <p class="loading" id="search-loading" aria-hidden="true" hidden>載入緊…</p>
+    <script is:inline>
+      // 有 q 就喺首次繪畫前收起提示卡、顯示載入緊，免得閃一下；冇 JS 照睇到提示卡。
+      if ((new URLSearchParams(location.search).get("q") ?? "").trim()) {
+        document.getElementById("search-idle").hidden = true;
+        document.getElementById("search-loading").hidden = false;
+      }
+    </script>
     <p class="error" id="search-error" hidden></p>
   </section>
 </Base>
@@ -220,6 +227,8 @@ const examples = ["廣東", "唔係", "广东"];
     heading.textContent = `「${q}」`;
     totalNode.textContent = String(state.total);
     modeNode.textContent = searchModeLabel(q);
+    const focused = document.activeElement;
+    const focusedSlug = focused instanceof HTMLElement && pills.contains(focused) ? focused.dataset.slug : undefined;
     pills.replaceChildren(
       ...facetPills(corpora, payload.facets ?? {}, corpus).map((pill) => {
         const button = el("button", "chip chip--outline", `${pill.label} · ${pill.count}`);
@@ -234,6 +243,9 @@ const examples = ["廣東", "唔係", "广东"];
         return button;
       }),
     );
+    if (focusedSlug !== undefined) {
+      pills.querySelector<HTMLButtonElement>(`button[data-slug="${CSS.escape(focusedSlug)}"]`)?.focus();
+    }
     const message = normalizationNotice(q, payload.normalized ?? "");
     notice.hidden = message === null;
     notice.textContent = message ?? "";
@@ -241,7 +253,8 @@ const examples = ["廣東", "唔係", "广东"];
 
   /** 攞下一頁；fresh 即新檢索（重畫頁頭），否則追加。 */
   async function loadNext(mine: number, fresh: boolean): Promise<void> {
-    more.disabled = true;
+    // 唔用 disabled：Chrome 會將焦點由已停用嘅按鈕甩走
+    more.setAttribute("aria-disabled", "true");
     error.hidden = true;
     try {
       const payload = await fetchPage(state.q, state.corpus, state.page + 1);
@@ -251,13 +264,17 @@ const examples = ["廣東", "唔係", "广东"];
       state.total = payload.total ?? 0;
       state.shown += hits.length;
       if (fresh) renderHead(payload);
-      list.append(...hits.map((hit) => hitRow(hit, state.q)));
+      const hadFocus = document.activeElement === more;
+      const rows = hits.map((hit) => hitRow(hit, state.q));
+      list.append(...rows);
       results.hidden = false;
       empty.hidden = state.total > 0;
       emptyTitle.textContent = `搵唔到「${state.q}」`;
       moreWrap.hidden = payload.more !== true;
       more.textContent = `載入多 ${PAGE_SIZE} 條（已顯示 ${state.shown} / ${state.total}）`;
+      if (hadFocus && moreWrap.hidden) rows[0]?.querySelector("a")?.focus();
       if (fresh) live.textContent = state.total > 0 ? `「${state.q}」共 ${state.total} 篇` : `搵唔到「${state.q}」`;
+      else live.textContent = `已顯示 ${state.shown} / ${state.total}`;
     } catch (failure) {
       if (mine !== ticket) return;
       error.textContent = failure instanceof Error ? failure.message : FALLBACK_ERROR;
@@ -266,7 +283,7 @@ const examples = ["廣東", "唔係", "广东"];
     } finally {
       if (mine === ticket) {
         loading.hidden = true;
-        more.disabled = false;
+        more.removeAttribute("aria-disabled");
       }
     }
   }
@@ -296,6 +313,7 @@ const examples = ["廣東", "唔係", "广东"];
   };
 
   more.addEventListener("click", () => {
+    if (more.getAttribute("aria-disabled") === "true") return;
     loading.hidden = false;
     void loadNext(ticket, false);
   });
@@ -402,6 +420,16 @@ const examples = ["廣東", "唔係", "广东"];
     gap: 16px 32px;
     padding-bottom: 20px;
     border-bottom: 2px solid var(--ink);
+  }
+
+  .res-head > div:first-child {
+    min-width: 0;
+  }
+
+  .res-head__q,
+  .empty__title,
+  .notice {
+    overflow-wrap: anywhere;
   }
 
   .res-head__q {
