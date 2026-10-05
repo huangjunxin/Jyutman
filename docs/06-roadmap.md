@@ -1,6 +1,6 @@
 # 06 · 路线图
 
-> 状态：草案（2026-10-03）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-05）｜本文档随实现演进，以代码与单一事实源为准。
 
 相关文档：[README](../README.md) ｜ [01 · 愿景与范围](01-vision-and-scope.md) ｜ [02 · 技术架构](02-technical-architecture.md) ｜ [03 · 数据契约](03-data-contract.md) ｜ [04 · 功能与界面](04-features-and-ui.md) ｜ [05 · 部署方案](05-deployment.md)
 
@@ -48,7 +48,7 @@
 
 | # | 关键任务 | 验收标准 |
 |---|---|---|
-| 2.1 | 繁简 / 异体归一 | 简体或异体字输入能命中原文繁体；抽样查询精确率达标 |
+| 2.1 | 繁简归一（同字简转繁） | 简体字输入能命中原文繁体；不同的字（如 嘢 / 野）与异体字不归并；抽样查询精确率达标 |
 | 2.2 | 粤拼 ruby（已完成） | 已校对文本加注 Jyutping，以 ruby 呈现；可开关 |
 | 2.3 | 历史拼式对齐 | 19 世纪传教士罗马字拼式可检索，并与现代粤拼对应 |
 | 2.4 | 字典悬浮释义（已完成首版） | 选字可浮出释义；外连粤语辞丛、words.hk 等公开词典 |
@@ -115,7 +115,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 | Phase 0 | 部分语料版权状态不明 | 不确定者暂不发布，先发可确定的部分 |
 | Phase 1 | 竖排在手机上的体验 | 早期即用手机实测，不留到最后 |
 | Phase 1 | 页面数估算失准，撞 Cloudflare 上限 | 上线前先估算总页数 |
-| Phase 2 | 繁简异体映射表覆盖不足 | 以真实查询抽样验证，不追求一次到全量 |
+| Phase 2 | 繁简映射表覆盖不足 | 以真实查询抽样验证，不追求一次到全量 |
 | Phase 2 | 历史拼式映射工作量大 | 分期推进，先做骨架 + 抽样覆盖率 |
 | Phase 3 | 众包纠错质量参差 | 提交与审核分离，回写前必经人工确认 |
 | Phase 4 | AI 环节质量与成本不可控 | 不作承诺；具备条件先另行立项 |
@@ -139,7 +139,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## 当前状态
 
-**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）；Phase 2 进行中，Phase 3 已启动（3a 首版）。** 分项如下：
+**Phase 0 全部完成，Phase 1 全部完成（2026-10-03）；Phase 2 进行中，Phase 3 已启动（3a 首版）；2026-10-05 完成全站视觉改版（PR #1，见下）。** 分项如下：
 
 - 0.1 trigram 实测通过（本地 2026-10-02，生产 D1 复核 2026-10-03）：3 字及以上召回 100%，2 字用 bigram、单字用 unigram 降级，延迟均毫秒级；D1 上 trigram tokenizer 可用，召回与本地一致（见 `docs/spikes/0.1-d1-trigram.md`）。
 - 0.2 Pagefind 实测完成：多字 CJK 词召回失效，降为标题与罗马字辅助（见 `docs/spikes/0.2-pagefind.md`）。
@@ -169,5 +169,13 @@ Phase 3 进度（3a）：
 - 维护端审阅已上线：内部校对工作台（noindex、robots 屏蔽、站点导航不挂入口，路径不对外公布）以 admin token 鉴权（`ADMIN_TOKEN` 经 `wrangler secret` 写入），队列按状态筛选，逐条「採用 / 駁回 / 暫緩」，accepted 可导出 JSON / CSV 供人工向上游提 PR（本站不直接回写上游）。
 - 未做：Turnstile（需先建 widget）、Actions 自动回写（维持人工导出）、Cloudflare Access 升级路径。
 
-下一步行动：按上方 Phase 2 任务表推进（2.1 繁简异体映射扩充、2.3 历史拼式对齐、2.5 引用导出），并在 Phase 2 内补 deploy workflow。
+全站视觉改版（2026-10-05，分支 `feat/jyutjyu-redesign`，PR #1；上线时间以部署为准）：
+
+- 按 design handoff 原型改用粤语辞丛设计系统（Scholar's Ink · Kapok Edition）：新 token（木棉红 / 墨蓝 / 羊皮纸 / 档案绿 / 金褐 / 四级 surface）、只出浅色（暗色主题移除）、除徽章 8px 与 chip 999px 外无圆角、无阴影；「鱼尾」分隔元素删除，改用「其一／一」编号分隔线（见 docs/04 §4）。
+- 字体：自托管 Chiron Sung / Hei HK UI 子集 + `@fontsource-variable` 全量 Chiron 字体按 `unicode-range` 切片非阻塞加载 + Inter Variable；构建时剔除约 4.7 MB 的整包 CJK face（见 docs/02 §8）。
+- 全部页面按新结构重做：首页（构建期原文样张、数字带、语料卡）、书目库与书目详情（书脊色块卡、逐叶格）、阅读器（≥1080px 三栏、逐篇按 `isLatinDominant` 竖横排、`?hl=` 高亮、右栏内嵌引用卡与报错表单、`←` `→` 翻叶）、检索（KWIC 列、单选语料 pill 带篇数）、关于 / 数据开放（长文版面）、校对工作台（见 docs/04 §2.3、§3）。
+- 阅读偏好改存 `jyutman:reader-prefs`，缺省为竖排、开粤拼、开今译（此前缺省为横排、关粤拼、关今译；旧键 `jm-dir` / `jm-jyutping` / `jm-modtrans` 不再读取）；报错表单改为常驻右栏，正文选字自动带入（必须有选区才可提交），原选字浮出操作条（複製 / 查辭叢 / 回報此處）取消；引用由每篇标题行按钮的弹出层改为右栏内嵌卡（引用本叶第一篇）。
+- 接口：`/api/search` 增加 `facets`（逐语料篇数，一条 `GROUP BY`，不受 corpus 过滤影响，`total` 由其推出）与每条结果的 `status`；`POST /api/correct` 接受选填 `span_start` / `span_end` 并入库（见 docs/02 §6.3、docs/03 §7）。
+
+下一步行动：按上方 Phase 2 任务表推进（2.1 繁简映射扩充、2.3 历史拼式对齐），并在 Phase 2 内补 deploy workflow。
 

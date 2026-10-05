@@ -3,7 +3,7 @@
 **歷史粵語白話文獻嘅 OCR 數碼化同網頁閱讀平台**
 *An open reading platform for historical Cantonese vernacular texts.*
 
-**狀態**：規劃階段 ｜ **授權**：代碼 MIT · 數據 CC BY-SA 4.0 ｜ **規劃網域**：jyutman.com
+**狀態**：已上線（Phase 2 進行中） ｜ **授權**：代碼 MIT · 數據 CC BY-SA 4.0 ｜ **網域**：jyutman.com
 
 > 各項進度以 [docs/06-roadmap.md](docs/06-roadmap.md) 為準；本檔唔維護獨立嘅進度數字。
 
@@ -64,7 +64,7 @@
 | 文本閱讀＋來源信息 | OCR 文本分章閱讀，附底本、藏館、葉碼等來源信息；影像對照待逐件版權核查後開放 | Phase 1 |
 | 豎排閱讀 | 支援傳統豎排（右起）同橫排兩種排版，可即時切換 | Phase 1 |
 | 翻頁導航 | 頁內翻頁、跳頁，URL 反映當前位置 | Phase 1 |
-| 繁簡異體歸一檢索 | 輸入簡體或異體字，都查得到對應繁體原文 | Phase 2 |
+| 繁簡歸一檢索 | 輸入簡體字，都查得到對應繁體原文；只轉同一個字嘅簡繁寫法，唔同嘅字（例如「嘢」同「野」）唔會合併 | Phase 2 |
 | 粵拼標註 | 為已校對文本加註現代粵拼（Jyutping），以 ruby 形式呈現 | Phase 2 |
 | 現代粵文今譯 | 將舊時用字同寫法嘅文獻譯成今日通行粵文，段落對照顯示 | Phase 2 |
 | 英譯粵 | 英文底本課文附現代粵文翻譯 | Phase 2 |
@@ -84,7 +84,7 @@ Phase 1 之後，一個普通讀者應該可以：
 4. 喺搜尋欄輸入「廣東」，得到跨語料嘅命中清單，每條顯示語料、頁碼同上下文。
 5. 複製該頁嘅永久連結，貼入論文註腳。
 
-## 倉庫佈局（規劃）
+## 倉庫佈局
 
 | 倉庫 | 內容 | 授權 |
 |---|---|---|
@@ -116,7 +116,7 @@ Astro 靜態前端 + Cloudflare Workers API + D1（SQLite FTS5 trigram）全文�
 
 ## 貢獻
 
-項目處於規劃階段，暫未開放代碼貢獻。有興趣參與（校對、數據、前端、粵語內容），或者任何查詢、授權同下架事宜，請喺 [GitHub Issues](https://github.com/huangjunxin/Jyutman/issues) 講低。
+暫未開放代碼貢獻。有興趣參與（校對、數據、前端、粵語內容），或者任何查詢、授權同下架事宜，請喺 [GitHub Issues](https://github.com/huangjunxin/Jyutman/issues) 講低。
 
 ## 授權
 
@@ -133,6 +133,6 @@ Astro 靜態前端 + Cloudflare Workers API + D1（SQLite FTS5 trigram）全文�
 
 ## 當前狀態
 
-**規劃階段。** 三個倉庫尚未初始化，Phase 0 未開始。
+**已上線。** Phase 0 同 Phase 1 已完成，jyutman.com 已經可以閱讀同檢索；Phase 2 進行中，Phase 3 已啟動首期（讀者匿名報錯）。
 
 各階段目標、任務同驗收標準見 [docs/06-roadmap.md](docs/06-roadmap.md)。

@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-03）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-05）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 数据契约
 
@@ -79,7 +79,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 
 | 衍生数据 | 存放 | 生成方式 | 说明 |
 |---|---|---|---|
-| 归一化检索文本 | 构建期产物（映射表版本化） | `src/utils/normalize.ts` | 繁简 / 异体映射 + 罗马字归一，检索正确性的核心 |
+| 归一化检索文本 | 构建期产物（映射表版本化） | `src/utils/normalize.ts` | 同字简转繁映射（现收 41 字）+ 去空白，检索正确性的核心；不同的字（如 嘢 / 野）与异体字一律不归并；罗马字归一未实现 |
 | FTS5 索引 | D1 虚拟表 | `scripts/sync-corpus.mjs` → `db/import.sql` → D1 | trigram tokenizer，见 02 §6 |
 | 粤拼音表 | `src/data/generated/<corpus>/<issue>/jyutping.json`（构建期产物，提交 git） | `scripts/sync-corpus.mjs` 读姊妹仓 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），按叶拆分并把下标换算到本站正文 | 文章 id → `[字在正文中的下标, 字, 粤拼]`；阅读器据此生成 `<ruby>`，见 04 §1.2 S1 |
 | corrections 表 | D1 | Workers API 接收用户提交 | 见 §7 |
@@ -91,7 +91,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 ## 7. corrections 回写流程
 
 ```text
-用户提交 diff（阅读页选区 → 「回報此處」表单）
+用户提交 diff（阅读页正文选区 → 右栏「報錯」表单）
   → POST /api/correct（Workers；防滥用：IP 令牌桶 + 蜜罐字段，Turnstile 待接）
   → D1 corrections 表（pending）
   → 审阅（维护者用内部校对工作台；v1 为 admin token 鉴权，升级路径为 Cloudflare Access）
@@ -107,7 +107,7 @@ CREATE TABLE corrections (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   article_id      TEXT NOT NULL,
   page_id         TEXT,                       -- <corpus>/<issue>/<三位叶码>，由 articles 表推出
-  span_start      INTEGER,                    -- 保留：字符偏移方案未启用
+  span_start      INTEGER,                    -- 选填：所选文字在该篇正文中的码点区间 [start, end)
   span_end        INTEGER,
   fragment        TEXT NOT NULL,              -- 原文片段引用（前 20 字 + 所选 + 后 20 字）
   selected_text   TEXT NOT NULL,
@@ -123,7 +123,13 @@ CREATE INDEX idx_corrections_article  ON corrections (article_id);
 CREATE INDEX idx_corrections_status   ON corrections (status);
 ```
 
-**已定**：定位方式用原文片段引用（`fragment`）；字符偏移（`span_start` / `span_end`）保留字段但未启用，片段引用对上游文本变动更稳。
+**已定**：主定位方式仍是原文片段引用（`fragment`），对上游文本变动更稳；字符偏移（`span_start` / `span_end`）自 2026-10-05 起作为选填辅助定位写入。
+
+**`span_start` / `span_end`**（选填，`server/routes/corrections.ts` 的 `readSpan`）：
+
+- 语义：所选非空白字在该篇文章正文（上游 `text`，未经合并渲染）中的 Unicode 码点下标，半开区间 `[span_start, span_end)`；不计粤拼注音。阅读器由正文各片的 `data-o` 起始下标换算（`selectionSpan`），选区落在篇名或今译时送 `null`。
+- 校验：两者须同时提供或同时缺省（`undefined` 与 `null` 都算缺省）；只给一个返回 400「區間起點同終點要一齊提供」；各自须为 0 至 100000 的整数（数字或数字字符串）；`span_end` 小于 `span_start` 返回 400；不按文章实际长度校验。
+- 存储：原样写入同名列；缺省则为 `NULL`（旧客户端兼容）。`GET /api/reports` 与 `GET /api/queue` 暂不返回这两列，工作台导出也不含。
 
 **匿名与隐私**：不收任何联系方式；表内不存提交者、IP、UA 等可识别资料；防滥用只靠 IP 令牌桶（内存态）与蜜罐字段。
 
