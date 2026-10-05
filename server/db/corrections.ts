@@ -23,6 +23,8 @@ export interface ReportRow {
   fragment: string;
   selected_text: string;
   paragraph_index: number | null;
+  span_start: number | null;
+  span_end: number | null;
   type: string;
   suggestion: string | null;
   created_at: string;
@@ -80,11 +82,11 @@ export async function insertCorrection(db: D1Database, input: CorrectionInput): 
   return Number(result.meta.last_row_id ?? 0);
 }
 
-/** 某篇仲待審嘅上報（供已回報角標還原）。 */
+/** 某篇仲待審嘅上報（供已回報角標還原；有區間就按區間標）。 */
 export async function listReports(db: D1Database, articleId: string): Promise<ReportRow[]> {
   const result = await db
     .prepare(
-      `SELECT id, fragment, selected_text, paragraph_index, type, suggestion, created_at
+      `SELECT id, fragment, selected_text, paragraph_index, span_start, span_end, type, suggestion, created_at
          FROM corrections
         WHERE article_id = ? AND status = 'pending'
         ORDER BY id DESC

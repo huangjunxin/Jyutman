@@ -19,7 +19,7 @@ import {
   getTranslations,
 } from "../../../../utils/corpus.ts";
 import {
-  isLatinDominant,
+  isCjkDominant,
   markerNote,
   mergeParagraphSpans,
   pageParam,
@@ -87,7 +87,7 @@ interface ArticleView {
   kind: "article";
   id: string;
   title: string | null;
-  /** 英文為主嘅篇章一律橫排。 */
+  /** 唔係漢文為主（漢字唔多過拉丁字母）嘅篇章一律橫排。 */
   latin: boolean;
   paragraphs: ParagraphView[];
   /** 譯文段數對唔上：跳過今譯，喺 HTML 註釋標記。 */
@@ -116,7 +116,7 @@ const views: (ArticleView | MarkerView)[] = leaf.blocks.map((block) => {
     kind: "article",
     id: block.id,
     title: block.title,
-    latin: isLatinDominant(block.text),
+    latin: !isCjkDominant(block.text),
     paragraphs,
     translationMismatch: paired === null,
     firstTranslated: paragraphs.findIndex((paragraph) => paragraph.translation !== null),
@@ -314,7 +314,7 @@ const articleJsonLd = {
                   <p class="art-empty">（呢篇冇正文）</p>
                 ) : (
                   <div class="art-text">
-                    <div class="art-flow">
+                    <div class="art-flow" tabindex="0" role="region" aria-label={`${view.title ?? view.id} 正文`}>
                       {view.paragraphs.map((paragraph, i) => (
                         <Fragment>
                           <p class="para" data-pi={i} set:html={paragraph.html} />
@@ -364,13 +364,13 @@ const articleJsonLd = {
               ‹ 上一葉
             </a>
           ) : (
-            <span class="btn btn--ink-outline pg pg--prev" aria-disabled="true">
+            <a class="btn btn--ink-outline pg pg--prev" role="link" aria-disabled="true">
               ‹ 上一葉
-            </span>
+            </a>
           )
         }
         <p class="pg-info">
-          掃描序號 <b>{pageNo}</b> · 第 {index + 1} / {pages.length} 葉<br />
+          掃描序號 <b>{pageNo}</b> · <span class="pg-pos">第 {index + 1} / {pages.length} 葉</span><br />
           <span class="pg-hint">← → 鍵都可以揭頁</span>
         </p>
         {
@@ -379,9 +379,9 @@ const articleJsonLd = {
               下一葉 ›
             </a>
           ) : (
-            <span class="btn btn--solid pg pg--next" aria-disabled="true">
+            <a class="btn btn--solid pg pg--next" role="link" aria-disabled="true">
               下一葉 ›
-            </span>
+            </a>
           )
         }
       </footer>
@@ -530,13 +530,12 @@ const articleJsonLd = {
       return nodes;
     };
 
-    /** 可見文字（唔計粵拼），空白收窄。 */
-    const textOf = (scope: Node): string =>
-      textNodes(scope, "rt")
+    /** 可見文字（skip 命中嘅唔計，預設剔走粵拼），空白收窄（唔去頭尾）。 */
+    const flatText = (scope: Node, skip = "rt"): string =>
+      textNodes(scope, skip)
         .map((node) => node.data)
         .join("")
-        .replace(/\s+/gu, " ")
-        .trim();
+        .replace(/\s+/gu, " ");
 
     /** 按 nodes 串埋之後嘅 UTF-16 區間，逐個文字節點包一層（字喺 <ruby> 入面，唔可以成段包）。 */
     const wrapRanges = (nodes: Text[], ranges: [number, number][], make: () => HTMLElement): HTMLElement[] => {
@@ -619,7 +618,9 @@ const articleJsonLd = {
     const tocAside = document.getElementById("rd-toc");
     const tocCurrent = tocAside?.querySelector<HTMLElement>(".toc-item.is-current");
     if (tocAside && tocCurrent && tocCurrent.offsetTop + tocCurrent.offsetHeight > tocAside.clientHeight) {
-      tocAside.scrollTop = tocCurrent.offsetTop - tocAside.clientHeight / 3;
+      // 卡頭黏頂會遮住上面：當前篇擺喺卡頭以下嘅三分一位
+      const head = tocAside.querySelector<HTMLElement>(".toc-head")?.offsetHeight ?? 0;
+      tocAside.scrollTop = tocCurrent.offsetTop - head - (tocAside.clientHeight - head) / 3;
     }
 
     const tocToggle = document.querySelector<HTMLButtonElement>(".toc-toggle");
@@ -631,14 +632,27 @@ const articleJsonLd = {
 
     /* ---- ← → 揭頁（同一期之內） ---- */
 
+    // 豎排正文可以 Tab 入去用 ← → 捲；滑鼠撳字（會聚焦正文）唔算，← → 照揭頁。
+    let tabbed = false;
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Tab") tabbed = true;
+      },
+      true,
+    );
+    document.addEventListener("pointerdown", () => (tabbed = false), true);
+
     document.addEventListener("keydown", (event) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const target = event.target;
+      const flow = target instanceof HTMLElement ? target.closest(".art-flow") : null;
       if (
         target instanceof HTMLElement &&
         (target.isContentEditable ||
-          target.closest("input, textarea, select, [role='tab'], .art-flow, .cite-pre") !== null)
+          target.closest("input, textarea, select, [role='tab'], .cite-pre") !== null ||
+          (tabbed && flow !== null && flow.scrollWidth > flow.clientWidth))
       ) {
         return;
       }
@@ -740,6 +754,9 @@ const articleJsonLd = {
           parent?.normalize();
         }
         hlChip.hidden = true;
+        // 掣收埋咗：焦點交畀隔籬嘅行款掣，唔好跌返去頁頂。
+        document.querySelector<HTMLButtonElement>("#rd-toolbar [data-layout]")?.focus();
+        announce("已清除標示");
         params.delete("hl");
         const query = params.toString();
         window.history.replaceState(
@@ -752,10 +769,17 @@ const articleJsonLd = {
 
     /* ---- 已回報標記（本機記錄 + /api/reports） ---- */
 
+    interface Span {
+      start: number;
+      end: number;
+    }
+
     interface StoredReport {
       id?: number | null;
       article_id?: string;
       selected_text?: string;
+      span_start?: unknown;
+      span_end?: unknown;
       type?: string;
       created_at?: string;
     }
@@ -780,27 +804,56 @@ const articleJsonLd = {
       }
     };
 
-    /** 喺篇內正文搵返所選文字，逐字包 .reported（金褐底、虛線）。 */
-    const markReported = (articleId: string, text: string, type: string): void => {
-      const key = `${articleId}\u0000${text}`;
+    const spanOf = (entry: StoredReport): Span | null =>
+      typeof entry.span_start === "number" && typeof entry.span_end === "number" && entry.span_end > entry.span_start
+        ? { start: entry.span_start, end: entry.span_end }
+        : null;
+
+    /**
+     * 標返已回報嘅字，逐個文字節點包 .reported（金褐底、虛線）。
+     * 有正文碼點區間就照區間標（同 capture() 一樣逐片換算）；舊上報冇區間先搵字（唔計空白）。
+     */
+    const markReported = (articleId: string, text: string, type: string, span: Span | null): void => {
+      const key = `${articleId}\u0000${span === null ? text : `${span.start}:${span.end}`}`;
       const flow = document.getElementById(articleId)?.querySelector(".art-flow");
-      if (text === "" || marked.has(key) || flow == null) return;
-      const nodes = textNodes(flow, "rt, .tr");
-      const at = nodes.map((node) => node.data).join("").indexOf(text);
-      if (at < 0) return;
+      if ((span === null && text === "") || marked.has(key) || flow == null) return;
+      let nodes: Text[] = [];
+      let ranges: [number, number][] = [];
+      if (span !== null) {
+        let base = 0;
+        for (const segment of flow.querySelectorAll<HTMLElement>(".para [data-o]")) {
+          let offset = Number(segment.dataset.o);
+          for (const node of textNodes(segment, "rt")) {
+            const chars = [...node.data];
+            const from = Math.max(span.start - offset, 0);
+            const to = Math.min(span.end - offset, chars.length);
+            if (from < to) {
+              const head = chars.slice(0, from).join("").length;
+              ranges.push([base + head, base + head + chars.slice(from, to).join("").length]);
+              nodes.push(node);
+              base += node.data.length;
+            }
+            offset += chars.length;
+          }
+        }
+      } else {
+        nodes = textNodes(flow, "rt, .tr");
+        ranges = highlightRanges(nodes.map((node) => node.data).join(""), text).slice(0, 1);
+      }
+      if (ranges.length === 0) return;
       marked.add(key);
-      wrapRanges(nodes, [[at, at + text.length]], () => {
-        const span = document.createElement("span");
-        span.className = "reported";
-        span.title = `已回報（${type}）· 待審`;
-        return span;
+      wrapRanges(nodes, ranges, () => {
+        const element = document.createElement("span");
+        element.className = "reported";
+        element.title = `已回報（${type}）· 待審`;
+        return element;
       });
     };
 
     const markAll = (entries: StoredReport[]): void => {
       for (const entry of entries) {
         if (typeof entry?.article_id === "string" && typeof entry?.selected_text === "string") {
-          markReported(entry.article_id, entry.selected_text, entry.type ?? "已回報");
+          markReported(entry.article_id, entry.selected_text, entry.type ?? "已回報", spanOf(entry));
         }
       }
     };
@@ -820,6 +873,8 @@ const articleJsonLd = {
             reports.map((report) => ({
               article_id: article.id,
               selected_text: typeof report.selected_text === "string" ? report.selected_text : "",
+              span_start: report.span_start,
+              span_end: report.span_end,
               type: typeof report.type === "string" ? report.type : "已回報",
             })),
           );
@@ -838,7 +893,7 @@ const articleJsonLd = {
       fragment: string;
       articleId: string;
       paragraphIndex: number;
-      span: { start: number; end: number } | null;
+      span: Span | null;
     }
 
     const form = document.getElementById("rp-form");
@@ -861,7 +916,9 @@ const articleJsonLd = {
       if (start.closest("rt") !== null && end.closest("rt") !== null) return null;
       const article = start.closest<HTMLElement>("[data-article]");
       if (article === null || article !== end.closest("[data-article]")) return null;
-      const text = textOf(range.cloneContents());
+      // 跨段選區會掃過段與段之間嘅今譯（豎排、關今譯時仍喺 DOM）：由今譯起揀先計譯文。
+      const raw = flatText(range.cloneContents(), start.closest(".tr") === null ? "rt, .tr" : "rt");
+      const text = raw.trim();
       if (text === "") return null;
 
       const pieces: SelectionPiece[] = [];
@@ -878,10 +935,25 @@ const articleJsonLd = {
         }
       }
 
-      const host = start.closest(".para, .tr p, .art-title");
+      // 前後文：由選區頭尾向所在段量出去，唔靠搜尋（重複字唔會走位）。
+      const hosts = ".para, .tr p, .art-title";
+      const startHost = start.closest(hosts);
+      const endHost = end.closest(hosts) ?? startHost;
+      let before = "";
+      let after = "";
+      if (startHost !== null && endHost !== null) {
+        const pre = document.createRange();
+        pre.setStart(startHost, 0);
+        pre.setEnd(range.startContainer, range.startOffset);
+        const post = document.createRange();
+        post.setStart(range.endContainer, range.endOffset);
+        post.setEnd(endHost, endHost.childNodes.length);
+        before = flatText(pre.cloneContents());
+        after = flatText(post.cloneContents());
+      }
       return {
         text,
-        fragment: fragmentAround(host === null ? text : textOf(host), text),
+        fragment: fragmentAround(before, raw, after).replace(/\s+/gu, " ").trim(),
         articleId: article.id,
         paragraphIndex: Number(start.closest<HTMLElement>("[data-pi]")?.dataset.pi ?? 0),
         span: selectionSpan(pieces),
@@ -968,17 +1040,26 @@ const articleJsonLd = {
           throw new Error(failure);
         }
         const entries = readStore().filter(
-          (entry) => !(entry.article_id === payload.article_id && entry.selected_text === payload.selected_text),
+          (entry) =>
+            !(
+              entry.article_id === payload.article_id &&
+              entry.selected_text === payload.selected_text &&
+              entry.span_start === payload.span_start
+            ),
         );
         entries.push({
           id: typeof result.id === "number" ? result.id : null,
           article_id: payload.article_id,
           selected_text: payload.selected_text,
+          span_start: payload.span_start,
+          span_end: payload.span_end,
           type,
           created_at: new Date().toISOString(),
         });
         writeStore(entries);
-        markReported(payload.article_id, payload.selected_text, type);
+        markReported(payload.article_id, payload.selected_text, type, report.span);
+        // 清返類型同建議：之後再揀字唔會帶住上一單嘅內容。
+        form.reset();
         form.hidden = true;
         if (done !== null) {
           done.hidden = false;
@@ -992,6 +1073,8 @@ const articleJsonLd = {
       } finally {
         sending = false;
         render();
+        // 送出期間提交掣停用咗會甩焦點；失敗時交返畀佢（錯誤由 role=alert 讀出）。
+        if (!form.hidden) submit?.focus();
       }
     });
 
@@ -1043,8 +1126,18 @@ const articleJsonLd = {
       }
       if (node === null || node.nodeType !== Node.TEXT_NODE) return null;
       const parent = node.parentElement;
-      if (parent === null || parent.closest("rt") !== null || parent.closest(".para, .tr p") === null) return null;
-      const word = wordAround(node.nodeValue ?? "", offset);
+      const host = parent?.closest(".para, .tr p") ?? null;
+      if (parent == null || host === null || parent.closest("rt") !== null) return null;
+      // 注音字各自一個文字節點：成段串埋先擴得到詞；位置按碼點計。
+      const nodes = textNodes(host, "rt");
+      let at = [...(node.nodeValue ?? "").slice(0, offset)].length;
+      for (const item of nodes) {
+        if (item === node) break;
+        at += [...item.data].length;
+      }
+      const full = nodes.map((item) => item.data).join("");
+      // 撳字嘅後半邊，光標會落喺下一格：嗰格唔係詞字就退返一格。
+      const word = wordAround(full, at) ?? wordAround(full, at - 1);
       if (word === null) return null;
       return { word, rect: rect ?? parent.getBoundingClientRect() };
     };
@@ -1151,10 +1244,6 @@ const articleJsonLd = {
     font-size: 13px;
   }
 
-  .hl-chip[hidden] {
-    display: none;
-  }
-
   .rd-label {
     font-size: 11px;
     font-weight: 700;
@@ -1189,8 +1278,31 @@ const articleJsonLd = {
     .rd-side {
       position: sticky;
       top: calc(var(--header-h) + var(--toolbar-h, 58px));
+    }
+
+    /* 只限高目錄；右欄唔限高，報錯掣靠捲頁就見到 */
+    .rd-toc {
       max-height: calc(100vh - var(--header-h) - var(--toolbar-h, 58px) - 24px);
       overflow: auto;
+    }
+
+    /* 目錄自動捲到當前篇時，期號卡頭照樣黏頂 */
+    .toc-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--parchment);
+    }
+  }
+
+  /* 單欄：頁首換行變高，工具列唔再黏頂，免得兩層遮咗大半個螢幕 */
+  @media (max-width: 1079px) {
+    .rd-toolbar {
+      position: static;
+    }
+
+    .art {
+      scroll-margin-top: calc(var(--header-h) + 16px);
     }
   }
 
@@ -1465,12 +1577,16 @@ const articleJsonLd = {
     margin-block-end: 0.9em;
   }
 
+  /* 粵拼：左右留位，長讀音唔會連成一串；唔畀揀（拖揀唔會錨錯行首，複製亦唔夾拼音） */
   .art-flow :global(rt) {
+    padding-inline: 0.3em;
     font-family: var(--font-sans);
     font-size: 0.42em;
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--kapok);
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   :global(html.rd-nojp) .art-flow :global(rt) {
@@ -1615,6 +1731,16 @@ const articleJsonLd = {
 
   .pg--next {
     justify-self: end;
+  }
+
+  /* 期尾：同上一葉一樣淡到 .35，唔用報錯掣嗰種半透明底 */
+  .pg--next[aria-disabled="true"] {
+    background: var(--kapok);
+    opacity: 0.35;
+  }
+
+  .pg-pos {
+    white-space: nowrap;
   }
 
   .pg-info {
@@ -1888,10 +2014,6 @@ const articleJsonLd = {
     padding: 12px 14px;
     background: var(--card);
     border: 1px solid var(--line-20);
-  }
-
-  .dict-card[hidden] {
-    display: none;
   }
 
   .dict-card__word {

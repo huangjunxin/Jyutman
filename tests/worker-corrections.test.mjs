@@ -174,6 +174,8 @@ test("GET /api/reports：返回該篇待審上報形狀", async () => {
         fragment: "乜野叫做聖藥呢。白話報就係喇。",
         selected_text: "聖藥",
         paragraph_index: 1,
+        span_start: 8,
+        span_end: 10,
         type: "錯字",
         suggestion: null,
         created_at: "2026-10-03T00:00:00.000Z",
@@ -189,12 +191,15 @@ test("GET /api/reports：返回該篇待審上報形狀", async () => {
   const body = await response.json();
   assert.equal(body.article_id, "gdvp-01-009-01");
   assert.equal(body.reports.length, 1);
+  assert.match(db.calls[0].sql, /paragraph_index, span_start, span_end/u, "已回報角標按區間還原");
   assert.deepEqual(Object.keys(body.reports[0]).sort(), [
     "created_at",
     "fragment",
     "id",
     "paragraph_index",
     "selected_text",
+    "span_end",
+    "span_start",
     "suggestion",
     "type",
   ]);

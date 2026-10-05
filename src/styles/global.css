@@ -756,6 +756,12 @@ mark {
   font-weight: 600;
 }
 
+/* hover 唔好轉檔案綠（綠色喺全站代表已核驗） */
+.chip--kapok:hover {
+  background: rgba(181, 58, 37, 0.16);
+  color: var(--kapok);
+}
+
 /* 深色底 chip（檢索頁色帶） */
 .chip--on-dark {
   padding: 4px 14px;

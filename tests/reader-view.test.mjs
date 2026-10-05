@@ -73,11 +73,11 @@ test("selectionSpan：取各片非空白字嘅碼點區間", () => {
   assert.equal(selectionSpan([]), null);
 });
 
-test("fragmentAround：前後各取 radius 個碼點", () => {
-  assert.equal(fragmentAround("乜野叫做聖藥呢。白話報就係喇。", "聖藥", 2), "叫做聖藥呢。");
-  assert.equal(fragmentAround("聖藥", "聖藥"), "聖藥");
-  assert.equal(fragmentAround("abc", "zz"), "zz", "搵唔到就只回所選文字");
-  assert.equal(fragmentAround("𠝹𠝹聖𠝹", "聖", 1), "𠝹聖𠝹", "唔會切開代理對");
+test("fragmentAround：前文取尾、後文取頭各 radius 個碼點", () => {
+  assert.equal(fragmentAround("乜野叫做", "聖藥", "呢。白話報", 2), "叫做聖藥呢。");
+  assert.equal(fragmentAround("", "聖藥", ""), "聖藥");
+  assert.equal(fragmentAround("係官嚟播。係滿清嘅", "官嚟播", "。點解", 3), "滿清嘅官嚟播。點解", "按選區位置切，唔會跳去前面同樣嘅字");
+  assert.equal(fragmentAround("𠝹𠝹", "聖", "𠝹𠝹", 1), "𠝹聖𠝹", "唔會切開代理對");
 });
 
 test("clipText：按 UTF-16 長度截，唔切代理對", () => {

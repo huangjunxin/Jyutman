@@ -4,19 +4,15 @@
  */
 
 import { normalize } from "./normalize.ts";
-import { paragraphJoin, renderAnnotatedParagraph, type MergedParagraph } from "./reader.ts";
+import { escapeHtml, paragraphJoin, renderAnnotatedParagraph, type MergedParagraph } from "./reader.ts";
 import { normalizeWithMap } from "./search-planner.ts";
 
 /** 報錯問題類型：閱讀頁 chips 同 POST /api/correct 校驗共用（server/routes/corrections.ts 轉出）。 */
 export const CORRECTION_TYPES = ["錯字", "缺字", "標點分段", "今譯疑問", "其他"] as const;
 
-function escapeHtml(text: string): string {
-  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-}
-
 /**
- * 連排段落 HTML（同 renderMergedParagraph 一樣逐片注音、按規則連接），
- * 但每片包一層 <span data-o="正文下標">，瀏覽器端揀字時可以換算返正文碼點區間。
+ * 連排段落 HTML：逐片按各自正文下標注音、按規則連接，
+ * 每片包一層 <span data-o="正文下標">，瀏覽器端揀字時可以換算返正文碼點區間。
  */
 export function renderParagraphSegments(
   paragraph: MergedParagraph,
@@ -85,13 +81,9 @@ export function selectionSpan(pieces: readonly SelectionPiece[]): { start: numbe
   return start < 0 ? null : { start, end };
 }
 
-/** 前後文：所選文字前後各取 radius 個碼點；喺 host 搵唔到就只回所選文字。 */
-export function fragmentAround(host: string, text: string, radius = 20): string {
-  const at = host.indexOf(text);
-  if (at < 0) return text;
-  const before = [...host.slice(0, at)].slice(-radius).join("");
-  const after = [...host.slice(at + text.length)].slice(0, radius).join("");
-  return before + text + after;
+/** 前後文：選區前文取尾 radius 個碼點、後文取頭 radius 個碼點（按選區位置切，唔靠搜尋，重複字唔會走位）。 */
+export function fragmentAround(before: string, text: string, after: string, radius = 20): string {
+  return [...before].slice(-radius).join("") + text + [...after].slice(0, radius).join("");
 }
 
 /** 按 UTF-16 長度上限截字（同服務端 .length 校驗一致），唔會切開代理對。 */
