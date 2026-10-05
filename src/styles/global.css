@@ -130,6 +130,11 @@ h6 {
   font-weight: 400;
 }
 
+/* hidden 屬性要贏過 .btn / .chip 等 display 宣告 */
+[hidden] {
+  display: none !important;
+}
+
 a {
   color: var(--kapok);
   text-decoration: none;
@@ -148,6 +153,11 @@ a:hover {
 :focus-visible {
   outline: 2px solid rgba(181, 58, 37, 0.55);
   outline-offset: 2px;
+}
+
+/* 色塊上面木棉紅焦點環睇唔到，改用羊皮紙色 */
+.tone-block :focus-visible {
+  outline-color: var(--parchment);
 }
 
 button,
@@ -513,7 +523,7 @@ mark {
   color: var(--kapok-on-dark);
 }
 
-/* 編號分隔線：「其一」「一」+ 一條淡木棉紅線（取代舊 Yuwai） */
+/* 編號分隔線：「其一」「一」+ 一條淡木棉紅線 */
 .ordinal {
   display: flex;
   align-items: center;
@@ -597,7 +607,7 @@ mark {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 22px;
+  padding: 10px 21px;
   border: 1px solid transparent;
   background: transparent;
   font-size: 15px;

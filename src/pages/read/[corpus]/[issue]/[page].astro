@@ -618,7 +618,7 @@ const articleJsonLd = {
 
     const tocAside = document.getElementById("rd-toc");
     const tocCurrent = tocAside?.querySelector<HTMLElement>(".toc-item.is-current");
-    if (tocAside && tocCurrent && tocAside.scrollHeight > tocAside.clientHeight) {
+    if (tocAside && tocCurrent && tocCurrent.offsetTop + tocCurrent.offsetHeight > tocAside.clientHeight) {
       tocAside.scrollTop = tocCurrent.offsetTop - tocAside.clientHeight / 3;
     }
 
