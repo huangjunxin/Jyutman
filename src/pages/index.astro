@@ -47,7 +47,7 @@ function sample(page: number, minChars: number) {
   return { page, status: doc.status, article, lead, href: readHref(GD, GD_ISSUE, page) };
 }
 
-const specimen = sample(6, 30);
+const specimen = sample(6, 40);
 const specimenHtml = renderAnnotatedParagraph(
   specimen.lead.text,
   specimen.lead.start,
@@ -145,7 +145,7 @@ const stats = [
           <span>試試：</span>
           <a class="chip" href={searchHref("廣東")}>廣東</a>
           <a class="chip" href={searchHref("唔係")}>唔係</a>
-          <a class="chip" href={searchHref(DEMO_QUERY)}>{DEMO_QUERY}<span class="hero__simp">簡</span></a>
+          <a class="chip" href={searchHref(DEMO_QUERY)}>{DEMO_QUERY}<span class="hero__simp" aria-hidden="true">簡</span><span class="visually-hidden">（簡體）</span></a>
         </p>
       </div>
 
@@ -156,7 +156,7 @@ const stats = [
               <div class="specimen__source" id="specimen-title">{gdTitle} · {gdLabel}</div>
               <div class="specimen__meta">{gdDate} · 第 {pageParam(specimen.page)} 葉</div>
             </div>
-            <div class="specimen__controls">
+            <div class="specimen__controls" hidden>
               <div class="seg seg--sm" role="group" aria-label="排版方向">
                 <button type="button" data-layout-set="vertical" aria-pressed="true">豎排</button>
                 <button type="button" data-layout-set="horizontal" aria-pressed="false">橫排</button>
@@ -308,7 +308,10 @@ const stats = [
                       <i />
                     </div>
                     <a class="side-card__cta" href={card.href}>
-                      開始閱讀 →<span class="visually-hidden">：{card.corpus.title}</span>
+                      開始閱讀 →
+                      <span class="visually-hidden">
+                        ：<span lang={card.meta.script === "en" ? "en" : undefined}>{card.corpus.title}</span>
+                      </span>
                     </a>
                   </div>
                 </article>
@@ -404,6 +407,7 @@ const stats = [
 <script>
   // 首頁樣張：豎排／橫排、粵拼開關（狀態只靠 aria-pressed 同 figure 上嘅 data／class）。
   for (const figure of document.querySelectorAll<HTMLElement>("[data-specimen]")) {
+    figure.querySelector(".specimen__controls")?.removeAttribute("hidden");
     const layoutButtons = [...figure.querySelectorAll<HTMLButtonElement>("[data-layout-set]")];
     for (const button of layoutButtons) {
       button.addEventListener("click", () => {
@@ -544,6 +548,11 @@ const stats = [
   .specimen__controls {
     display: flex;
     gap: 6px;
+  }
+
+  /* 冇 JS 時唔顯示開關（預設豎排＋粵拼） */
+  .specimen__controls[hidden] {
+    display: none;
   }
 
   .specimen__body {
@@ -765,6 +774,7 @@ const stats = [
     padding: 0;
     list-style: none;
     border-bottom: 1px solid var(--rule);
+    container-type: inline-size;
   }
 
   .issue-row {
@@ -793,6 +803,11 @@ const stats = [
     color: var(--on-dark-88);
   }
 
+  /* hover 底色變淺，字要用實色先夠 4.5:1 */
+  .issue-row:hover .issue-row__facts {
+    color: var(--parchment);
+  }
+
   .issue-row__progress {
     display: flex;
     align-items: center;
@@ -805,6 +820,22 @@ const stats = [
     --h: 4px;
     display: block;
     width: 72px;
+  }
+
+  /* 窄卡（約 375px 以下視口）：進度落去第二行，日期唔使逐字斷 */
+  @container (max-width: 296px) {
+    .issue-row {
+      grid-template-columns: 72px minmax(0, 1fr);
+      row-gap: 6px;
+    }
+
+    .issue-row__label {
+      grid-row: span 2;
+    }
+
+    .issue-row__progress {
+      grid-column: 2;
+    }
   }
 
   .feature__foot {
