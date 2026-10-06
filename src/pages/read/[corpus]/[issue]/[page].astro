@@ -1,6 +1,8 @@
 ---
 import type { GetStaticPaths } from "astro";
 
+import Eyebrow from "../../../../components/Eyebrow.astro";
+import Glass from "../../../../components/Glass.astro";
 import JsonLd from "../../../../components/JsonLd.astro";
 import StatusBadge from "../../../../components/StatusBadge.astro";
 import Base from "../../../../layouts/Base.astro";
@@ -202,8 +204,8 @@ const articleJsonLd = {
         <span class="crumb__cur" aria-current="page">第 {pageNo} 葉</span>
       </nav>
       <div class="rd-controls">
-        <button type="button" class="chip chip--kapok hl-chip" id="hl-chip" hidden></button>
-        <span class="rd-label" id="rd-layout-label">行款</span>
+        <button type="button" class="chip chip--hl" id="hl-chip" hidden></button>
+        <span class="label" id="rd-layout-label">行款</span>
         <div class="seg" role="group" aria-labelledby="rd-layout-label">
           <button type="button" data-layout="vertical" aria-pressed="true">豎排</button>
           <button type="button" data-layout="horizontal" aria-pressed="false">橫排</button>
@@ -239,7 +241,7 @@ const articleJsonLd = {
   <div class="rd-grid">
     <aside class="rd-toc" id="rd-toc" aria-label="目錄">
       <div class="toc-head">
-        <p class="eyebrow eyebrow--sm">Contents · 目錄</p>
+        <Eyebrow size="sm" text="Contents · 目錄" />
         <p class="toc-title">{corpus.title}</p>
         <p class="toc-meta">{issueText} · {dateText} · {pages.length} 葉</p>
         {
@@ -360,11 +362,11 @@ const articleJsonLd = {
       <footer class="card-foot">
         {
           previous ? (
-            <a class="btn btn--ink-outline pg pg--prev" href={readUrl(issueSlug, previous.page)} rel="prev" data-nav="prev">
+            <a class="btn btn--neutral pg pg--prev" href={readUrl(issueSlug, previous.page)} rel="prev" data-nav="prev">
               ‹ 上一葉
             </a>
           ) : (
-            <a class="btn btn--ink-outline pg pg--prev" role="link" aria-disabled="true">
+            <a class="btn btn--neutral pg pg--prev" role="link" aria-disabled="true">
               ‹ 上一葉
             </a>
           )
@@ -388,7 +390,7 @@ const articleJsonLd = {
     </article>
 
     <aside class="rd-side" aria-label="本葉資料">
-      <section class="src-card" aria-labelledby="src-title">
+      <Glass tone="neutral" as="section" paneClass="src-pane" aria-labelledby="src-title">
         <h2 id="src-title">本葉來源</h2>
         <dl class="src-list">
           <dt>語料</dt>
@@ -404,11 +406,11 @@ const articleJsonLd = {
           <dt>文本授權</dt>
           <dd>CC BY-SA 4.0</dd>
         </dl>
-      </section>
+      </Glass>
 
       {
         citations && (
-          <section class="cite-card" aria-labelledby="cite-title">
+          <Glass tone="neutral" as="section" paneClass="cite-pane" aria-labelledby="cite-title">
             <div class="cite-head">
               <h2 id="cite-title">引用</h2>
               <button type="button" class="btn btn--outline btn--sm cite-copy" id="cite-copy">
@@ -440,13 +442,13 @@ const articleJsonLd = {
                 set:text={format.body}
               />
             ))}
-          </section>
+          </Glass>
         )
       }
 
       {
         firstArticle && (
-          <section class="rp-card" aria-labelledby="rp-title">
+          <Glass tone="neutral" as="section" paneClass="rp-pane" aria-labelledby="rp-title">
             <h2 id="rp-title">報錯</h2>
             <form class="rp-form" id="rp-form" novalidate>
               <p class="rp-hint" id="rp-hint" tabindex="-1">喺正文揀選有問題嘅字，就會自動帶入呢度。</p>
@@ -457,7 +459,7 @@ const articleJsonLd = {
                   {CORRECTION_TYPES.map((type) => (
                     <label class="rp-chip">
                       <input class="visually-hidden" type="radio" name="type" value={type} />
-                      <span class="chip chip--outline">{type}</span>
+                      <span class="rp-type">{type}</span>
                     </label>
                   ))}
                 </div>
@@ -480,11 +482,11 @@ const articleJsonLd = {
             </form>
             <div class="rp-done" id="rp-done" hidden>
               <p class="rp-ok" tabindex="-1">多謝！已經收到你嘅上報，維護者會人工審閱。</p>
-              <button type="button" class="btn btn--ink-outline btn--sm rp-again" id="rp-again">
+              <button type="button" class="btn btn--neutral btn--sm rp-again" id="rp-again">
                 再報一個
               </button>
             </div>
-          </section>
+          </Glass>
         )
       }
     </aside>
@@ -810,7 +812,7 @@ const articleJsonLd = {
         : null;
 
     /**
-     * 標返已回報嘅字，逐個文字節點包 .reported（金褐底、虛線）。
+     * 標返已回報嘅字，逐個文字節點包 .reported（琥珀淡底、虛線）。
      * 有正文碼點區間就照區間標（同 capture() 一樣逐片換算）；舊上報冇區間先搵字（唔計空白）。
      */
     const markReported = (articleId: string, text: string, type: string, span: Span | null): void => {
@@ -1201,14 +1203,14 @@ const articleJsonLd = {
     position: sticky;
     top: var(--header-h);
     z-index: 20;
-    background: rgba(251, 249, 244, 0.95);
+    background: rgba(248, 247, 242, 0.96);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line-10);
   }
 
   .rd-toolbar__inner {
-    max-width: var(--wrap-wide);
+    max-width: var(--wrap-reader);
     margin: 0 auto;
     padding: 10px var(--gutter);
     display: flex;
@@ -1223,13 +1225,13 @@ const articleJsonLd = {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: 16px;
     color: var(--graphite);
   }
 
   .crumb__cur {
     font-weight: 600;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .rd-controls {
@@ -1239,23 +1241,10 @@ const articleJsonLd = {
     gap: 8px;
   }
 
-  .hl-chip {
-    padding: 4px 12px;
-    font-size: 13px;
-  }
-
-  .rd-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--graphite);
-  }
-
   /* ---- 版面：≥1080 三欄，否則單欄 ---- */
 
   .rd-grid {
-    max-width: var(--wrap-wide);
+    max-width: var(--wrap-reader);
     margin: 0 auto;
     padding: 28px var(--gutter) 96px;
     display: grid;
@@ -1277,12 +1266,12 @@ const articleJsonLd = {
     .rd-toc,
     .rd-side {
       position: sticky;
-      top: calc(var(--header-h) + var(--toolbar-h, 58px));
+      top: calc(var(--header-h) + var(--toolbar-h, 62px));
     }
 
     /* 只限高目錄；右欄唔限高，報錯掣靠捲頁就見到 */
     .rd-toc {
-      max-height: calc(100vh - var(--header-h) - var(--toolbar-h, 58px) - 24px);
+      max-height: calc(100vh - var(--header-h) - var(--toolbar-h, 62px) - 16px);
       overflow: auto;
     }
 
@@ -1291,7 +1280,7 @@ const articleJsonLd = {
       position: sticky;
       top: 0;
       z-index: 1;
-      background: var(--parchment);
+      background: var(--page);
     }
   }
 
@@ -1319,13 +1308,12 @@ const articleJsonLd = {
 
   .toc-head .toc-title {
     margin-top: 8px;
-    font-family: var(--font-serif);
     font-size: 21px;
     line-height: 1.3;
   }
 
   .toc-meta {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
@@ -1340,9 +1328,9 @@ const articleJsonLd = {
     padding: 6px 0;
     line-height: 1.25;
     text-align: center;
-    border: 1px solid rgba(3, 22, 50, 0.15);
-    background: var(--card);
-    color: var(--ink);
+    border: 1px solid rgba(30, 21, 18, 0.15);
+    background: #fff;
+    color: var(--wood);
     transition:
       background-color 200ms,
       border-color 200ms;
@@ -1350,12 +1338,12 @@ const articleJsonLd = {
 
   .issue-switch a:hover {
     text-decoration: none;
-    border-color: var(--kapok);
+    border-color: var(--blue);
   }
 
   .issue-switch a[aria-current] {
-    border-color: var(--kapok);
-    background: var(--kapok);
+    border-color: var(--blue);
+    background: var(--blue);
     color: #fff;
   }
 
@@ -1365,12 +1353,11 @@ const articleJsonLd = {
   }
 
   .issue-switch__num {
-    font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .issue-switch__date {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .toc-toggle {
@@ -1379,13 +1366,13 @@ const articleJsonLd = {
     padding: 6px 12px;
     border: 1px solid var(--line-20);
     background: transparent;
-    font-size: 13px;
+    font-size: 15px;
     cursor: pointer;
     transition: background-color 200ms;
   }
 
   .toc-toggle:hover {
-    background: var(--surface-mid);
+    background: var(--surface-3);
   }
 
   .toc-list {
@@ -1400,14 +1387,14 @@ const articleJsonLd = {
     gap: 8px;
     padding: 7px 10px;
     border-left: 3px solid transparent;
-    color: var(--ink);
-    font-size: 14px;
+    color: var(--wood);
+    font-size: 16px;
     line-height: 1.45;
     transition: background-color 200ms;
   }
 
   .toc-item:hover {
-    background: var(--surface-mid);
+    background: var(--surface-3);
     text-decoration: none;
   }
 
@@ -1416,15 +1403,15 @@ const articleJsonLd = {
   }
 
   .toc-item.is-current {
-    border-left-color: var(--kapok);
-    background: var(--surface-high);
+    border-left-color: var(--blue);
+    background: #f7f5ef;
     font-weight: 700;
   }
 
   .toc-num {
     padding-top: 1px;
-    font-family: var(--font-mono);
-    font-size: 12px;
+    font-family: var(--mono);
+    font-size: 14px;
     font-weight: 400;
     color: var(--graphite);
   }
@@ -1443,12 +1430,12 @@ const articleJsonLd = {
     }
   }
 
-  /* ---- 中欄：正文卡 ---- */
+  /* ---- 中欄：正文卡（6px 木框、紙面） ---- */
 
   .rd-card {
     min-width: 0;
-    background: var(--card);
-    border: 1px solid var(--line-10);
+    border: 6px solid var(--wood);
+    background: var(--paper);
   }
 
   .card-head {
@@ -1465,17 +1452,18 @@ const articleJsonLd = {
     display: flex;
     align-items: baseline;
     gap: 12px;
-    font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 400;
     line-height: 1.75;
   }
 
   .leaf-no__num {
-    font-family: var(--font-serif);
-    font-size: 56px;
+    font-family: var(--latin);
+    font-size: 48px;
+    font-weight: 300;
     line-height: 0.9;
     letter-spacing: -0.02em;
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .leaf-no__pos {
@@ -1488,7 +1476,7 @@ const articleJsonLd = {
 
   .art {
     margin-bottom: 44px;
-    scroll-margin-top: calc(var(--header-h) + var(--toolbar-h, 58px) + 16px);
+    scroll-margin-top: calc(var(--header-h) + var(--toolbar-h, 62px) + 16px);
   }
 
   .art-head {
@@ -1505,29 +1493,29 @@ const articleJsonLd = {
   }
 
   .art-title {
-    font-size: clamp(28px, 3vw, 38px);
+    font-size: clamp(26px, 2.6vw, 32px);
     line-height: 1.25;
     letter-spacing: 0.02em;
   }
 
   .art-anchor {
-    font-family: var(--font-mono);
-    font-size: 11px;
+    font-family: var(--mono);
+    font-size: 12px;
     color: var(--graphite);
   }
 
   .art-anchor.is-copied::after {
     content: " · 已複製連結";
-    color: var(--archive-green);
+    color: var(--green);
   }
 
   .art-empty {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     color: var(--graphite);
   }
 
-  /* 正文：預設橫排（CJK 21px）；英文為主 18px；豎排只畀 CJK 篇章 */
+  /* 正文：橫排 CJK 22px；英文為主 19px；豎排只畀 CJK 篇章 26px */
   .art-text {
     display: flex;
     justify-content: flex-end;
@@ -1535,15 +1523,14 @@ const articleJsonLd = {
 
   .art-flow {
     width: 100%;
-    font-family: var(--font-serif);
-    font-size: 21px;
+    font-size: 22px;
     line-height: 2.35;
     letter-spacing: 0.02em;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .art--latin .art-flow {
-    font-size: 18px;
+    font-size: 19px;
     letter-spacing: 0;
   }
 
@@ -1563,7 +1550,7 @@ const articleJsonLd = {
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 6px;
-    font-size: 24px;
+    font-size: 26px;
     line-height: 2.5;
     letter-spacing: 0.08em;
   }
@@ -1580,11 +1567,11 @@ const articleJsonLd = {
   /* 粵拼：左右留位，長讀音唔會連成一串；唔畀揀（拖揀唔會錨錯行首，複製亦唔夾拼音） */
   .art-flow :global(rt) {
     padding-inline: 0.3em;
-    font-family: var(--font-sans);
+    font-family: var(--latin);
     font-size: 0.42em;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--kapok);
+    color: var(--blue);
     -webkit-user-select: none;
     user-select: none;
   }
@@ -1593,17 +1580,18 @@ const articleJsonLd = {
     display: none;
   }
 
-  /* □ 缺字；已回報字（金褐）。text-decoration 喺豎排會自動轉去字側 */
+  /* □ 缺字；已回報字（琥珀淡底、虛線）。text-decoration 喺豎排會自動轉去字側 */
   .art-flow :global(.miss) {
-    color: var(--kapok);
-    text-decoration: underline dashed var(--kapok);
+    color: var(--blue);
+    text-decoration: underline dashed var(--blue);
     text-underline-offset: 0.2em;
     cursor: help;
   }
 
   .card-body :global(.reported) {
-    background: var(--gold-a12);
-    text-decoration: underline dashed var(--muted-gold);
+    background: var(--amber-a12);
+    color: var(--amber-text);
+    text-decoration: underline dashed var(--amber-text);
     text-underline-offset: 0.25em;
     cursor: help;
   }
@@ -1612,13 +1600,12 @@ const articleJsonLd = {
 
   .tr {
     padding: 20px 24px;
-    background: var(--surface-low);
-    border-left: 4px solid var(--muted-gold);
-    font-family: var(--font-sans);
-    font-size: 16px;
+    background: var(--tr-bg);
+    border-left: 4px solid var(--green);
+    font-size: 18px;
     line-height: 1.9;
     letter-spacing: 0;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .tr-whole {
@@ -1653,19 +1640,20 @@ const articleJsonLd = {
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
-    color: var(--muted-gold);
-    line-height: 1.5;
+    line-height: 1.75;
   }
 
   .tr-tag {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
+    color: var(--green);
   }
 
   .tr-ver {
-    font-size: 12px;
+    font-size: 14px;
+    color: var(--graphite);
   }
 
   .tr p {
@@ -1678,8 +1666,8 @@ const articleJsonLd = {
   }
 
   .tr :global(.tr-note) {
-    font-size: 13px;
-    color: var(--muted-gold);
+    font-size: 15px;
+    color: var(--amber-text);
   }
 
   /* ---- 插圖等版面標記 ---- */
@@ -1694,17 +1682,16 @@ const articleJsonLd = {
     justify-content: center;
     gap: 6px;
     text-align: center;
-    background: var(--surface-mid);
-    border: 1.5px dashed rgba(3, 22, 50, 0.22);
+    background: var(--surface-3);
+    border: 1.5px dashed rgba(30, 21, 18, 0.22);
   }
 
   .ph__text {
-    font-family: var(--font-serif);
     font-size: 22px;
   }
 
   .ph__note {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
@@ -1717,7 +1704,7 @@ const articleJsonLd = {
     gap: 12px;
     padding: 16px clamp(20px, 3vw, 40px);
     border-top: 1px solid var(--line-08);
-    background: var(--parchment);
+    background: var(--surface-2);
   }
 
   .pg {
@@ -1729,13 +1716,15 @@ const articleJsonLd = {
     justify-self: start;
   }
 
+  /* 實色掣冇可見邊：padding 少 1px，同上一葉一樣高 */
   .pg--next {
     justify-self: end;
+    padding: 9px 17px;
   }
 
   /* 期尾：同上一葉一樣淡到 .35，唔用報錯掣嗰種半透明底 */
   .pg--next[aria-disabled="true"] {
-    background: var(--kapok);
+    background: var(--blue);
     opacity: 0.35;
   }
 
@@ -1745,26 +1734,32 @@ const articleJsonLd = {
 
   .pg-info {
     margin: 0;
-    font-size: 13px;
+    font-size: 15px;
     text-align: center;
     color: var(--graphite);
   }
 
   .pg-info b {
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .pg-hint {
-    font-size: 11px;
+    font-size: 13px;
   }
 
+  /* 窄螢幕：中間說明擺上面成行，兩粒掣喺下面左右分開，唔使逼到一字一行 */
   @media (max-width: 519px) {
-    .pg {
-      padding: 10px 12px;
+    .card-foot {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .pg-info {
+      grid-column: 1 / -1;
+      grid-row: 1;
     }
   }
 
-  /* ---- 右欄：來源、引用、報錯 ---- */
+  /* ---- 右欄：三張中性燈籠框（來源、引用、報錯） ---- */
 
   .rd-side {
     display: flex;
@@ -1772,17 +1767,11 @@ const articleJsonLd = {
     gap: 18px;
   }
 
-  .src-card {
+  .src-pane {
     padding: 22px 24px;
-    background: var(--surface-low);
   }
 
-  /* 側欄標題：設計系統 h3 行高 1.3 */
-  .rd-side h2 {
-    line-height: 1.3;
-  }
-
-  .src-card h2 {
+  .src-pane h2 {
     margin: 0 0 14px;
     font-size: 22px;
   }
@@ -1792,7 +1781,7 @@ const articleJsonLd = {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 9px 16px;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
   }
 
@@ -1804,10 +1793,8 @@ const articleJsonLd = {
     margin: 0;
   }
 
-  .cite-card,
-  .rp-card {
-    background: var(--card);
-    border: 1px solid var(--line-10);
+  .cite-pane {
+    padding: 6px 4px 4px;
   }
 
   .cite-head {
@@ -1815,17 +1802,20 @@ const articleJsonLd = {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 14px 18px 0;
+    padding: 12px 14px 0;
   }
 
   .cite-head h2,
-  .rp-card h2 {
+  .rp-pane h2 {
     font-size: 20px;
   }
 
   .cite-copy {
-    padding: 3px 12px;
-    border-color: rgba(181, 58, 37, 0.35);
+    border-color: var(--blue-a35);
+  }
+
+  .cite-copy:hover {
+    background: var(--blue-a08);
   }
 
   .cite-tabs {
@@ -1841,7 +1831,7 @@ const articleJsonLd = {
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--graphite);
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     transition:
@@ -1850,32 +1840,27 @@ const articleJsonLd = {
   }
 
   .cite-tabs [role="tab"][aria-selected="true"] {
-    border-bottom-color: var(--kapok);
-    color: var(--kapok);
+    border-bottom-color: var(--blue);
+    color: var(--blue);
   }
 
   .cite-pre {
     margin: 0;
-    padding: 14px 18px;
+    padding: 12px 14px;
     max-height: 220px;
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-all;
-    font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.6;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .cite-pre:focus-visible {
     outline-offset: -2px;
   }
 
-  .rp-card {
-    padding: 18px;
-  }
-
-  .rp-card h2 {
+  .rp-pane h2 {
     margin: 0 0 8px;
   }
 
@@ -1884,17 +1869,16 @@ const articleJsonLd = {
   }
 
   .rp-hint {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
   .rp-form .rp-sel {
     margin-top: 8px;
     padding: 8px 12px;
-    background: var(--kapok-container);
-    color: var(--kapok);
-    font-family: var(--font-serif);
-    font-size: 16px;
+    background: var(--gold-tint);
+    color: var(--blue);
+    font-size: 18px;
     line-height: 1.5;
     word-break: break-all;
   }
@@ -1911,7 +1895,7 @@ const articleJsonLd = {
     width: 100%;
     margin: 0 0 8px;
     padding: 0;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
   }
 
@@ -1926,20 +1910,31 @@ const articleJsonLd = {
     position: relative;
   }
 
-  .rp-chip .chip {
+  /* 問題類型：方角細 chip，選中寶藍底白字 */
+  .rp-type {
+    display: inline-block;
     padding: 3px 12px;
-    border-color: rgba(3, 22, 50, 0.18);
-    font-weight: 400;
+    border: 1px solid var(--line-18);
+    font-size: 15px;
+    cursor: pointer;
+    transition:
+      background-color 200ms,
+      border-color 200ms,
+      color 200ms;
   }
 
-  .rp-chip input:checked + .chip {
-    border-color: var(--kapok);
-    background: var(--kapok);
+  .rp-type:hover {
+    background: var(--surface-3);
+  }
+
+  .rp-chip input:checked + .rp-type {
+    border-color: var(--blue);
+    background: var(--blue);
     color: #fff;
   }
 
-  .rp-chip input:focus-visible + .chip {
-    outline: 2px solid rgba(181, 58, 37, 0.55);
+  .rp-chip input:focus-visible + .rp-type {
+    outline: 2px solid var(--blue);
     outline-offset: 2px;
   }
 
@@ -1948,15 +1943,14 @@ const articleJsonLd = {
     width: 100%;
     margin-top: 12px;
     padding: 10px 12px;
-    border: 1px solid rgba(3, 22, 50, 0.18);
-    border-radius: 0;
-    background: var(--parchment);
-    font-size: 14px;
+    border: 1px solid var(--line-18);
+    background: var(--surface-2);
+    font-size: 16px;
     resize: vertical;
   }
 
   .rp-note:focus {
-    border-color: var(--kapok);
+    border-color: var(--blue);
   }
 
   .rp-hp {
@@ -1967,23 +1961,24 @@ const articleJsonLd = {
     overflow: hidden;
   }
 
+  /* 實色掣有 1px 透明邊：上下 9px 等於原型 10px＋0 邊；文案置中，左右收窄免得 300px 欄斷行 */
   .rp-submit {
     width: 100%;
     margin-top: 10px;
-    padding: 10px;
-    font-size: 14px;
+    padding: 9px 4px;
+    font-size: 16px;
     font-weight: 700;
   }
 
   .rp-form .rp-error {
     margin-top: 8px;
-    font-size: 13px;
-    color: var(--kapok);
+    font-size: 14px;
+    color: var(--ruby);
   }
 
   .rp-form .rp-foot {
     margin-top: 10px;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--graphite);
   }
@@ -1992,18 +1987,18 @@ const articleJsonLd = {
     margin: 0;
     padding: 14px 16px;
     background: var(--green-a12);
-    color: var(--archive-green);
-    font-size: 14px;
+    color: var(--green-text);
+    font-size: 16px;
     line-height: 1.6;
   }
 
   .rp-again {
     margin-top: 10px;
-    padding: 6px 12px;
+    padding: 5px 11px;
     font-weight: 400;
   }
 
-  /* ---- 辭叢詞卡（位置由 --x / --y 設定） ---- */
+  /* ---- 辭叢詞卡（位置由 --x / --y 設定）：方角、冇陰影 ---- */
 
   .dict-card {
     position: fixed;
@@ -2012,25 +2007,24 @@ const articleJsonLd = {
     z-index: 65;
     max-width: min(280px, calc(100vw - 16px));
     padding: 12px 14px;
-    background: var(--card);
+    background: var(--paper);
     border: 1px solid var(--line-20);
   }
 
   .dict-card__word {
     margin: 0 0 8px;
-    font-family: var(--font-serif);
-    font-size: 20px;
+    font-size: 22px;
     line-height: 1.4;
     letter-spacing: 0.08em;
   }
 
   .dict-card__link {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .dict-card__hint {
     margin: 8px 0 0;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--graphite);
   }
 </style>
