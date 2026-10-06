@@ -48,7 +48,7 @@ const navItems = [
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     {/* 非阻塞：Google Fonts 連唔到（例如中國大陸）唔會卡住首次渲染，直接用系統字 */}
-    <link rel="stylesheet" href={googleFonts} media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href={googleFonts} media="print" onload="this.setAttribute('media', 'all')" />
     <noscript><link rel="stylesheet" href={googleFonts} /></noscript>
     <slot name="head" />
   </head>
