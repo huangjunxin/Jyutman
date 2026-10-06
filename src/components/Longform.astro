@@ -1,6 +1,6 @@
 ---
 /**
- * 長文頁內容版面（關於、數據開放共用）：左欄「本頁」錨點導航（≥1080px 黏頂）+ 內容欄。
+ * 長文頁內容版面（關於、數據開放共用）：左欄「本頁」錨點導航（≥1080px 黏頂，寶藍中文序號）+ 內容欄（最闊 820px）。
  * 各段由頁面寫成 <section id class="lf-section">，段頭用 .ordinal.ordinal--lg + h2.lf-h2，內文用 p.lf-text；
  * 錨點平滑捲動靠 global.css 嘅 scroll-behavior（減少動態時自動關閉）。
  */
@@ -16,7 +16,7 @@ const { sections } = Astro.props;
 
 <div class="longform wrap">
   <nav class="longform__nav" aria-labelledby="longform-nav-label">
-    <p class="longform__label" id="longform-nav-label">本頁</p>
+    <p class="longform__label label" id="longform-nav-label">本頁</p>
     {
       sections.map((section, index) => (
         <a href={`#${section.id}`}>
@@ -53,17 +53,12 @@ const { sections } = Astro.props;
   @media (min-width: 1080px) {
     .longform__nav {
       position: sticky;
-      top: calc(var(--header-h) + 31px);
+      top: calc(var(--header-h) + 26px);
     }
   }
 
   .longform__label {
     margin: 0 0 10px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--graphite);
   }
 
   .longform__nav a {
@@ -71,22 +66,21 @@ const { sections } = Astro.props;
     gap: 12px;
     padding: 9px 0;
     border-top: 1px solid var(--line-10);
-    font-size: 15px;
+    font-size: 17px;
     line-height: 1.75;
-    color: var(--ink);
+    color: var(--wood);
     transition: color 200ms;
   }
 
   .longform__nav a:hover {
-    color: var(--kapok);
+    color: var(--blue);
     text-decoration: none;
   }
 
   .longform__num {
     width: 20px;
     flex: none;
-    font-family: var(--font-serif);
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .longform__body {
@@ -100,22 +94,20 @@ const { sections } = Astro.props;
 
   /* 段落：錨點預留頁首高度 */
   .longform__body :global(.lf-section) {
-    scroll-margin-top: calc(var(--header-h) + 28px);
+    scroll-margin-top: calc(var(--header-h) + 22px);
   }
 
   .longform__body :global(.lf-h2) {
     margin: 16px 0 20px;
-    font-size: clamp(32px, 3.6vw, 44px);
+    font-size: clamp(28px, 2.8vw, 36px);
     line-height: 1.15;
     letter-spacing: -0.01em;
-    color: var(--ink);
   }
 
   .longform__body :global(.lf-text) {
     margin: 0 0 18px;
-    font-size: 17px;
+    font-size: 18px;
     line-height: 1.9;
-    color: var(--ink);
     text-wrap: pretty;
   }
 

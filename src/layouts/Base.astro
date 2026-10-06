@@ -2,6 +2,7 @@
 import "../styles/global.css";
 
 import Icon from "../components/Icon.astro";
+import Logo from "../components/Logo.astro";
 
 interface Props {
   /** 完整 title 文字（含站名），由頁面自行決定。 */
@@ -18,9 +19,9 @@ interface Props {
 const { title, description, current, noindex = false, headerSearch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
 
-/** Google Fonts：CJK 字體按 unicode-range 切片，頁面用到邊啲字先下載邊片。 */
+/** Google Fonts：Noto Serif HK（全站中文）+ Jost（拉丁字母、數字）；CJK 按 unicode-range 切片，用到邊片先下載邊片。 */
 const googleFonts =
-  "https://fonts.googleapis.com/css2?family=Chiron+Hei+HK:wght@300..800&family=Chiron+Sung+HK:wght@400..900&family=Inter:wght@400..700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Noto+Serif+HK:wght@400..700&family=Jost:wght@300..700&display=swap";
 
 const navItems = [
   { key: "browse", href: "/browse/", label: "書目庫" },
@@ -36,10 +37,11 @@ const navItems = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#b53a25" />
+    <meta name="theme-color" content="#2733b0" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -54,7 +56,7 @@ const navItems = [
     <header class="site-header">
       <div class="site-header__inner wrap">
         <a class="brand" href="/">
-          <span class="brand__mark" aria-hidden="true">叢</span>
+          <Logo />
           <span class="brand__text">
             <span class="brand__name">粵語文叢</span>
             <span class="brand__sub">歷史粵語文獻數碼閱讀</span>
@@ -88,7 +90,7 @@ const navItems = [
       </div>
     </header>
     <script is:inline>
-      // 頁首換行會變高：同步 --header-h，閱讀頁工具列同側欄黏頂位靠佢（後備 72px）。
+      // 頁首換行會變高：同步 --header-h，閱讀頁工具列同側欄黏頂位靠佢（後備 78px）。
       (() => {
         const header = document.querySelector(".site-header");
         if (!header || !("ResizeObserver" in window)) return;
@@ -104,7 +106,7 @@ const navItems = [
     <footer class="site-footer">
       <div class="site-footer__main wrap">
         <div class="foot-brand">
-          <span class="foot-brand__mark" aria-hidden="true">叢</span>
+          <Logo size="lg" />
           <div>
             <div class="foot-brand__name">粵語文叢</div>
             <div class="foot-brand__sub">歷史粵語文獻數碼閱讀 · Jyutman</div>

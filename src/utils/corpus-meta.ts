@@ -5,8 +5,12 @@
 
 import { isLatinDominant } from "./reader.ts";
 
-/** 語料色塊：kapok 木棉紅、ink 墨藍、green 檔案綠（對應 global.css 嘅 .tone-*）。 */
-export type CorpusTone = "kapok" | "ink" | "green";
+/**
+ * 語料玻璃色：blue 寶藍（廣東白話報）、amber 琥珀（Handbook）、green 翠綠（Readings）。
+ * 頁面用 class `tone-${tone}`（global.css）攞成組顏色：--tone 玻璃帶、--tone-jewel 角珠（琥珀用寶藍）、
+ * --tone-num 大數字、--tone-text 單位字（琥珀 #7f5306）、--tone-fill 進度條、--tone-on 實色底上嘅字（琥珀用木色）。
+ */
+export type CorpusTone = "blue" | "amber" | "green";
 
 export interface CorpusMeta {
   tone: CorpusTone;
@@ -34,7 +38,7 @@ interface KnownMeta {
 /** 原型（design handoff）逐語料寫死嘅展示字串。 */
 const KNOWN: Record<string, KnownMeta> = {
   "gd-vernacular-paper": {
-    tone: "kapok",
+    tone: "blue",
     shortTitle: "廣東白話報",
     spineTitle: "廣東白話報",
     script: "zh",
@@ -42,7 +46,7 @@ const KNOWN: Record<string, KnownMeta> = {
     genre: "方言報紙",
   },
   "canton-vernacular-handbook": {
-    tone: "ink",
+    tone: "amber",
     shortTitle: "Canton Vernacular Handbook",
     spineTitle: "Canton Vernacular",
     script: "en",
@@ -59,7 +63,7 @@ const KNOWN: Record<string, KnownMeta> = {
   },
 };
 
-const TONE_CYCLE: readonly CorpusTone[] = ["kapok", "ink", "green"];
+const TONE_CYCLE: readonly CorpusTone[] = ["blue", "amber", "green"];
 
 /** 類型行：多期「{genre} · N 期」，單冊「單冊 · {genre}」；冇 genre 就淨係期數或「單冊」。 */
 function kindLine(genre: string | null, issueCount: number): string {

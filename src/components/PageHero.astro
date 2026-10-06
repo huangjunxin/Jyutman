@@ -1,22 +1,23 @@
 ---
 /**
- * 長文頁頁頭（關於、數據開放共用）：大字水印、眉標、H1、導語；
- * H1 內容經 slot="title" 傳入（可夾木棉紅 span），預設 slot 放導語下面嘅流程條／授權卡。
+ * 長文頁頁頭（關於、數據開放共用）：窗格眉標、H1、導語，下邊線 .1。
+ * H1 內容經 slot="title" 傳入（<span class="accent"> 出寶藍），預設 slot 放導語下面嘅管道卡／授權卡（頁面自己設 margin-top）。
  */
+import Eyebrow from "./Eyebrow.astro";
+
 interface Props {
   eyebrow: string;
-  /** 水印字（真文字，aria-hidden）。 */
-  mark: string;
   lead: string;
+  /** @deprecated 舊版大字水印，已無作用。 */
+  mark?: string;
 }
 
-const { eyebrow, mark, lead } = Astro.props;
+const { eyebrow, lead } = Astro.props;
 ---
 
-<section class="page-hero watermark-host">
-  <div class="watermark" aria-hidden="true">{mark}</div>
+<section class="page-hero">
   <div class="page-hero__inner wrap">
-    <p class="eyebrow">{eyebrow}</p>
+    <Eyebrow text={eyebrow} />
     <h1 class="page-hero__title"><slot name="title" /></h1>
     <p class="page-hero__lead">{lead}</p>
     <slot />
@@ -28,34 +29,26 @@ const { eyebrow, mark, lead } = Astro.props;
     border-bottom: 1px solid var(--line-10);
   }
 
-  .watermark {
-    --wm-size: min(48vw, 640px);
-    --wm-right: -3vw;
-    --wm-top: -6vw;
-  }
-
   .page-hero__inner {
-    position: relative;
     padding-top: clamp(56px, 7vw, 104px);
     padding-bottom: clamp(48px, 6vw, 80px);
   }
 
-  .eyebrow {
-    margin: 0;
-  }
-
   .page-hero__title {
     margin-top: 14px;
-    font-size: clamp(56px, 8vw, 112px);
+    font-size: clamp(44px, 5vw, 64px);
     line-height: 0.98;
     letter-spacing: -0.03em;
-    color: var(--ink);
+  }
+
+  .page-hero__title :global(.accent) {
+    color: var(--blue);
   }
 
   .page-hero__lead {
     margin: 28px 0 0;
     max-width: 34em;
-    font-size: clamp(18px, 1.7vw, 22px);
+    font-size: 20px;
     line-height: 1.75;
     color: var(--graphite);
     text-wrap: pretty;

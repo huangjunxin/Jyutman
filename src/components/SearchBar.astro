@@ -1,6 +1,7 @@
 ---
 /**
- * 大檢索框：首頁 hero（variant="hero"，2px 墨藍框、掣帶箭咀）同 /search 墨藍色帶（variant="band"，冇框）共用。
+ * 大檢索框（64px 高、2px 木色框、寶藍「檢索」掣）：首頁 hero（variant="hero"，白底、最闊 600px、掣帶箭咀）
+ * 同 /search 檢索窗格（variant="band"，紙色底、填滿窗格、掣冇箭咀）共用。
  * GET /search/?q=；示例 chip 由各頁自己出。樣式見 global.css 嘅 .searchbox 段。
  */
 import Icon from "./Icon.astro";
@@ -8,26 +9,18 @@ import Icon from "./Icon.astro";
 interface Props {
   /** 當前查詢字（/search 頁由 URL 帶入）。 */
   value?: string;
-  /** 輸入框 id（/search 頁的腳本靠它取值）；唔好用 site-q（頁首精簡檢索框已用）。 */
+  /** 輸入框 id（頁面腳本靠它取值）；唔好用 site-q（頁首精簡檢索框已用）。 */
   inputId?: string;
   placeholder?: string;
   variant?: "hero" | "band";
-  /** @deprecated 舊版示例 pill 開關，已無作用；示例 chip 由頁面自己出。 */
-  examples?: boolean;
   class?: string;
 }
 
-const {
-  value = "",
-  inputId,
-  placeholder = "搵字詞，或者簡體字",
-  variant = "hero",
-  class: className,
-} = Astro.props;
+const { value = "", inputId, placeholder = "搵字詞，或者簡體字", variant = "hero", class: className, ...rest } = Astro.props;
 ---
 
-<form class:list={["searchbox", `searchbox--${variant}`, className]} action="/search/" method="get" role="search">
-  <span class="searchbox__icon"><Icon name="search" size={20} /></span>
+<form class:list={["searchbox", `searchbox--${variant}`, className]} action="/search/" method="get" role="search" {...rest}>
+  <span class="searchbox__icon"><Icon name="search" size={22} /></span>
   <input
     type="search"
     name="q"

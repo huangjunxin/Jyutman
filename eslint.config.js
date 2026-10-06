@@ -1,6 +1,6 @@
 export default [
   {
-    ignores: ["dist/**", ".astro/**", ".wrangler/**", "node_modules/**", "design_handoff_jyutman_redesign/**"],
+    ignores: ["dist/**", ".astro/**", ".wrangler/**", "node_modules/**", "design_handoff_jyutman_redesign/**", "design_handoff_jyutman_xiguan/**"],
   },
   {
     files: ["**/*.js", "**/*.mjs"],

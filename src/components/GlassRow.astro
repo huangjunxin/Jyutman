@@ -1,0 +1,17 @@
+---
+/**
+ * 共用木色容器：幾張燈籠框放埋一齊（關於管道卡、數據開放授權卡用 sm 6px；首頁語料用 lg 8px）。
+ * 入面嘅 <Glass> 要加 flush。as="ul"／"ol" 出列表（子項用 <Glass as="li">）；其餘屬性照傳到外層。
+ */
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends HTMLAttributes<"div"> {
+  size?: "sm" | "lg";
+  as?: "div" | "ul" | "ol";
+}
+
+const { size = "sm", as: Tag = "div", class: className, ...rest } = Astro.props;
+---
+
+<Tag class:list={["glass-row", size === "lg" && "glass-row--lg", className]} {...rest}><slot /></Tag>
+

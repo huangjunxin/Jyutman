@@ -1,0 +1,45 @@
+---
+/**
+ * 燈籠框：木框（四粒角珠）→ 抹角玻璃帶 → 抹角紙面（加一圈 1.5px 玻璃色幼線）。樣式見 global.css 嘅 .glass。
+ * - tone：玻璃色（blue／amber／green／ruby；琥珀卡角珠自動用寶藍），neutral 係閱讀頁側欄中性版。
+ * - size：lg 大號（語料卡、封面、檢索窗格、授權卡）、sm 細號（數字帶、管道卡）；neutral 固定細號。
+ * - flush：放喺 <GlassRow> 入面，唔要自己木框。
+ * - href：成張卡變 <a>，hover 變光（brightness 1.05）；target／rel／aria-label 等照傳。
+ * - as：冇 href 時外層用乜嘢 tag（預設 div；列表項用 li）。
+ * - class 落外層、paneClass 落紙面（頁面 scoped style 兩個都食到）；紙面 padding 預設大號 24px、細號 20px 22px。
+ * 等高：外層跟 flex／grid stretch，入面 band、pane 都 flex:1。
+ */
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends Omit<HTMLAttributes<"a">, "class"> {
+  tone?: "blue" | "amber" | "green" | "ruby" | "neutral";
+  size?: "lg" | "sm";
+  flush?: boolean;
+  href?: string;
+  as?: "div" | "li" | "section" | "article" | "aside";
+  class?: string;
+  paneClass?: string;
+}
+
+const { tone = "blue", size = "lg", flush = false, href, as = "div", class: className, paneClass, ...rest } = Astro.props;
+
+const Tag = href ? "a" : as;
+const neutral = tone === "neutral";
+/** 頁面 scoped style 嘅 data-astro-cid-* 只會落外層；抄一份畀紙面，paneClass 先食到樣式。 */
+const scope = Object.fromEntries(Object.entries(rest).filter(([key]) => key.startsWith("data-astro-cid-")));
+---
+
+<Tag
+  class:list={[
+    "glass",
+    neutral ? "glass--neutral" : `tone-${tone}`,
+    !neutral && size === "sm" && "glass--sm",
+    flush && "glass--flush",
+    href && "glass--link",
+    className,
+  ]}
+  href={href}
+  {...rest}
+>
+  <div class="glass__band"><div class:list={["glass__pane", paneClass]} {...scope}><slot /></div></div>
+</Tag>

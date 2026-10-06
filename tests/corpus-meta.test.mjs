@@ -5,7 +5,7 @@ import { chineseNumeral, corpusMeta, formatWan, issueLabel, issueNumeral } from 
 
 test("corpusMeta：已登記語料照原型字串，類型行按期數生成", () => {
   assert.deepEqual(corpusMeta({ slug: "gd-vernacular-paper", title: "廣東白話報", issueCount: 4 }), {
-    tone: "kapok",
+    tone: "blue",
     shortTitle: "廣東白話報",
     spineTitle: "廣東白話報",
     script: "zh",
@@ -17,7 +17,7 @@ test("corpusMeta：已登記語料照原型字串，類型行按期數生成", (
     title: "A Handbook of the Canton Vernacular of the Chinese Language",
     issueCount: 1,
   });
-  assert.equal(cvh.tone, "ink");
+  assert.equal(cvh.tone, "amber");
   assert.equal(cvh.shortTitle, "Canton Vernacular Handbook");
   assert.equal(cvh.spineTitle, "Canton Vernacular");
   assert.equal(cvh.script, "en");
@@ -32,7 +32,7 @@ test("corpusMeta：已登記語料照原型字串，類型行按期數生成", (
 test("corpusMeta：未登記語料用後備，色調按 index 輪替", () => {
   const zh = corpusMeta({ slug: "new-paper", title: "嶺南白話雜誌", issueCount: 3 }, 4);
   assert.deepEqual(zh, {
-    tone: "ink",
+    tone: "amber",
     shortTitle: "嶺南白話雜誌",
     spineTitle: "嶺南白話雜誌",
     script: "zh",
@@ -40,7 +40,7 @@ test("corpusMeta：未登記語料用後備，色調按 index 輪替", () => {
     kind: "3 期",
   });
   const en = corpusMeta({ slug: "new-book", title: "Cantonese Made Easy", issueCount: 1 });
-  assert.equal(en.tone, "kapok");
+  assert.equal(en.tone, "blue");
   assert.equal(en.script, "en");
   assert.equal(en.kind, "單冊");
   assert.equal(corpusMeta({ slug: "x", title: "x", issueCount: 1 }, 5).tone, "green");

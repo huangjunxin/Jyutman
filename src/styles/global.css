@@ -1,73 +1,99 @@
-/* 粵語文叢全站樣式：粵語辭叢設計系統（Scholar's Ink · Kapok Edition）。
-   只出淺色。呢度只放 token、基礎元素、頁首頁尾同共用原件；
-   頁面專屬樣式寫喺各頁 scoped <style>，數值照 design handoff 原型。
-   規矩：冇圓角（徽章 8px、chip 999px 除外）、冇陰影、只有頁首同閱讀頁工具列用模糊。 */
+/* 粵語文叢全站樣式：西關滿洲窗（Xiguan）。
+   只出淺色。呢度只放 token、基礎元素、頁首頁尾同共用原件（即係頁面可以依賴嘅契約）；
+   頁面專屬樣式寫喺各頁 scoped <style>，數值照 design_handoff_jyutman_xiguan 原型。
+   規矩：冇圓角（只有狀態圓點 50%）、冇陰影、只有頁首（12px）同閱讀頁工具列（10px）用模糊；
+   hover 只變色（200ms）或者可撳燈籠框變光 brightness(1.05)（300ms），唔上移、唔 scale。 */
 
 /* ---- Token ---------------------------------------------------------------- */
 
 :root {
   color-scheme: light;
 
-  /* 色板 */
-  --kapok: #b53a25;
-  --accent-hover: #a2331f;
-  --kapok-container: #f8e7e4;
-  --kapok-on-dark: #f1a08c;
-  --ink: #031632;
-  --parchment: #fbf9f4;
-  --card: #fff;
-  --graphite: #44474d;
-  --archive-green: #4a6b5d;
-  --archive-green-hover: #3f5c50;
-  --archive-green-light: #7fa393;
-  --muted-gold: #725b35;
-  --surface-low: #f5f2ed;
-  --surface-mid: #f0eee9;
-  --surface-high: #eae8e3;
-  --surface-highest: #e4e2dd;
+  /* 玻璃色：由西關大屋滿洲窗相片取色 */
+  --blue: #2733b0; /* 寶藍：主色、連結、當前狀態、粵拼、葉碼；廣東白話報 */
+  --blue-hover: #1f2990; /* 實色掣 hover */
+  --sky: #2f74d0; /* 天藍：只用喺扇形氣窗 */
+  --green: #0b7a31; /* 翠綠：已核驗、今譯；Readings in Cantonese Colloquial */
+  --green-glass: #14a83f; /* 淺翠綠：眉標窗格、氣窗 */
+  --amber: #d38f12; /* 琥珀：Canton Vernacular Handbook 玻璃帶、眉標格 */
+  --amber-line: #b07610; /* OCR 線框、琥珀卡進度條 */
+  --amber-num: #a86d0b; /* 淺底琥珀大數字（只限 40px 以上，對比 4.1:1） */
+  --amber-text: #7f5306; /* 淺底琥珀字：OCR 未校、譯註、暫緩、琥珀單位 */
+  --gold: #e2b821; /* 金黃：角珠 */
+  --gold-tint: #f1dd96; /* 檢索高亮、選取、chip hover */
+  --ruby: #ad1510; /* 寶石紅：標誌「叢」、公有領域卡、細塊玻璃 */
+  --purple: #4a3192; /* 紫：只用喺扇形氣窗 */
+  --frost: #e7e7e0; /* 磨砂白：氣窗外圈 */
 
-  /* 透明色：徽章底、描邊（主色 10%–14% 底加主色字） */
-  --kapok-a10: rgba(181, 58, 37, 0.1);
-  --kapok-a30: rgba(181, 58, 37, 0.3);
-  --kapok-a40: rgba(181, 58, 37, 0.4);
-  --green-a12: rgba(74, 107, 93, 0.12);
-  --green-a14: rgba(74, 107, 93, 0.14);
-  --gold-a12: rgba(114, 91, 53, 0.12);
-  --graphite-a10: rgba(68, 71, 77, 0.1);
+  /* 木、紙、牆 */
+  --wood: #1e1512; /* 窗框、主文字、頁尾、分段掣選中 */
+  --paper: #faf9f4; /* 卡片、正文紙 */
+  --header-bg: rgba(248, 247, 242, 0.94); /* 頁首，配 blur(12px) */
+  --page: #e5e2d8; /* 頁面底色：比頁首深一級 */
+  --surface: #f2f0ea; /* 示意卡、側欄底 */
+  --surface-2: #efede6; /* 正文卡頁腳、輸入框底 */
+  --surface-3: #ebe8df; /* hover、載入中 */
+  --tr-bg: #efece4; /* 今譯 callout */
+  --glass-neutral: #dedcd3; /* 閱讀頁側欄玻璃帶 */
+  --hair-neutral: #c4c0b4; /* 閱讀頁側欄幼線 */
+  --graphite: #5c5450; /* 次要文字 */
+  --brick: #8e8a82; /* 青磚 */
+  --mortar: rgba(236, 233, 226, 0.5); /* 灰縫 */
 
-  /* 分隔線、邊框（ink 透明度） */
-  --line-06: rgba(3, 22, 50, 0.06);
-  --line-08: rgba(3, 22, 50, 0.08);
-  --line-10: rgba(3, 22, 50, 0.1);
-  --line-12: rgba(3, 22, 50, 0.12);
-  --line-14: rgba(3, 22, 50, 0.14);
-  --line-20: rgba(3, 22, 50, 0.2);
+  /* 分隔線、邊框（木色透明度） */
+  --line-06: rgba(30, 21, 18, 0.06);
+  --line-08: rgba(30, 21, 18, 0.08);
+  --line-10: rgba(30, 21, 18, 0.1);
+  --line-12: rgba(30, 21, 18, 0.12);
+  --line-14: rgba(30, 21, 18, 0.14);
+  --line-18: rgba(30, 21, 18, 0.18);
+  --line-20: rgba(30, 21, 18, 0.2);
+  --line-28: rgba(30, 21, 18, 0.28);
+  --line-30: rgba(30, 21, 18, 0.3);
+  --line: var(--line-14);
 
-  /* 深色底（墨藍／木棉紅／檔案綠色塊）上嘅線同字（parchment 透明度） */
-  --on-dark-12: rgba(251, 249, 244, 0.12);
-  --on-dark-14: rgba(251, 249, 244, 0.14);
-  --on-dark-20: rgba(251, 249, 244, 0.2);
-  --on-dark-25: rgba(251, 249, 244, 0.25);
-  --on-dark-30: rgba(251, 249, 244, 0.3);
-  --on-dark-60: rgba(251, 249, 244, 0.6);
-  --on-dark-66: rgba(251, 249, 244, 0.66);
-  --on-dark-68: rgba(251, 249, 244, 0.68);
-  --on-dark-72: rgba(251, 249, 244, 0.72);
-  --on-dark-78: rgba(251, 249, 244, 0.78);
-  --on-dark-88: rgba(251, 249, 244, 0.88);
+  /* 深色底（木色、寶藍、翠綠、寶石紅）上嘅字同線 */
+  --on-dark: #f8f7f2;
+  --on-dark-68: rgba(248, 247, 242, 0.68);
+  --on-dark-72: rgba(248, 247, 242, 0.72);
+  --on-dark-78: rgba(248, 247, 242, 0.78);
+  --on-dark-86: rgba(248, 247, 242, 0.86);
+  --on-dark-88: rgba(248, 247, 242, 0.88);
+  --on-dark-14: rgba(248, 247, 242, 0.14);
+  --on-dark-22: rgba(248, 247, 242, 0.22);
+  --on-dark-25: rgba(248, 247, 242, 0.25);
+  --on-dark-30: rgba(248, 247, 242, 0.3);
 
-  /* 字體：Google Fonts（Base.astro 非阻塞載入）；連唔到就用系統字 */
-  --font-serif: "Chiron Sung HK", "Noto Serif TC", "Songti TC", serif;
-  --font-sans: Inter, "Chiron Hei HK", "Noto Sans TC", "PingFang HK", sans-serif;
-  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+  /* 透明底徽章、描邊：主色 10%–16% 底加主色字 */
+  --blue-a06: rgba(39, 51, 176, 0.06);
+  --blue-a08: rgba(39, 51, 176, 0.08);
+  --blue-a10: rgba(39, 51, 176, 0.1);
+  --blue-a30: rgba(39, 51, 176, 0.3);
+  --blue-a35: rgba(39, 51, 176, 0.35);
+  --blue-a40: rgba(39, 51, 176, 0.4);
+  --blue-a55: rgba(39, 51, 176, 0.55);
+  --green-a12: rgba(11, 122, 49, 0.12);
+  --green-a14: rgba(11, 122, 49, 0.14);
+  --amber-a10: rgba(176, 118, 16, 0.1);
+  --amber-a12: rgba(176, 118, 16, 0.12);
+  --amber-a16: rgba(211, 143, 18, 0.16);
+  --amber-a50: rgba(176, 118, 16, 0.5);
+  --graphite-a12: rgba(92, 84, 80, 0.12);
+  --graphite-a25: rgba(92, 84, 80, 0.25);
+  --graphite-a55: rgba(92, 84, 80, 0.55);
+  --graphite-a60: rgba(92, 84, 80, 0.6);
+
+  /* 字體：Google Fonts（Base.astro 非阻塞載入）；連唔到就落後備 */
+  --serif: "Noto Serif HK", "Noto Serif TC", serif;
+  --latin: "Jost", "Noto Serif HK", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
 
   /* 版面 */
   --wrap: 1280px;
-  --wrap-wide: 1440px;
+  --wrap-reader: 1440px;
   --gutter: clamp(16px, 3vw, 32px);
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* 頁首實際高度，由 Base.astro 嘅 ResizeObserver 更新 */
-  --header-h: 72px;
+  --header-h: 78px;
 }
 
 /* ---- 基礎 ------------------------------------------------------------------ */
@@ -79,6 +105,7 @@
 }
 
 html {
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
 }
@@ -88,10 +115,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--parchment);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 16px;
+  background: var(--page);
+  color: var(--wood);
+  font-family: var(--serif);
+  font-size: 18px;
   line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -108,8 +135,7 @@ h4,
 h5,
 h6 {
   margin: 0;
-  font-family: var(--font-serif);
-  font-weight: 400;
+  font-weight: 600;
 }
 
 /* hidden 屬性要贏過 .btn / .chip 等 display 宣告 */
@@ -118,7 +144,7 @@ h6 {
 }
 
 a {
-  color: var(--kapok);
+  color: var(--blue);
   text-decoration: none;
   text-underline-offset: 4px;
 }
@@ -128,18 +154,13 @@ a:hover {
 }
 
 ::selection {
-  background: var(--kapok-container);
-  color: var(--kapok);
+  background: var(--gold-tint);
+  color: var(--wood);
 }
 
 :focus-visible {
-  outline: 2px solid rgba(181, 58, 37, 0.55);
+  outline: 2px solid var(--blue-a55);
   outline-offset: 2px;
-}
-
-/* 色塊上面木棉紅焦點環睇唔到，改用羊皮紙色 */
-.tone-block :focus-visible {
-  outline-color: var(--parchment);
 }
 
 button,
@@ -152,7 +173,7 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(68, 71, 77, 0.6);
+  color: var(--graphite-a60);
 }
 
 /* iOS：search 輸入框去原生外觀同圓角（唔好落喺裸 input，會令 checkbox 隱形） */
@@ -174,17 +195,17 @@ img {
   height: auto;
 }
 
-/* 行內 code：木棉紅淺底 */
+/* 行內 code：金黃淺底寶藍字 */
 code {
   padding: 1px 6px;
-  background: var(--kapok-container);
-  color: var(--kapok);
-  font-family: var(--font-mono);
+  background: var(--gold-tint);
+  color: var(--blue);
+  font-family: var(--mono);
   font-size: 0.86em;
 }
 
 pre {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
 }
 
 pre code {
@@ -196,8 +217,8 @@ pre code {
 
 /* 檢索高亮、所選字 */
 mark {
-  background: var(--kapok-container);
-  color: var(--kapok);
+  background: var(--gold-tint);
+  color: var(--blue);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -217,13 +238,13 @@ mark {
 .skip-link {
   position: absolute;
   left: 8px;
-  top: -48px;
+  top: -64px;
   z-index: 60;
   padding: 10px 16px;
-  background: var(--card);
+  background: var(--paper);
   border: 1px solid var(--line-20);
-  color: var(--kapok);
-  font-size: 14px;
+  color: var(--blue);
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -233,7 +254,7 @@ mark {
 
 /* ---- 版面容器 -------------------------------------------------------------- */
 
-/* 標準容器 1280 */
+/* 標準容器 1280，左右 gutter */
 .wrap {
   width: 100%;
   max-width: var(--wrap);
@@ -241,10 +262,10 @@ mark {
   padding-inline: var(--gutter);
 }
 
-/* 闊容器 1440（閱讀頁工具列同三欄） */
+/* 閱讀頁容器 1440（工具列同三欄） */
 .wrap-wide {
   width: 100%;
-  max-width: var(--wrap-wide);
+  max-width: var(--wrap-reader);
   margin-inline: auto;
   padding-inline: var(--gutter);
 }
@@ -255,14 +276,14 @@ mark {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(251, 249, 244, 0.9);
+  background: var(--header-bg);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line-10);
+  border-bottom: 1px solid var(--line-18);
 }
 
 .site-header__inner {
-  min-height: 72px;
+  min-height: 78px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -274,25 +295,11 @@ mark {
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  color: var(--ink);
+  color: var(--wood);
 }
 
 .brand:hover {
   text-decoration: none;
-}
-
-.brand__mark {
-  width: 42px;
-  height: 42px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--kapok);
-  color: var(--parchment);
-  font-family: var(--font-serif);
-  font-size: 26px;
-  line-height: 1;
 }
 
 .brand__text {
@@ -302,16 +309,16 @@ mark {
 }
 
 .brand__name {
-  font-family: var(--font-serif);
-  font-size: 21px;
-  line-height: 1.1;
-  letter-spacing: 0.04em;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.1em;
 }
 
 .brand__sub {
-  font-size: 11px;
-  line-height: 1.2;
-  letter-spacing: 0.12em;
+  font-size: 13px;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
   color: var(--graphite);
 }
 
@@ -322,30 +329,34 @@ mark {
 }
 
 .site-nav a {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 9px;
   min-height: 56px;
   padding: 0 14px;
-  color: var(--ink);
-  font-size: 15px;
+  color: var(--wood);
+  font-size: 17px;
   font-weight: 500;
+  transition: color 200ms;
 }
 
 .site-nav a:hover {
-  color: var(--kapok);
+  color: var(--blue);
   text-decoration: none;
 }
 
-/* 當前頁：底部 3px 木棉紅線，左右各縮 14px */
-.site-nav a[aria-current="page"]::after {
+/* 當前頁：寶藍字，左邊 8px 寶藍方塊加 2px 木色 outline */
+.site-nav a[aria-current="page"] {
+  color: var(--blue);
+}
+
+.site-nav a[aria-current="page"]::before {
   content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: -1px;
-  height: 3px;
-  background: var(--kapok);
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--blue);
+  outline: 2px solid var(--wood);
 }
 
 /* 精簡檢索框（首頁唔顯示） */
@@ -358,13 +369,13 @@ mark {
   height: 40px;
   margin: 8px 0;
   padding: 0 12px;
-  background: var(--card);
+  background: var(--paper);
   border: 1px solid var(--line-20);
   color: var(--graphite);
 }
 
 .header-search:focus-within {
-  outline: 2px solid rgba(181, 58, 37, 0.55);
+  outline: 2px solid var(--blue-a55);
   outline-offset: 2px;
 }
 
@@ -372,31 +383,29 @@ mark {
   flex: none;
 }
 
+/* 16px 亦防 iOS 聚焦放大 */
 .header-search input[type="search"] {
   flex: 1;
   min-width: 0;
   height: 100%;
-  padding: 0;
+  padding: 0 2px;
   border: 0;
   outline: none;
   background: transparent;
-  color: var(--ink);
-  font-size: 14px;
-}
-
-/* 觸控機 16px 防 iOS 聚焦放大 */
-@media (pointer: coarse) {
-  .header-search input[type="search"] {
-    font-size: 16px;
-  }
+  color: var(--wood);
+  font-size: 16px;
 }
 
 /* ---- 頁尾 ------------------------------------------------------------------ */
 
 .site-footer {
   margin-top: auto;
-  background: var(--ink);
-  color: var(--parchment);
+  background: var(--wood);
+  color: var(--on-dark);
+}
+
+.site-footer :focus-visible {
+  outline-color: var(--on-dark-72);
 }
 
 .site-footer__main {
@@ -415,27 +424,15 @@ mark {
   gap: 16px;
 }
 
-.foot-brand__mark {
-  width: 56px;
-  height: 56px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--kapok);
-  font-family: var(--font-serif);
-  font-size: 34px;
-  line-height: 1;
-}
-
 .foot-brand__name {
-  font-family: var(--font-serif);
   font-size: 24px;
-  line-height: 1.2;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.1em;
 }
 
 .foot-brand__sub {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--on-dark-72);
 }
 
@@ -443,11 +440,11 @@ mark {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 28px;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .foot-nav a {
-  color: var(--parchment);
+  color: var(--on-dark);
 }
 
 .site-footer__base {
@@ -459,67 +456,414 @@ mark {
   gap: 8px 24px;
   border-top: 1px solid var(--on-dark-14);
   color: var(--on-dark-68);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 
-/* ---- 共用原件 -------------------------------------------------------------- */
+/* ---- 標誌：四格窗花（components/Logo.astro）--------------------------------- */
 
-/* 眉標：12px/700、.22em、大寫、木棉紅（例：Corpora · 語料） */
-.eyebrow {
-  font-size: 12px;
+/* 頁首：格 22px、gap 3px、padding 3px、木色框，字 13px/700 */
+.logo {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(2, 22px);
+  grid-auto-rows: 22px;
+  gap: 3px;
+  padding: 3px;
+  background: var(--wood);
+  font-family: var(--serif);
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--kapok);
+  line-height: 22px;
+  text-align: center;
 }
 
-/* 眉標前加 36×3 短線（首頁 hero） */
-.eyebrow--rule {
+.logo > span:nth-child(1) {
+  background: var(--blue);
+  color: #fff;
+}
+
+.logo > span:nth-child(2) {
+  background: var(--amber);
+  color: var(--wood);
+}
+
+.logo > span:nth-child(3) {
+  background: var(--green);
+  color: #fff;
+}
+
+.logo > span:nth-child(4) {
+  background: var(--ruby);
+  color: #fff;
+}
+
+/* 頁尾：格 28px、gap 4px、padding 4px、字 16px，加 1px 淺 outline */
+.logo--lg {
+  grid-template-columns: repeat(2, 28px);
+  grid-auto-rows: 28px;
+  gap: 4px;
+  padding: 4px;
+  font-size: 16px;
+  line-height: 28px;
+  outline: 1px solid var(--on-dark-25);
+}
+
+/* ---- 語料色調（corpusMeta().tone → class="tone-<tone>"）---------------------- */
+
+/* 每個色調設一組自訂屬性，畀燈籠框、進度條、大數字、實色色帶共用：
+   --tone 玻璃色；--tone-jewel 角珠；--tone-num 淺底大數字（≥40px）；--tone-text 淺底單位／強調字；
+   --tone-fill 淺底進度條；--tone-on 實色底上嘅字；--tone-on-dim 次要字；--tone-on-line 分隔線；
+   --tone-on-track／--tone-on-fill 實色底上嘅進度條。琥珀底一律木色字，角珠用寶藍。 */
+.tone-blue {
+  --tone: var(--blue);
+  --tone-jewel: var(--gold);
+  --tone-num: var(--blue);
+  --tone-text: var(--blue);
+  --tone-fill: var(--blue);
+  --tone-on: var(--on-dark);
+  --tone-on-dim: var(--on-dark-86);
+  --tone-on-line: var(--on-dark-30);
+  --tone-on-track: var(--on-dark-22);
+  --tone-on-fill: var(--gold);
+}
+
+.tone-amber {
+  --tone: var(--amber);
+  --tone-jewel: var(--blue);
+  --tone-num: var(--amber-num);
+  --tone-text: var(--amber-text);
+  --tone-fill: var(--amber-line);
+  --tone-on: var(--wood);
+  --tone-on-dim: rgba(30, 21, 18, 0.8);
+  --tone-on-line: var(--line-30);
+  --tone-on-track: var(--line-18);
+  --tone-on-fill: var(--wood);
+}
+
+.tone-green {
+  --tone: var(--green);
+  --tone-jewel: var(--gold);
+  --tone-num: var(--green);
+  --tone-text: var(--green);
+  --tone-fill: var(--green);
+  --tone-on: var(--on-dark);
+  --tone-on-dim: var(--on-dark-86);
+  --tone-on-line: var(--on-dark-30);
+  --tone-on-track: var(--on-dark-22);
+  --tone-on-fill: var(--gold);
+}
+
+.tone-ruby {
+  --tone: var(--ruby);
+  --tone-jewel: var(--gold);
+  --tone-num: var(--ruby);
+  --tone-text: var(--ruby);
+  --tone-fill: var(--ruby);
+  --tone-on: var(--on-dark);
+  --tone-on-dim: var(--on-dark-86);
+  --tone-on-line: var(--on-dark-30);
+  --tone-on-track: var(--on-dark-22);
+  --tone-on-fill: var(--gold);
+}
+
+/* ---- 燈籠框（glass frame，components/Glass.astro）--------------------------- */
+
+/* 三層：.glass 木框（四粒角珠畫喺背景）→ .glass__band 抹角玻璃帶 → .glass__pane 抹角紙面，
+   紙面內再畫一圈 1.5px 玻璃色八角幼線。色由 --tone/--tone-jewel（.tone-*）或者直接設 --glass/--jewel。
+   預設大號（L）獨立木框；--sm 細號；--flush 放喺 .glass-row 入面（唔要自己木框）；--neutral 閱讀頁側欄。
+   等高：外層 stretch，band／pane 都 flex:1；紙面 padding 預設用 :where()，頁面 class 一定贏。 */
+.glass {
+  --glass: var(--tone, var(--blue));
+  --jewel: var(--tone-jewel, var(--gold));
+  --hair: var(--glass);
+  --frame: 6px; /* 木框厚度 */
+  --jo: 7px; /* 角珠位置 */
+  --jz: 7px; /* 角珠大細 */
+  --c: 20px; /* 玻璃帶外角 */
+  --band: 9px; /* 帶寬 */
+  --ci: 14.7px; /* 紙面抹角 = 外角 − 帶寬 ×(2 − √2) */
+  --hi: 8px; /* 幼線內縮 */
+  --ho: 10px; /* 幼線外角 */
+  --hn: 9.1px; /* 幼線內角 */
+  display: flex;
+  padding: var(--frame);
+  background:
+    linear-gradient(var(--jewel), var(--jewel)) left var(--jo) top var(--jo) / var(--jz) var(--jz) no-repeat,
+    linear-gradient(var(--jewel), var(--jewel)) right var(--jo) top var(--jo) / var(--jz) var(--jz) no-repeat,
+    linear-gradient(var(--jewel), var(--jewel)) left var(--jo) bottom var(--jo) / var(--jz) var(--jz) no-repeat,
+    linear-gradient(var(--jewel), var(--jewel)) right var(--jo) bottom var(--jo) / var(--jz) var(--jz) no-repeat,
+    var(--wood);
+  color: var(--wood);
+}
+
+/* 細號（S）：數字帶、管道卡 */
+.glass--sm {
+  --frame: 5px;
+  --jo: 6px;
+  --jz: 5px;
+  --c: 16px;
+  --band: 7px;
+  --ci: 11.9px;
+  --hi: 6px;
+  --ho: 8.4px;
+  --hn: 7.5px;
+}
+
+/* 放喺共用木色容器（.glass-row）入面：唔要自己嘅木框，角珠貼角 1px */
+.glass--flush {
+  --frame: 0px;
+  --jo: 1px;
+}
+
+/* 中性：閱讀頁側欄（本葉來源、引用、報錯）；4px 木框、寶藍角珠、細號抹角 */
+.glass--neutral {
+  --glass: var(--glass-neutral);
+  --hair: var(--hair-neutral);
+  --jewel: var(--blue);
+  --frame: 4px;
+  --jo: 5px;
+  --jz: 5px;
+  --c: 16px;
+  --band: 7px;
+  --ci: 11.9px;
+  --hi: 6px;
+  --ho: 8.4px;
+  --hn: 7.5px;
+}
+
+/* 可撳（<a class="glass glass--link">）：hover 只變光，唔上移唔加陰影 */
+.glass--link {
+  color: var(--wood);
+  transition: filter 300ms;
+}
+
+.glass--link:hover {
+  filter: brightness(1.05);
+  text-decoration: none;
+}
+
+.glass__band {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  padding: var(--band);
+  background: var(--glass);
+  clip-path: polygon(
+    var(--c) 0,
+    calc(100% - var(--c)) 0,
+    100% var(--c),
+    100% calc(100% - var(--c)),
+    calc(100% - var(--c)) 100%,
+    var(--c) 100%,
+    0 calc(100% - var(--c)),
+    0 var(--c)
+  );
+}
+
+.glass__pane {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+  background: var(--paper);
+  clip-path: polygon(
+    var(--ci) 0,
+    calc(100% - var(--ci)) 0,
+    100% var(--ci),
+    100% calc(100% - var(--ci)),
+    calc(100% - var(--ci)) 100%,
+    var(--ci) 100%,
+    0 calc(100% - var(--ci)),
+    0 var(--ci)
+  );
+}
+
+/* 紙面預設 padding：大號 24px、細號 20px 22px、中性 20px（頁面 paneClass 隨時覆寫） */
+:where(.glass__pane) {
+  padding: 24px;
+}
+
+:where(.glass--sm) > :where(.glass__band) > :where(.glass__pane) {
+  padding: 20px 22px;
+}
+
+:where(.glass--neutral) > :where(.glass__band) > :where(.glass__pane) {
+  padding: 20px;
+}
+
+/* 幼線：::before 玻璃色八角，::after 紙色八角蓋返入面，淨低 1.5px */
+.glass__pane::before,
+.glass__pane::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.glass__pane::before {
+  inset: var(--hi);
+  background: var(--hair);
+  clip-path: polygon(
+    var(--ho) 0,
+    calc(100% - var(--ho)) 0,
+    100% var(--ho),
+    100% calc(100% - var(--ho)),
+    calc(100% - var(--ho)) 100%,
+    var(--ho) 100%,
+    0 calc(100% - var(--ho)),
+    0 var(--ho)
+  );
+}
+
+.glass__pane::after {
+  inset: calc(var(--hi) + 1.5px);
+  background: var(--paper);
+  clip-path: polygon(
+    var(--hn) 0,
+    calc(100% - var(--hn)) 0,
+    100% var(--hn),
+    100% calc(100% - var(--hn)),
+    calc(100% - var(--hn)) 100%,
+    var(--hn) 100%,
+    0 calc(100% - var(--hn)),
+    0 var(--hn)
+  );
+}
+
+/* 共用木色容器（關於、數據開放用 6px；首頁語料 --lg 8px）；入面嘅 .glass 要加 --flush */
+.glass-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 6px;
+  background: var(--wood);
+  list-style: none;
+}
+
+.glass-row--lg {
+  gap: 8px;
+  padding: 8px;
+}
+
+/* ---- 青磚牆色帶（首頁數字帶、檢索頁頂）：磚 72×14，走馬砌 --------------------- */
+
+.brick {
+  background-color: var(--brick);
+  background-image:
+    linear-gradient(var(--mortar) 1px, transparent 1px),
+    conic-gradient(from 270deg at 1px 14px, var(--mortar) 0 90deg, transparent 0),
+    conic-gradient(from 270deg at 1px 14px, var(--mortar) 0 90deg, transparent 0);
+  background-size:
+    100% 14px,
+    72px 28px,
+    72px 28px;
+  background-position:
+    0 0,
+    0 0,
+    36px 14px;
+}
+
+/* ---- 扇形氣窗（components/Fanlight.astro）---------------------------------- */
+
+/* SVG 闊 100%（最闊 500px）；下面窗身 padding 1.6%（500 × 1.6% = 8px）跟 SVG 木框同步縮放 */
+.arch {
+  max-width: 500px;
+}
+
+.arch > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.arch__body {
+  padding: 0 1.6% 1.6%;
+  background: var(--wood);
+}
+
+/* ---- 眉標＋窗格（components/Eyebrow.astro）---------------------------------- */
+
+/* Jost 15px/500、.14em、大寫、graphite；左邊細窗格 */
+.eyebrow {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.eyebrow--rule::before {
-  content: "";
-  flex: none;
-  width: 36px;
-  height: 3px;
-  background: currentColor;
-}
-
-/* 細眉標／欄位標籤：11px、.2em */
-.eyebrow--sm {
-  font-size: 11px;
-  letter-spacing: 0.2em;
-}
-
-/* 灰色標籤（graphite），例：「本頁」「篇目 · N 條」 */
-.eyebrow--muted {
+  gap: 12px;
+  margin: 0;
+  font-family: var(--latin);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--graphite);
 }
 
-/* 深色底上嘅眉標 */
-.eyebrow--on-dark {
-  color: var(--kapok-on-dark);
+/* 側欄細版：14px 字、7px 格 */
+.eyebrow--sm {
+  font-size: 14px;
 }
 
-/* 編號分隔線：「其一」「一」+ 一條淡木棉紅線 */
+/* 窗格：<span class="lattice"><i></i>×3 或 ×4</span>，順序琥珀、寶藍、淺翠綠、寶石紅 */
+.lattice {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  background: var(--wood);
+}
+
+.lattice > i {
+  width: 9px;
+  height: 9px;
+}
+
+.eyebrow--sm .lattice > i {
+  width: 7px;
+  height: 7px;
+}
+
+.lattice > i:nth-child(1) {
+  background: var(--amber);
+}
+
+.lattice > i:nth-child(2) {
+  background: var(--blue);
+}
+
+.lattice > i:nth-child(3) {
+  background: var(--green-glass);
+}
+
+.lattice > i:nth-child(4) {
+  background: var(--ruby);
+}
+
+/* 欄位標籤：13px/700、.2em、大寫、graphite（例：「本頁」「01 · 底本」「行款」） */
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+
+/* 編號分隔線：「其一」「一」寶藍字 + 一條 1px 淡寶藍線 */
 .ordinal {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-family: var(--font-serif);
-  font-size: 18px;
-  color: var(--kapok);
+  font-family: var(--serif);
+  font-size: 19px;
+  color: var(--blue);
 }
 
 .ordinal::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: var(--kapok-a30);
+  background: var(--blue-a30);
 }
 
 /* 關於／數據開放段頭：20px、gap 14px */
@@ -528,62 +872,9 @@ mark {
   font-size: 20px;
 }
 
-/* 大字水印：真文字、aria-hidden；字號、顏色、位置用 --wm-* 由頁面設定，父層用 .watermark-host */
-.watermark {
-  position: absolute;
-  top: var(--wm-top, auto);
-  right: var(--wm-right, auto);
-  bottom: var(--wm-bottom, auto);
-  left: var(--wm-left, auto);
-  font-family: var(--font-serif);
-  font-size: var(--wm-size, min(52vw, 720px));
-  line-height: 1;
-  color: var(--wm-color, rgba(181, 58, 37, 0.05));
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
+/* ---- 掣 -------------------------------------------------------------------- */
 
-/* 水印／角飾嘅父層：裁走溢出；內容層自己加 position:relative 疊喺上面 */
-.watermark-host {
-  position: relative;
-  overflow: hidden;
-}
-
-/* 色塊卡右上角 45° 方塊；--corner-size / --corner-offset / --corner-color 調整 */
-.corner {
-  position: absolute;
-  top: var(--corner-offset, -40px);
-  right: var(--corner-offset, -40px);
-  width: var(--corner-size, 100px);
-  height: var(--corner-size, 100px);
-  background: var(--corner-color, rgba(255, 255, 255, 0.08));
-  transform: rotate(45deg);
-  pointer-events: none;
-}
-
-/* 語料色調：設 --tone（gd 木棉紅、cvh 墨藍、rcc 檔案綠），見 corpusMeta().tone */
-.tone-kapok {
-  --tone: var(--kapok);
-}
-
-.tone-ink {
-  --tone: var(--ink);
-}
-
-.tone-green {
-  --tone: var(--archive-green);
-}
-
-/* 實色語料色塊：底色 --tone、羊皮紙色字 */
-.tone-block {
-  position: relative;
-  overflow: hidden;
-  background: var(--tone, var(--kapok));
-  color: var(--parchment);
-}
-
-/* 掣：一律冇圓角；hover 唔出底線 */
+/* 基底：17px/600 serif、冇圓角、hover 唔出底線；配 --solid／--outline／--neutral */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -592,8 +883,11 @@ mark {
   padding: 10px 21px;
   border: 1px solid transparent;
   background: transparent;
-  font-size: 15px;
+  color: var(--wood);
+  font-family: var(--serif);
+  font-size: 17px;
   font-weight: 600;
+  line-height: 1.5;
   cursor: pointer;
   transition:
     background-color 200ms,
@@ -610,96 +904,135 @@ mark {
   cursor: not-allowed;
 }
 
-/* 實色木棉紅 */
+/* 實色寶藍 */
 .btn--solid {
-  background: var(--kapok);
+  background: var(--blue);
   color: #fff;
 }
 
 .btn--solid:hover {
-  background: var(--accent-hover);
+  background: var(--blue-hover);
 }
 
 .btn--solid:disabled,
 .btn--solid[aria-disabled="true"] {
-  background: rgba(181, 58, 37, 0.45);
+  background: var(--blue-a40);
 }
 
-/* 描邊木棉紅 */
+/* 線框寶藍 */
 .btn--outline {
-  border-color: var(--kapok-a30);
-  color: var(--kapok);
+  padding: 10px 20px;
+  border-color: var(--blue-a30);
+  color: var(--blue);
 }
 
 .btn--outline:hover {
-  background: var(--kapok-a10);
-  border-color: var(--kapok);
+  background: var(--blue-a10);
+  border-color: var(--blue);
 }
 
-/* 描邊墨藍（上一葉等次要掣） */
+/* 中性（上一葉等次要掣）；--ink-outline 係舊名 */
+.btn--neutral,
 .btn--ink-outline {
+  padding: 10px 18px;
   border-color: var(--line-20);
-  color: var(--ink);
+  color: var(--wood);
 }
 
+.btn--neutral:hover,
 .btn--ink-outline:hover {
-  background: var(--surface-mid);
+  background: var(--surface-3);
 }
 
 .btn--outline:disabled,
+.btn--neutral:disabled,
 .btn--ink-outline:disabled,
 .btn--outline[aria-disabled="true"],
+.btn--neutral[aria-disabled="true"],
 .btn--ink-outline[aria-disabled="true"] {
   opacity: 0.35;
   background: transparent;
 }
 
-/* 細掣：13px、6px 14px（複製、再報一個） */
+/* 細掣：15px、4px 12px（複製、再報一個） */
 .btn--sm {
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 4px 12px;
+  font-size: 15px;
 }
 
-/* 分段掣（豎排／橫排）：button[aria-pressed="true"] 為選中，墨藍底 */
-.seg {
+/* ---- Chip、開關、分段 ------------------------------------------------------ */
+
+/* 示例 chip：16px、白底、1px 邊；hover 金黃淺底加木色邊。簡體字後面加 <span class="chip__simp">簡</span> */
+.chip {
   display: inline-flex;
-  border: 1px solid var(--line-20);
-}
-
-.seg > button {
-  padding: 5px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 14px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  border: 1px solid var(--line-28);
+  background: #fff;
+  color: var(--wood);
+  font-size: 16px;
+  line-height: 1.75;
   cursor: pointer;
   transition:
     background-color 200ms,
-    color 200ms;
+    border-color 200ms;
 }
 
-.seg > button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--parchment);
+.chip:hover {
+  background: var(--gold-tint);
+  border-color: var(--wood);
+  text-decoration: none;
 }
 
-/* 首頁樣張用嘅細分段掣 */
-.seg--sm {
-  border-color: rgba(3, 22, 50, 0.18);
+/* 檢索窗格入面嘅細 chip：15px、紙色底 */
+.chip--sm {
+  padding: 2px 12px;
+  background: var(--paper);
+  font-size: 15px;
 }
 
-.seg--sm > button {
-  padding: 4px 10px;
+.chip__simp {
   font-size: 13px;
+  color: var(--blue);
 }
 
-/* 開關掣（粵拼注音、今譯）：aria-pressed="true" 木棉紅底白字；disabled 灰 */
+/* 高亮標籤（閱讀頁「標示「q」 ✕」）：金黃淺底寶藍字 */
+.chip--hl {
+  border-color: transparent;
+  background: var(--gold-tint);
+  color: var(--blue);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 描邊 pill（檢索篩選、問題類型）：aria-pressed="true" 木色底 */
+.chip--outline {
+  padding: 5px 14px;
+  border-color: var(--line-20);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chip--outline:hover {
+  background: var(--surface-3);
+  border-color: var(--line-20);
+}
+
+.chip--outline[aria-pressed="true"] {
+  border-color: var(--wood);
+  background: var(--wood);
+  color: var(--on-dark);
+}
+
+/* 開關（粵拼注音、今譯）：aria-pressed="true" 寶藍底白字；閂透明寶藍字；disabled 灰 */
 .toggle {
   padding: 5px 12px;
-  border: 1px solid var(--kapok-a40);
+  border: 1px solid var(--blue-a40);
   background: transparent;
-  color: var(--kapok);
-  font-size: 14px;
+  color: var(--blue);
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -709,134 +1042,109 @@ mark {
 }
 
 .toggle[aria-pressed="true"] {
-  border-color: var(--kapok);
-  background: var(--kapok);
+  border-color: var(--blue);
+  background: var(--blue);
   color: #fff;
 }
 
 .toggle:disabled {
-  border-color: rgba(68, 71, 77, 0.25);
+  border-color: var(--graphite-a25);
   background: transparent;
-  color: rgba(68, 71, 77, 0.55);
+  color: var(--graphite-a55);
   cursor: not-allowed;
 }
 
+/* 首頁樣張：14px */
 .toggle--sm {
-  padding: 4px 10px;
-  font-size: 13px;
+  padding: 4px 12px;
+  font-size: 14px;
 }
 
-/* 膠囊 chip（示例詞）：淺灰底，hover 轉檔案綠 */
-.chip {
+/* 分段（豎排／橫排）：<div class="seg"><button aria-pressed>…；選中木色底 */
+.seg {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 16px;
+  border: 1px solid var(--line-20);
+}
+
+.seg > button {
+  padding: 5px 12px;
   border: 0;
-  border-radius: 999px;
-  background: var(--surface-high);
-  color: var(--ink);
-  font-size: 15px;
+  background: transparent;
+  color: var(--wood);
+  font-size: 16px;
   cursor: pointer;
   transition:
     background-color 200ms,
     color 200ms;
 }
 
-.chip:hover {
-  background: rgba(74, 107, 93, 0.16);
-  color: var(--archive-green);
-  text-decoration: none;
+.seg > button[aria-pressed="true"] {
+  background: var(--wood);
+  color: var(--on-dark);
 }
 
-/* 木棉紅淺底 chip（突出項、「標示「q」 ✕」） */
-.chip--kapok {
-  background: var(--kapok-container);
-  color: var(--kapok);
-  font-weight: 600;
+/* 首頁樣張：14px、.3 邊 */
+.seg--sm {
+  border-color: var(--line-30);
 }
 
-/* hover 唔好轉檔案綠（綠色喺全站代表已核驗） */
-.chip--kapok:hover {
-  background: rgba(181, 58, 37, 0.16);
-  color: var(--kapok);
-}
-
-/* 深色底 chip（檢索頁色帶） */
-.chip--on-dark {
-  padding: 4px 14px;
-  background: var(--on-dark-12);
-  color: var(--parchment);
+.seg--sm > button {
+  padding: 4px 12px;
   font-size: 14px;
 }
 
-.chip--on-dark:hover {
-  background: rgba(251, 249, 244, 0.24);
-  color: var(--parchment);
-}
+/* ---- 徽章、狀態點 ------------------------------------------------------------ */
 
-/* 描邊 pill（篩選、問題類型）：aria-pressed="true" 墨藍底 */
-.chip--outline {
-  padding: 5px 14px;
-  border: 1px solid var(--line-20);
-  background: transparent;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.chip--outline:hover {
-  background: var(--surface-mid);
-  color: var(--ink);
-}
-
-.chip--outline[aria-pressed="true"] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--parchment);
-}
-
-/* 徽章：8px 圓角；--dot 控制狀態點大小 */
+/* 基底：14px/600、方角；--dot 控制狀態點；--md 閱讀頁卡頭 16px */
 .badge {
   --dot: 7px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 1px 9px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.5;
   white-space: nowrap;
 }
 
-/* 閱讀頁卡頭尺寸：14px、8px 點 */
 .badge--md {
   --dot: 8px;
   gap: 8px;
   padding: 4px 12px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
-/* 狀態徽章（帶點）：已核驗 實心綠點 */
+/* 已核驗：翠綠淡底、實心點 */
 .badge--ok {
   background: var(--green-a12);
-  color: var(--archive-green);
+  color: var(--green);
 }
 
-/* 狀態徽章（帶點）：OCR 未校 空心金褐點 */
+/* OCR 未校：琥珀淡底、空心點 */
 .badge--ocr {
-  background: var(--gold-a12);
-  color: var(--muted-gold);
+  background: var(--amber-a12);
+  color: var(--amber-text);
 }
 
-/* 狀態徽章（帶點）：本站已校，Phase 1 唔會出現 */
+/* OCR 未校線框版（首頁樣張）：1px 琥珀線、琥珀圓圈 */
+.badge--ocr-outline {
+  --dot: 9px;
+  gap: 7px;
+  padding: 1px 10px;
+  border: 1px solid var(--amber-line);
+  color: var(--amber-text);
+}
+
+/* 本站已校（Phase 1 唔會出現） */
 .badge--done {
-  background: var(--graphite-a10);
+  background: var(--graphite-a12);
   color: var(--graphite);
 }
 
 .badge--ok::before,
 .badge--ocr::before,
+.badge--ocr-outline::before,
 .badge--done::before {
   content: "";
   flex: none;
@@ -851,57 +1159,75 @@ mark {
   background: transparent;
 }
 
-/* 純色徽章（冇點）：木棉紅（附今譯、待審）、金褐（日期待考、未有、已回報）、綠（已可取得） */
-.badge--kapok {
-  background: var(--kapok-a10);
-  color: var(--kapok);
+.badge--ocr-outline::before {
+  border: 2px solid var(--amber);
+  background: transparent;
 }
 
+/* 純色徽章（冇點）：附今譯 寶藍實底白字 */
+.badge--tr {
+  padding: 1px 10px;
+  background: var(--blue);
+  color: #fff;
+}
+
+/* 琥珀淡底（已回報、日期待考、未有）；--gold 係舊名 */
+.badge--amber,
 .badge--gold {
-  background: var(--gold-a12);
-  color: var(--muted-gold);
+  background: var(--amber-a12);
+  color: var(--amber-text);
 }
 
+/* 寶藍淡底（待審等） */
+.badge--blue {
+  background: var(--blue-a10);
+  color: var(--blue);
+}
+
+/* 翠綠淡底（已可取得、已採用） */
 .badge--green {
   background: var(--green-a14);
-  color: var(--archive-green);
+  color: var(--green);
 }
 
-/* 狀態圓點（KWIC 資料行）：8px，已核驗實心綠、未校空心金褐 */
+/* 狀態圓點（KWIC 資料行）：8px，已核驗實心翠綠、未校空心琥珀字色 */
 .status-dot {
   display: inline-block;
   flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px solid var(--muted-gold);
+  border: 1.5px solid var(--amber-text);
 }
 
 .status-dot--ok {
-  border-color: var(--archive-green);
-  background: var(--archive-green);
+  border-color: var(--green);
+  background: var(--green);
 }
 
-/* 進度條：style="--pct:36.3%"，子元素 <i> 為填色；--h 高度（預設 8px） */
+/* ---- 進度條、逐葉格 -------------------------------------------------------- */
+
+/* <div class="meter" style="--pct:36.3%"><i></i></div>；--h 高度（預設 8px）；
+   填色預設跟 .tone-* 嘅 --tone-fill（冇就寶藍），--meter-fill／--meter-track 可覆寫 */
 .meter {
   height: var(--h, 8px);
-  background: var(--meter-track, var(--surface-highest));
+  background: var(--meter-track, var(--line-10));
 }
 
 .meter > i {
   display: block;
   width: var(--pct, 0%);
   height: 100%;
-  background: var(--meter-fill, var(--archive-green));
+  background: var(--meter-fill, var(--tone-fill, var(--blue)));
 }
 
-/* 色塊上嘅進度條：淡羊皮紙軌、羊皮紙填色 */
-.meter--on-dark {
-  --meter-track: var(--on-dark-25);
-  --meter-fill: var(--parchment);
+/* 實色語料色帶上嘅進度條（期號目錄頂）：琥珀底木色，其他金黃 */
+.meter--on-tone {
+  --meter-track: var(--tone-on-track);
+  --meter-fill: var(--tone-on-fill);
 }
 
-/* 逐葉格：每格係一葉 <a>，13×13 */
+/* 逐葉格（components/LeafGrid.astro）：每格一葉 <a>，13×13、gap 3px */
 .leaf-grid {
   display: flex;
   flex-wrap: wrap;
@@ -919,47 +1245,102 @@ mark {
 }
 
 .leaf--ok {
-  border-color: var(--archive-green);
-  background: var(--archive-green);
+  border-color: var(--green);
+  background: var(--green);
 }
 
 .leaf--todo {
-  border-color: rgba(114, 91, 53, 0.5);
+  border-color: var(--amber-a50);
   background: transparent;
 }
 
 .leaf:hover {
-  border-color: var(--kapok);
-  background: var(--kapok);
+  border-color: var(--blue);
+  background: var(--blue);
 }
 
 .leaf:focus-visible {
   outline-offset: 1px;
 }
 
-/* 卡片 hover 上移 6px（500ms ease） */
-.lift {
-  transition: transform 500ms var(--ease);
+/* ---- 大檢索框（components/SearchBar.astro）---------------------------------- */
+
+/* hero：首頁，最闊 600px、64px 高、白底、2px 木色框；band：檢索窗格入面，填滿、紙色底 */
+.searchbox {
+  display: flex;
+  align-items: stretch;
+  max-width: 600px;
+  height: 64px;
+  background: #fff;
+  border: 2px solid var(--wood);
+  color: var(--wood);
 }
 
-.lift:hover {
-  transform: translateY(-6px);
-  text-decoration: none;
+.searchbox--band {
+  max-width: none;
+  background: var(--paper);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .lift:hover {
-    transform: none;
-  }
+.searchbox:focus-within {
+  outline: 2px solid var(--blue-a55);
+  outline-offset: 2px;
 }
 
-/* 工具 class */
+.searchbox__icon {
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 18px;
+  color: var(--graphite);
+}
+
+.searchbox input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 19px;
+}
+
+.searchbox__go {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 30px;
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: background-color 200ms;
+}
+
+.searchbox__go:hover {
+  background: var(--blue-hover);
+}
+
+.searchbox__go:focus-visible {
+  outline-offset: -4px;
+  outline-color: #fff;
+}
+
+/* ---- 工具 class ------------------------------------------------------------ */
+
 .serif {
-  font-family: var(--font-serif);
+  font-family: var(--serif);
 }
 
+/* 拉丁字母、年份、統計數字 */
+.latin {
+  font-family: var(--latin);
+}
+
+/* slug、篇章 ID、引用、葉序號 */
 .mono {
-  font-family: var(--font-mono);
+  font-family: var(--mono);
 }
 
 .visually-hidden {
@@ -972,73 +1353,4 @@ mark {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-/* ---- 大檢索框（components/SearchBar.astro）---------------------------------- */
-
-/* hero：首頁，600px、64px 高、2px 墨藍框 */
-.searchbox {
-  display: flex;
-  align-items: stretch;
-  max-width: 600px;
-  height: 64px;
-  background: var(--card);
-  border: 2px solid var(--ink);
-  color: var(--ink);
-}
-
-/* band：檢索頁墨藍色帶，820px、冇框 */
-.searchbox--band {
-  max-width: 820px;
-  border: 0;
-}
-
-.searchbox:focus-within {
-  outline: 2px solid rgba(181, 58, 37, 0.55);
-  outline-offset: 2px;
-}
-
-.searchbox--band:focus-within {
-  outline-color: var(--kapok-on-dark);
-}
-
-.searchbox__icon {
-  display: flex;
-  align-items: center;
-  padding: 0 4px 0 20px;
-  color: var(--graphite);
-}
-
-.searchbox input[type="search"] {
-  flex: 1;
-  min-width: 0;
-  padding: 0 12px;
-  border: 0;
-  outline: none;
-  background: transparent;
-  font-size: 18px;
-}
-
-.searchbox__go {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 28px;
-  border: 0;
-  background: var(--kapok);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: background-color 200ms;
-}
-
-.searchbox__go:hover {
-  background: var(--accent-hover);
-}
-
-.searchbox__go:focus-visible {
-  outline-offset: -4px;
-  outline-color: #fff;
 }
