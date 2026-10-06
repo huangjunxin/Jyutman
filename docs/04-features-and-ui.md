@@ -9,7 +9,7 @@
 - 词典参考：粤语辞丛（独立的粤语词典站）等公开资源；本站字词可外连其释义页，仅作参考，无隶属关系。
 - 技术方向已定，本文不重新论证：Astro（静态页面）+ Workers API（动态接口）+ D1（检索索引）+ R2（影像存储）+ OpenSeadragon（影像查看器）+ Pagefind（站内检索）。
 - UX 参照識典古籍与 ctext.org 的信息组织方式，仅作参照，不复制其内容或数据（ctext 明确禁止爬取）。
-- 视觉系统（2026-10-06 起）：全站按 design handoff 原型改用「西关满洲窗」（Xiguan）视觉系统，见第 4 节。
+- 视觉系统（2026-10-06 起）：全站按 design handoff 原型改用「西关满洲窗」（Saigwaan）视觉系统，见第 4 节。
 
 ## 1. 功能清单（三档）
 
@@ -250,7 +250,7 @@
 
 ### 4.1 设计方向
 
-2026-10-06 起采用「西关满洲窗」（Xiguan）视觉系统（design handoff `design_handoff_jyutman_xiguan` 落地，token 与共用原件定义在 `src/styles/global.css`）。主色为宝蓝 `#2733b0`，木色 `#1e1512` 作窗框、正文字与页尾，纸色 `#faf9f4` 作卡面，页面底 `#e5e2d8`；玻璃色另有翠绿、琥珀、金黄（角珠）、宝石红。语料按色调区分：廣東白話報宝蓝、Canton Vernacular Handbook 琥珀、Readings in Cantonese Colloquial 翠绿（`corpusMeta().tone` → `.tone-blue` / `.tone-amber` / `.tone-green`；琥珀底一律木色字，琥珀卡角珠用宝蓝，其余用金黄）。
+2026-10-06 起采用「西关满洲窗」（Saigwaan）视觉系统（design handoff `design_handoff_jyutman_saigwaan` 落地，token 与共用原件定义在 `src/styles/global.css`）。主色为宝蓝 `#2733b0`，木色 `#1e1512` 作窗框、正文字与页尾，纸色 `#faf9f4` 作卡面，页面底 `#e5e2d8`；玻璃色另有翠绿、琥珀、金黄（角珠）、宝石红。语料按色调区分：廣東白話報宝蓝、Canton Vernacular Handbook 琥珀、Readings in Cantonese Colloquial 翠绿（`corpusMeta().tone` → `.tone-blue` / `.tone-amber` / `.tone-green`；琥珀底一律木色字，琥珀卡角珠用宝蓝，其余用金黄）。
 
 硬规则：
 

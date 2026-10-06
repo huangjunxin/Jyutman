@@ -1,6 +1,6 @@
-/* 粵語文叢全站樣式：西關滿洲窗（Xiguan）。
+/* 粵語文叢全站樣式：西關滿洲窗（Saigwaan）。
    只出淺色。呢度只放 token、基礎元素、頁首頁尾同共用原件（即係頁面可以依賴嘅契約）；
-   頁面專屬樣式寫喺各頁 scoped <style>，數值照 design_handoff_jyutman_xiguan 原型。
+   頁面專屬樣式寫喺各頁 scoped <style>，數值照 design_handoff_jyutman_saigwaan 原型。
    規矩：冇圓角（只有狀態圓點 50%）、冇陰影、只有頁首（12px）同閱讀頁工具列（10px）用模糊；
    hover 只變色（200ms）或者可撳燈籠框變光 brightness(1.05)（300ms），唔上移、唔 scale。 */
 
