@@ -153,6 +153,11 @@ const tiles = [
     const state = $("state");
     const empty = $("empty");
     const msg = $("msg");
+    // 成功訊息翠綠，失敗訊息寶石紅（同檢索、報錯嘅送出失敗一致）
+    const say = (text: string, error = false): void => {
+      msg.textContent = text;
+      msg.classList.toggle("meta__msg--error", error);
+    };
     const rowTpl = $<HTMLTemplateElement>("rowTpl");
     const tiles = [...document.querySelectorAll<HTMLButtonElement>(".tile")];
     const labels: { titles: Record<string, string>; issues: Record<string, string> } = JSON.parse(
@@ -185,7 +190,7 @@ const tiles = [
       gateInput.setAttribute("aria-describedby", error ? "gateHint gateError" : "gateHint");
       if (error) gateInput.setAttribute("aria-invalid", "true");
       else gateInput.removeAttribute("aria-invalid");
-      msg.textContent = "";
+      say("");
     };
 
     const showPanel = (): void => {
@@ -341,11 +346,11 @@ const tiles = [
         body: JSON.stringify({ id: Number(row.dataset.id), action }),
       });
       if (response === null) {
-        if (token !== "") msg.textContent = "操作失敗，請再試。";
+        if (token !== "") say("操作失敗，請再試。", true);
         return;
       }
       if (!response.ok) {
-        msg.textContent = "操作失敗，請再試。";
+        say("操作失敗，請再試。", true);
         return;
       }
       const body: { status?: string } = await response.json().catch(() => ({}));
@@ -355,7 +360,7 @@ const tiles = [
         row.remove();
         empty.hidden = queue.childElementCount > 0;
       }
-      msg.textContent = "";
+      say("");
       void loadCounts();
     };
 
@@ -411,7 +416,7 @@ const tiles = [
     const exportAccepted = async (kind: "json" | "csv"): Promise<void> => {
       const items = await fetchQueue("accepted");
       if (items === null) {
-        if (token !== "") msg.textContent = "導出失敗，請再試。";
+        if (token !== "") say("導出失敗，請再試。", true);
         return;
       }
       const text =
@@ -419,7 +424,7 @@ const tiles = [
           ? `${JSON.stringify(items, null, 2)}\n`
           : `${[CSV_COLUMNS.join(","), ...items.map((item) => CSV_COLUMNS.map((column) => csvCell(item[column])).join(","))].join("\n")}\n`;
       download(`jyutman-corrections-accepted.${kind}`, kind === "json" ? "application/json" : "text/csv", text);
-      msg.textContent = `已導出 ${items.length} 條已採用上報（${kind.toUpperCase()}）`;
+      say(`已導出 ${items.length} 條已採用上報（${kind.toUpperCase()}）`);
     };
 
     $("exportJson").addEventListener("click", () => void exportAccepted("json"));
@@ -645,6 +650,10 @@ const tiles = [
     }
 
     /* 空嘅 live region 抽出 flex 排版：唔開新行、唔食 row-gap，但仍留喺無障礙樹 */
+    .meta__msg--error {
+      color: var(--ruby);
+    }
+
     .meta__msg:empty {
       position: absolute;
     }
@@ -806,7 +815,7 @@ const tiles = [
     }
 
     .act--defer:hover {
-      background: rgba(176, 118, 16, 0.08);
+      background: var(--amber-a08);
     }
   </style>
 </Base>

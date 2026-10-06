@@ -85,7 +85,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
       <div class="band__head">
         <div class="band__title">
           <div class="band__year">
-            {corpus.year !== null && <span class="band__yearnum latin">{corpus.year}</span>}
+            {corpus.year !== null && <span class="band__yearnum">{corpus.year}</span>}
             <span class="band__kind">{meta.kind}</span>
           </div>
           <h1>{corpus.title}</h1>
@@ -292,9 +292,9 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     gap: 12px 24px;
   }
 
+  /* 原型年份用宋體 400（唔係 Jost） */
   .band__yearnum {
     font-size: clamp(48px, 5vw, 64px);
-    font-weight: 300;
     line-height: 0.82;
     letter-spacing: -0.04em;
   }
@@ -333,6 +333,20 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     justify-content: flex-end;
     padding: 0 22px;
     border-left: 1px solid var(--tone-on-line);
+  }
+
+  /* 手機：四個數字 2×2，左欄貼邊、唔要分隔線（否則 3+1 而且第一個縮入） */
+  @media (max-width: 559px) {
+    .band__stats {
+      display: grid;
+      grid-template-columns: repeat(2, max-content);
+      row-gap: 14px;
+    }
+
+    .band__stats > div:nth-child(odd) {
+      padding-left: 0;
+      border-left: 0;
+    }
   }
 
   .band__stats dd {
@@ -413,7 +427,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .legend__todo {
-    border: 1px solid rgba(176, 118, 16, 0.6);
+    border: 1px solid var(--amber-a60);
   }
 
   .issue {
@@ -490,7 +504,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     margin-top: 10px;
     padding: 12px 14px;
     border-left: 4px solid var(--amber-text);
-    background: rgba(176, 118, 16, 0.08);
+    background: var(--amber-a08);
     font-family: var(--mono);
     font-size: 14px;
     line-height: 1.65;

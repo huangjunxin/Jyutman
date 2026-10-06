@@ -28,7 +28,6 @@ import {
   percent,
   readingsByIndex,
   renderAnnotatedParagraph,
-  statusBadge,
   type ArticleBlock,
 } from "../utils/reader.ts";
 import { locateAndSlice } from "../utils/search-planner.ts";
@@ -66,8 +65,6 @@ const specimenHtml = renderAnnotatedParagraph(
   readingsByIndex(getJyutping(GD, GD_ISSUE)[specimen.article.id]),
 );
 const specimenTranslated = getTranslations(GD, GD_ISSUE)[specimen.article.id] !== undefined;
-// 樣張底行用線框版 OCR 徽章；已核驗照用翠綠淡底
-const specimenBadge = statusBadge(specimen.status);
 const vertical = sample(9, 24);
 
 const DEMO_QUERY = "广东";
@@ -190,9 +187,7 @@ const stats = [
           </div>
           <div class="specimen__foot">
             <span class="specimen__badges">
-              <span class:list={["badge", specimenBadge.tone === "ocr" ? "badge--ocr-outline" : `badge--${specimenBadge.tone}`]}>
-                {specimenBadge.label}
-              </span>
+              <StatusBadge status={specimen.status} variant="outline" />
               {specimenTranslated && <span class="badge badge--tr">附今譯</span>}
             </span>
             <a class="specimen__more" href={specimen.href}>讀全文 →</a>
@@ -615,12 +610,25 @@ const stats = [
   }
 
   /* ---- 1b 數字帶：青磚牆上開四扇細號燈籠框 ---- */
+  /* 四張固定 1／2／4 欄，唔好 auto-fit（790 至 1066px 會變 3+1） */
   .stats__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    grid-template-columns: 1fr;
     gap: 28px;
     padding-top: 44px;
     padding-bottom: 44px;
+  }
+
+  @media (min-width: 560px) {
+    .stats__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .stats__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
   }
 
   .stat {
@@ -963,10 +971,13 @@ const stats = [
     margin-top: 48px;
   }
 
+  /* subgrid：同一行三欄嘅插圖、其一二三、H3、說明各自對齊（插圖取最高嗰張） */
   .howto__col {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    row-gap: 18px;
+    align-content: start;
   }
 
   .howto__h3 {

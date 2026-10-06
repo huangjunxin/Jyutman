@@ -12,9 +12,9 @@
   /* 玻璃色：由西關大屋滿洲窗相片取色 */
   --blue: #2733b0; /* 寶藍：主色、連結、當前狀態、粵拼、葉碼；廣東白話報 */
   --blue-hover: #1f2990; /* 實色掣 hover */
-  --green: #0b7a31; /* 翠綠：已核驗、今譯；Readings in Cantonese Colloquial */
+  --green: #0b7a31; /* 翠綠：已核驗、今譯；Readings in Cantonese Colloquial。只做色塊、進度條同大字（≥24px，或粗體 ≥18.66px） */
   --green-glass: #14a83f; /* 淺翠綠：眉標窗格、氣窗 */
-  --green-text: #08652a; /* 翠綠淡底上嘅字（徽章）：#0b7a31 喺淡底唔夠 4.5:1 */
+  --green-text: #08652a; /* 翠綠細字（徽章、單位、標籤）：#0b7a31 喺 --page 只有 4.2:1，細字一律用呢個 */
   --amber: #d38f12; /* 琥珀：Canton Vernacular Handbook 玻璃帶、眉標格 */
   --amber-line: #b07610; /* OCR 線框、琥珀卡進度條 */
   --amber-num: #a86d0b; /* 淺底琥珀大數字（只限 40px 以上，對比 4.1:1） */
@@ -73,14 +73,15 @@
   --blue-a55: rgba(39, 51, 176, 0.55);
   --green-a12: rgba(11, 122, 49, 0.12);
   --green-a14: rgba(11, 122, 49, 0.14);
+  --amber-a08: rgba(176, 118, 16, 0.08);
   --amber-a10: rgba(176, 118, 16, 0.1);
   --amber-a12: rgba(176, 118, 16, 0.12);
   --amber-a16: rgba(211, 143, 18, 0.16);
   --amber-a50: rgba(176, 118, 16, 0.5);
+  --amber-a60: rgba(176, 118, 16, 0.6);
   --graphite-a12: rgba(92, 84, 80, 0.12);
   --graphite-a25: rgba(92, 84, 80, 0.25);
   --graphite-a55: rgba(92, 84, 80, 0.55);
-  --graphite-a60: rgba(92, 84, 80, 0.6);
 
   /* 字體：Google Fonts（Base.astro 非阻塞載入）；連唔到就落後備 */
   --serif: "Noto Serif HK", "Noto Serif TC", serif;
@@ -170,9 +171,10 @@ select {
   color: inherit;
 }
 
+/* 原型 .6 透明度喺淺底只有 2.7:1，唔夠 4.5:1；用實色 graphite（7:1） */
 input::placeholder,
 textarea::placeholder {
-  color: var(--graphite-a60);
+  color: var(--graphite);
 }
 
 /* iOS／WebKit 預設圓角：表單控件一律方角（checkbox／radio 唔郁，免得隱形） */
@@ -347,7 +349,15 @@ mark.hl {
   color: var(--wood);
   font-size: 17px;
   font-weight: 500;
+  white-space: nowrap;
   transition: color 200ms;
+}
+
+/* 360px 以下四個連結（連當前方塊）擠唔落，收窄左右 padding，唔好逐字斷行 */
+@media (max-width: 359px) {
+  .site-nav a {
+    padding-inline: 8px;
+  }
 }
 
 .site-nav a:hover {
@@ -355,12 +365,12 @@ mark.hl {
   text-decoration: none;
 }
 
-/* 當前頁：寶藍字，左邊 8px 寶藍方塊加 2px 木色 outline */
-.site-nav a[aria-current="page"] {
+/* 當前欄目（本頁 aria-current=page；期號目錄、閱讀頁 =true）：寶藍字，左邊 8px 寶藍方塊加 2px 木色 outline */
+.site-nav a[aria-current] {
   color: var(--blue);
 }
 
-.site-nav a[aria-current="page"]::before {
+.site-nav a[aria-current]::before {
   content: "";
   flex: none;
   width: 8px;
@@ -414,8 +424,10 @@ mark.hl {
   color: var(--on-dark);
 }
 
+/* 木色底上嘅焦點框轉淺色；flush 燈籠框一定喺 .glass-row 入面（可能隔一層 wrapper），框落喺木色縫 */
 .site-footer :focus-visible,
-.glass-row > :focus-visible {
+.glass-row > :focus-visible,
+.glass-row .glass--flush:focus-visible {
   outline-color: var(--on-dark-72);
 }
 
@@ -556,7 +568,7 @@ mark.hl {
   --tone: var(--green);
   --tone-jewel: var(--gold);
   --tone-num: var(--green);
-  --tone-text: var(--green);
+  --tone-text: var(--green-text);
   --tone-fill: var(--green);
   --tone-on: var(--on-dark);
   --tone-on-dim: var(--on-dark-92); /* .86 喺翠綠只有 4.2:1 */
@@ -1329,6 +1341,7 @@ mark.hl {
   flex: 1;
   min-width: 0;
   padding: 0 12px;
+  text-overflow: ellipsis;
   border: 0;
   outline: none;
   background: transparent;

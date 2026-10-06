@@ -183,6 +183,20 @@ const sections = getCorpora().map((corpus, index) => {
     border-left: 1px solid var(--line-12);
   }
 
+  /* 手機：四個數字 2×2，左欄貼邊、唔要分隔線（否則 3+1 而且第一個縮入） */
+  @media (max-width: 559px) {
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(2, max-content);
+      row-gap: 14px;
+    }
+
+    .total:nth-child(odd) {
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
   .total__num,
   .fact__num {
     display: block;
@@ -234,7 +248,7 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .swatch--todo {
-    border: 1px solid rgba(176, 118, 16, 0.6);
+    border: 1px solid var(--amber-a60);
   }
 
   .corpus__inner {

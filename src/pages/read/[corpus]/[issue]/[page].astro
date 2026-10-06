@@ -1269,10 +1269,13 @@ const articleJsonLd = {
       top: calc(var(--header-h) + var(--toolbar-h, 62px));
     }
 
-    /* 只限高目錄；右欄唔限高，報錯掣靠捲頁就見到 */
+    /* 只限高目錄；右欄唔限高，報錯掣靠捲頁就見到。
+       左右各借 4px，期號格貼邊嘅焦點框（2px + 2px offset）唔會畀 overflow 裁走 */
     .rd-toc {
       max-height: calc(100vh - var(--header-h) - var(--toolbar-h, 62px) - 16px);
       overflow: auto;
+      margin-inline: -4px;
+      padding-inline: 4px;
     }
 
     /* 目錄自動捲到當前篇時，期號卡頭照樣黏頂 */
@@ -1506,7 +1509,7 @@ const articleJsonLd = {
 
   .art-anchor.is-copied::after {
     content: " · 已複製連結";
-    color: var(--green);
+    color: var(--green-text);
   }
 
   .art-empty {
@@ -1648,7 +1651,7 @@ const articleJsonLd = {
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--green);
+    color: var(--green-text);
   }
 
   .tr-ver {

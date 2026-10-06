@@ -18,6 +18,8 @@ interface Props {
 
 const { title, description, current, noindex = false, headerSearch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
+// 導覽高亮：正係嗰頁用 "page"；同一欄目下嘅子頁（期號目錄、閱讀頁）用 "true"，免得同麵包屑爭「當前頁」
+const pathname = Astro.url.pathname.replace(/\/?$/, "/");
 
 /** Google Fonts：Noto Serif HK（全站中文）+ Jost（拉丁字母、數字）；CJK 按 unicode-range 切片，用到邊片先下載邊片。 */
 const googleFonts =
@@ -65,7 +67,7 @@ const navItems = [
         <nav class="site-nav" aria-label="主導覽">
           {
             navItems.map((item) => (
-              <a href={item.href} aria-current={current === item.key ? "page" : undefined}>
+              <a href={item.href} aria-current={current === item.key ? (pathname === item.href ? "page" : "true") : undefined}>
                 {item.label}
               </a>
             ))

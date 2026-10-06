@@ -266,11 +266,6 @@ const steps = [
     flex: 1;
   }
 
-  /* 卡唔係 .glass-row 直接子項，焦點框自己轉淺色先睇得見（木色底） */
-  .licence:focus-visible {
-    outline-color: var(--on-dark-72);
-  }
-
   .licence__pane {
     display: flex;
     flex-direction: column;
@@ -602,6 +597,7 @@ const steps = [
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
+    white-space: nowrap; /* 「葉數」「篇數」唔好逐字斷行 */
     color: var(--graphite);
   }
 
