@@ -1583,9 +1583,8 @@ const articleJsonLd = {
     user-select: none;
   }
 
-  /* 豎排 rt 喺字右邊：唔使沿行留位（字距已拉開），改喺 block-end 加 4px（Chrome 實測粵拼離字遠約 6px），易讀啲 */
+  /* 豎排 rt 喺字右邊：block-end 加 4px（Chrome 實測粵拼離字遠約 6px）；沿用通用 rt 嘅 padding-inline .3em，長讀音之間先唔會黐埋 */
   :global(html:not(.rd-h)) .art--cjk .art-flow :global(rt) {
-    padding-inline: 0;
     padding-block-end: 4px;
   }
 
