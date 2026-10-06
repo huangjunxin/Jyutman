@@ -74,8 +74,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     />
   </Fragment>
 
-  <section class:list={["band", "tone-block", `tone-${meta.tone}`]}>
-    <div class="corner" aria-hidden="true"></div>
+  <section class:list={["band", `tone-${meta.tone}`]}>
     <div class="wrap band__inner">
       <nav class="crumbs" aria-label="麵包屑">
         <a href="/browse/">書目庫</a>
@@ -86,17 +85,17 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
       <div class="band__head">
         <div class="band__title">
           <div class="band__year">
-            {corpus.year !== null && <span class="band__yearnum">{corpus.year}</span>}
+            {corpus.year !== null && <span class="band__yearnum latin">{corpus.year}</span>}
             <span class="band__kind">{meta.kind}</span>
           </div>
           <h1>{corpus.title}</h1>
           <p class="band__source">底本來源：{corpus.sourceLine}</p>
         </div>
         <dl class="band__stats">
-          <div><dt>葉（掃描）</dt><dd>{corpus.pageCount}</dd></div>
-          <div><dt>篇</dt><dd>{corpus.articleCount}</dd></div>
-          <div><dt>{single ? "冊" : "期"}</dt><dd>{corpus.issueCount}</dd></div>
-          <div><dt>葉已核驗</dt><dd>{corpus.verifiedPages}</dd></div>
+          <div><dt>葉（掃描）</dt><dd class="latin">{corpus.pageCount}</dd></div>
+          <div><dt>篇</dt><dd class="latin">{corpus.articleCount}</dd></div>
+          <div><dt>{single ? "冊" : "期"}</dt><dd class="latin">{corpus.issueCount}</dd></div>
+          <div><dt>葉已核驗</dt><dd class="latin">{corpus.verifiedPages}</dd></div>
         </dl>
       </div>
 
@@ -105,10 +104,10 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
           <span>
             葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
           </span>
-          <span class="band__pct">{percent(corpus.verifiedPages, corpus.pageCount)}%</span>
+          <span class="band__pct latin">{percent(corpus.verifiedPages, corpus.pageCount)}%</span>
         </div>
         <div
-          class="meter meter--on-dark"
+          class="meter meter--on-tone band__meter"
           style={`--pct:${percent(corpus.verifiedPages, corpus.pageCount)}%`}
           aria-hidden="true"
         >
@@ -139,7 +138,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
             {issue.issue_date ? (
               <div class="issue__date">{issue.issue_date}</div>
             ) : (
-              <span class="badge badge--gold issue__nodate">日期待考</span>
+              <span class="badge badge--amber issue__nodate">日期待考</span>
             )}
             <div class="issue__count">
               {issue.pages} 葉 · {issue.articles} 篇
@@ -158,7 +157,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
                 第一葉 <span aria-hidden="true">→</span>
               </a>
             ) : (
-              <span class="badge badge--gold">未開放</span>
+              <span class="badge badge--amber">未開放</span>
             )}
           </div>
 
@@ -168,7 +167,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
                 <span>
                   已核驗 {issue.verified_pages} / {issue.pages} 葉
                 </span>
-                <span class="issue__pct">{percent(issue.verified_pages, issue.pages)}%</span>
+                <span class="issue__pct latin">{percent(issue.verified_pages, issue.pages)}%</span>
               </div>
               <div
                 class="meter issue__meter"
@@ -183,7 +182,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 
             {toc.length > 0 && (
               <div>
-                <p class="eyebrow eyebrow--sm eyebrow--muted toc__label" id={`${issue.issue}-toc-label`}>
+                <p class="label toc__label" id={`${issue.issue}-toc-label`}>
                   篇目 · {toc.length} 條
                 </p>
                 <ol class="toc" id={`${issue.issue}-toc`} aria-labelledby={`${issue.issue}-toc-label`}>
@@ -244,35 +243,32 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 </script>
 
 <style>
-  /* ---- 色帶頁頭 ---- */
+  /* ---- 語料色帶頁頭：底 --tone、字 --tone-on（琥珀用木色，其餘 #f8f7f2） ---- */
   .band {
-    --corner-size: 180px;
-    --corner-offset: -70px;
-    --corner-color: rgba(255, 255, 255, 0.07);
+    background: var(--tone);
+    color: var(--tone-on);
   }
 
   .band__inner {
-    position: relative;
     padding-top: 28px;
-    padding-bottom: clamp(40px, 5vw, 64px);
+    padding-bottom: clamp(28px, 2.8vw, 36px);
   }
 
   .crumbs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    font-size: 14px;
-    /* 原型 .82（同數字標籤 .85）；提到 .88 先喺木棉紅、檔案綠底夠 4.5:1 */
-    color: var(--on-dark-88);
+    font-size: 16px;
+    color: var(--tone-on-dim);
   }
 
   .crumbs a {
-    color: var(--parchment);
+    color: var(--tone-on);
   }
 
-  /* 全站焦點環係木棉紅，喺色帶上睇唔到 */
+  /* 全站焦點環係寶藍，喺寶藍色帶上睇唔到 */
   .crumbs a:focus-visible {
-    outline-color: var(--parchment);
+    outline-color: var(--tone-on);
   }
 
   .band__head {
@@ -297,33 +293,32 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .band__yearnum {
-    font-family: var(--font-serif);
-    font-size: clamp(72px, 9vw, 120px);
+    font-size: clamp(48px, 5vw, 64px);
+    font-weight: 300;
     line-height: 0.82;
     letter-spacing: -0.04em;
   }
 
   .band__kind {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--on-dark-88);
+    color: var(--tone-on-dim);
   }
 
   .band h1 {
     margin-top: 22px;
-    font-size: clamp(36px, 5vw, 64px);
+    font-size: clamp(32px, 3.8vw, 48px);
     line-height: 1.08;
     letter-spacing: -0.01em;
-    color: var(--parchment);
   }
 
   .band__source {
     margin: 14px 0 0;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.7;
-    color: var(--on-dark-88);
+    color: var(--tone-on-dim);
   }
 
   .band__stats {
@@ -337,19 +332,19 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     flex-direction: column-reverse;
     justify-content: flex-end;
     padding: 0 22px;
-    border-left: 1px solid var(--on-dark-30);
+    border-left: 1px solid var(--tone-on-line);
   }
 
   .band__stats dd {
     margin: 0;
-    font-family: var(--font-serif);
-    font-size: 44px;
+    font-size: 36px;
+    font-weight: 300;
     line-height: 1;
   }
 
   .band__stats dt {
-    font-size: 13px;
-    color: var(--on-dark-88);
+    font-size: 15px;
+    color: var(--tone-on-dim);
   }
 
   .band__progress {
@@ -362,17 +357,15 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     align-items: baseline;
     justify-content: space-between;
     gap: 8px;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .band__pct {
-    font-family: var(--font-serif);
-    font-size: 34px;
+    font-size: 30px;
     line-height: 1;
   }
 
-  .band .meter {
-    --meter-track: rgba(251, 249, 244, 0.22);
+  .band__meter {
     margin-top: 10px;
   }
 
@@ -392,10 +385,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .issues__head h2 {
-    font-size: clamp(28px, 3vw, 38px);
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-    color: var(--ink);
+    font-size: clamp(26px, 2.6vw, 32px);
   }
 
   .legend {
@@ -403,7 +393,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 22px;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
@@ -419,11 +409,11 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .legend__ok {
-    background: var(--archive-green);
+    background: var(--green);
   }
 
   .legend__todo {
-    border: 1px solid rgba(114, 91, 53, 0.6);
+    border: 1px solid rgba(176, 118, 16, 0.6);
   }
 
   .issue {
@@ -431,7 +421,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     flex-wrap: wrap;
     gap: 24px 40px;
     padding: 28px 0;
-    border-top: 2px solid var(--ink);
+    border-top: 2px solid var(--wood);
     scroll-margin-top: var(--header-h);
   }
 
@@ -444,36 +434,38 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .issue__label {
-    font-size: 40px;
+    font-size: 34px;
+    font-weight: 400;
     line-height: 1;
   }
 
   .issue__code {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
   .issue__date {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 600;
   }
 
+  /* 日期待考／未開放：原型 2px 10px、15px/700 */
   .issue__meta .badge {
     align-self: flex-start;
-    font-size: 13px;
-    font-weight: 700;
+    padding: 2px 10px;
+    font-size: 15px;
   }
 
   .issue__count {
-    font-size: 14px;
+    font-size: 16px;
     color: var(--graphite);
   }
 
   .date-note summary {
     display: block;
     width: fit-content;
-    color: var(--muted-gold);
-    font-size: 13px;
+    color: var(--amber-text);
+    font-size: 15px;
     font-weight: 700;
     text-decoration: underline;
     text-underline-offset: 4px;
@@ -497,21 +489,22 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   .date-note__body {
     margin-top: 10px;
     padding: 12px 14px;
-    border-left: 4px solid var(--muted-gold);
-    background: rgba(114, 91, 53, 0.08);
-    font-family: var(--font-mono);
-    font-size: 12px;
+    border-left: 4px solid var(--amber-text);
+    background: rgba(176, 118, 16, 0.08);
+    font-family: var(--mono);
+    font-size: 14px;
     line-height: 1.65;
-    color: var(--ink);
     overflow-wrap: anywhere;
   }
 
+  /* 原型「第一葉 →」中間係一個空格（約 .25em），唔係 .btn 嘅 8px gap */
   .issue__go {
     align-self: flex-start;
+    gap: 0.25em;
     margin-top: 6px;
     padding: 10px 18px;
     border: 0;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .issue__body {
@@ -523,13 +516,14 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
   }
 
   .issue__pct {
-    font-family: var(--font-serif);
     font-size: 30px;
     line-height: 1;
-    color: var(--archive-green);
+    color: var(--green);
   }
 
   .issue__meter {
+    --meter-track: var(--line-14);
+    --meter-fill: var(--green);
     margin-top: 8px;
   }
 
@@ -553,37 +547,38 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     height: 100%;
     padding: 8px 0;
     border-bottom: 1px solid var(--line-08);
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.45;
-    color: var(--ink);
+    color: var(--wood);
     transition: color 200ms;
   }
 
   .toc a:hover {
-    color: var(--kapok);
+    color: var(--blue);
     text-decoration: none;
   }
 
   .toc__page {
     padding-top: 1px;
-    font-family: var(--font-mono);
-    font-size: 12px;
+    font-family: var(--mono);
+    font-size: 14px;
     color: var(--graphite);
   }
 
+  /* 原型 6px 14px；hover 只轉淡寶藍底，邊唔變 */
   .toc__toggle {
     margin-top: 12px;
+    padding: 6px 14px;
   }
 
-  /* .btn 嘅 display 蓋過 UA [hidden]；冇 JS 時呢粒掣要真係唔見 */
-  .toc__toggle[hidden] {
-    display: none;
+  .toc__toggle:hover {
+    border-color: var(--blue-a30);
+    background: var(--blue-a08);
   }
 
   .foot-note {
     margin: 24px 0 0;
-    font-size: 13px;
-    line-height: 28px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
