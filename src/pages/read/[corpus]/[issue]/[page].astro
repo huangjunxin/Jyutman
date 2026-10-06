@@ -1716,7 +1716,7 @@ const articleJsonLd = {
     justify-self: start;
   }
 
-  /* 實色掣冇可見邊：padding 少 1px，同上一葉一樣高 */
+  /* 原型下一葉 border:0 + 10px 18px；.btn 有 1px 透明邊，所以 padding 減 1px（比上一葉矮 2px，同原型） */
   .pg--next {
     justify-self: end;
     padding: 9px 17px;
@@ -1961,10 +1961,11 @@ const articleJsonLd = {
     overflow: hidden;
   }
 
-  /* 實色掣有 1px 透明邊：上下 9px 等於原型 10px＋0 邊；文案置中，左右收窄免得 300px 欄斷行 */
+  /* 實色掣有 1px 透明邊：上下 9px 等於原型 10px＋0 邊；文案置中，左右收窄免得 300px 欄斷行。
+     原型 textarea 係 inline-block，行框下面多約 9px，所以 margin-top 19px */
   .rp-submit {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 19px;
     padding: 9px 4px;
     font-size: 16px;
     font-weight: 700;
@@ -1992,13 +1993,14 @@ const articleJsonLd = {
     line-height: 1.6;
   }
 
+  /* 原型 6px 12px＋1px 邊；中性掣本身有 1px 邊，照搬 */
   .rp-again {
     margin-top: 10px;
-    padding: 5px 11px;
+    padding: 6px 12px;
     font-weight: 400;
   }
 
-  /* ---- 辭叢詞卡（位置由 --x / --y 設定）：方角、冇陰影 ---- */
+  /* ---- 辭叢詞卡（位置由 --x / --y 設定）：方角、冇陰影；同正文同係紙色，靠 2px 木色框分開 ---- */
 
   .dict-card {
     position: fixed;
@@ -2008,7 +2010,7 @@ const articleJsonLd = {
     max-width: min(280px, calc(100vw - 16px));
     padding: 12px 14px;
     background: var(--paper);
-    border: 1px solid var(--line-20);
+    border: 2px solid var(--wood);
   }
 
   .dict-card__word {
