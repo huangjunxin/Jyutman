@@ -248,6 +248,8 @@
 
 ## 4. 视觉与品牌
 
+> **漂移说明（2026-10-06）**：现行视觉为「西关满洲窗」（Saigwaan）体系，由 PR #1 落地。本章以下内容是**摘要**：色板、字级、间距与共用原件的权威定义在 `src/styles/global.css` 的 token 与 `src/components/`，两者不一致时**以代码为准**。上一轮（Kapok 版）的 token 与装饰已全部移除；完整的设计交接细节与本章逐节重写，待五批功能回迁验收后另做。
+
 ### 4.1 设计方向
 
 2026-10-06 起采用「西关满洲窗」（Saigwaan）视觉系统（design handoff `design_handoff_jyutman_saigwaan` 落地，token 与共用原件定义在 `src/styles/global.css`）。主色为宝蓝 `#2733b0`，木色 `#1e1512` 作窗框、正文字与页尾，纸色 `#faf9f4` 作卡面，页面底 `#e5e2d8`；玻璃色另有翠绿、琥珀、金黄（角珠）、宝石红。语料按色调区分：廣東白話報宝蓝、Canton Vernacular Handbook 琥珀、Readings in Cantonese Colloquial 翠绿（`corpusMeta().tone` → `.tone-blue` / `.tone-amber` / `.tone-green`；琥珀底一律木色字，琥珀卡角珠用宝蓝，其余用金黄）。
