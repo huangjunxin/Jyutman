@@ -12,9 +12,9 @@
   /* 玻璃色：由西關大屋滿洲窗相片取色 */
   --blue: #2733b0; /* 寶藍：主色、連結、當前狀態、粵拼、葉碼；廣東白話報 */
   --blue-hover: #1f2990; /* 實色掣 hover */
-  --sky: #2f74d0; /* 天藍：只用喺扇形氣窗 */
   --green: #0b7a31; /* 翠綠：已核驗、今譯；Readings in Cantonese Colloquial */
   --green-glass: #14a83f; /* 淺翠綠：眉標窗格、氣窗 */
+  --green-text: #08652a; /* 翠綠淡底上嘅字（徽章）：#0b7a31 喺淡底唔夠 4.5:1 */
   --amber: #d38f12; /* 琥珀：Canton Vernacular Handbook 玻璃帶、眉標格 */
   --amber-line: #b07610; /* OCR 線框、琥珀卡進度條 */
   --amber-num: #a86d0b; /* 淺底琥珀大數字（只限 40px 以上，對比 4.1:1） */
@@ -22,8 +22,6 @@
   --gold: #e2b821; /* 金黃：角珠 */
   --gold-tint: #f1dd96; /* 檢索高亮、選取、chip hover */
   --ruby: #ad1510; /* 寶石紅：標誌「叢」、公有領域卡、細塊玻璃 */
-  --purple: #4a3192; /* 紫：只用喺扇形氣窗 */
-  --frost: #e7e7e0; /* 磨砂白：氣窗外圈 */
 
   /* 木、紙、牆 */
   --wood: #1e1512; /* 窗框、主文字、頁尾、分段掣選中 */
@@ -59,6 +57,7 @@
   --on-dark-78: rgba(248, 247, 242, 0.78);
   --on-dark-86: rgba(248, 247, 242, 0.86);
   --on-dark-88: rgba(248, 247, 242, 0.88);
+  --on-dark-92: rgba(248, 247, 242, 0.92);
   --on-dark-14: rgba(248, 247, 242, 0.14);
   --on-dark-22: rgba(248, 247, 242, 0.22);
   --on-dark-25: rgba(248, 247, 242, 0.25);
@@ -159,7 +158,7 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--blue-a55);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 
@@ -176,11 +175,18 @@ textarea::placeholder {
   color: var(--graphite-a60);
 }
 
-/* iOS：search 輸入框去原生外觀同圓角（唔好落喺裸 input，會令 checkbox 隱形） */
+/* iOS／WebKit 預設圓角：表單控件一律方角（checkbox／radio 唔郁，免得隱形） */
+button,
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]) {
+  border-radius: 0;
+}
+
+/* iOS：search 輸入框去原生外觀（唔好落喺裸 input，會令 checkbox 隱形） */
 input[type="search"] {
   -webkit-appearance: none;
   appearance: none;
-  border-radius: 0;
 }
 
 input[type="search"]::-webkit-search-decoration,
@@ -215,10 +221,14 @@ pre code {
   font-size: inherit;
 }
 
-/* 檢索高亮、所選字 */
+/* 檢索高亮：金黃淺底寶藍字；閱讀頁 ?hl 標示（runtime 生成 mark.hl）保留原字色 */
 mark {
   background: var(--gold-tint);
   color: var(--blue);
+}
+
+mark.hl {
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -375,7 +385,7 @@ mark {
 }
 
 .header-search:focus-within {
-  outline: 2px solid var(--blue-a55);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 
@@ -404,7 +414,8 @@ mark {
   color: var(--on-dark);
 }
 
-.site-footer :focus-visible {
+.site-footer :focus-visible,
+.glass-row > :focus-visible {
   outline-color: var(--on-dark-72);
 }
 
@@ -548,7 +559,7 @@ mark {
   --tone-text: var(--green);
   --tone-fill: var(--green);
   --tone-on: var(--on-dark);
-  --tone-on-dim: var(--on-dark-86);
+  --tone-on-dim: var(--on-dark-92); /* .86 喺翠綠只有 4.2:1 */
   --tone-on-line: var(--on-dark-30);
   --tone-on-track: var(--on-dark-22);
   --tone-on-fill: var(--gold);
@@ -785,7 +796,7 @@ mark {
 
 /* ---- 眉標＋窗格（components/Eyebrow.astro）---------------------------------- */
 
-/* Jost 15px/500、.14em、大寫、graphite；左邊細窗格 */
+/* Jost 15px/500、.14em、大寫、graphite；左邊細窗格；行高跟正文 1.75（原型冇另設） */
 .eyebrow {
   display: flex;
   align-items: center;
@@ -794,7 +805,6 @@ mark {
   font-family: var(--latin);
   font-size: 15px;
   font-weight: 500;
-  line-height: 1.4;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--graphite);
@@ -803,6 +813,18 @@ mark {
 /* 側欄細版：14px 字、7px 格 */
 .eyebrow--sm {
   font-size: 14px;
+}
+
+/* 首頁 hero：襯線、唔大寫、.16em、gap 14px；年份包 <span class="latin"> 用 Jost .08em */
+.eyebrow--hero {
+  gap: 14px;
+  font-family: var(--serif);
+  letter-spacing: 0.16em;
+  text-transform: none;
+}
+
+.eyebrow--hero .latin {
+  letter-spacing: 0.08em;
 }
 
 /* 窗格：<span class="lattice"><i></i>×3 或 ×4</span>，順序琥珀、寶藍、淺翠綠、寶石紅 */
@@ -874,7 +896,7 @@ mark {
 
 /* ---- 掣 -------------------------------------------------------------------- */
 
-/* 基底：17px/600 serif、冇圓角、hover 唔出底線；配 --solid／--outline／--neutral */
+/* 基底：17px/600 serif、行高 1.75（同原型）、冇圓角、hover 唔出底線；配 --solid／--outline／--neutral */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -887,7 +909,7 @@ mark {
   font-family: var(--serif);
   font-size: 17px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.75;
   cursor: pointer;
   transition:
     background-color 200ms,
@@ -931,32 +953,33 @@ mark {
   border-color: var(--blue);
 }
 
-/* 中性（上一葉等次要掣）；--ink-outline 係舊名 */
-.btn--neutral,
-.btn--ink-outline {
+/* 中性（上一葉等次要掣） */
+.btn--neutral {
   padding: 10px 18px;
   border-color: var(--line-20);
   color: var(--wood);
 }
 
-.btn--neutral:hover,
-.btn--ink-outline:hover {
+.btn--neutral:hover {
   background: var(--surface-3);
 }
 
 .btn--outline:disabled,
 .btn--neutral:disabled,
-.btn--ink-outline:disabled,
 .btn--outline[aria-disabled="true"],
-.btn--neutral[aria-disabled="true"],
-.btn--ink-outline[aria-disabled="true"] {
+.btn--neutral[aria-disabled="true"] {
   opacity: 0.35;
   background: transparent;
 }
 
-/* 細掣：15px、4px 12px（複製、再報一個） */
+.btn--outline:disabled,
+.btn--outline[aria-disabled="true"] {
+  border-color: var(--blue-a30);
+}
+
+/* 細掣：15px、3px 12px（例：複製） */
 .btn--sm {
-  padding: 4px 12px;
+  padding: 3px 12px;
   font-size: 15px;
 }
 
@@ -997,16 +1020,18 @@ mark {
   color: var(--blue);
 }
 
-/* 高亮標籤（閱讀頁「標示「q」 ✕」）：金黃淺底寶藍字 */
+/* 高亮標籤（閱讀頁「標示「q」 ✕」）：金黃淺底寶藍字，冇邊、4px 12px、hover 唔變 */
 .chip--hl {
-  border-color: transparent;
+  padding: 4px 12px;
+  border: 0;
   background: var(--gold-tint);
   color: var(--blue);
   font-size: 15px;
   font-weight: 600;
 }
 
-/* 描邊 pill（檢索篩選、問題類型）：aria-pressed="true" 木色底 */
+/* 描邊 pill（檢索語料篩選）：aria-pressed="true" 木色底。
+   閱讀頁「問題類型」唔用呢個：原型係 3px 12px、15px，選中寶藍底白字，頁面自己寫 */
 .chip--outline {
   padding: 5px 14px;
   border-color: var(--line-20);
@@ -1095,7 +1120,7 @@ mark {
 
 /* ---- 徽章、狀態點 ------------------------------------------------------------ */
 
-/* 基底：14px/600、方角；--dot 控制狀態點；--md 閱讀頁卡頭 16px */
+/* 基底：14px/600、方角、行高 1.75（同原型）；--dot 控制狀態點；--md 閱讀頁卡頭 16px */
 .badge {
   --dot: 7px;
   display: inline-flex;
@@ -1104,7 +1129,7 @@ mark {
   padding: 1px 9px;
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.75;
   white-space: nowrap;
 }
 
@@ -1115,10 +1140,10 @@ mark {
   font-size: 16px;
 }
 
-/* 已核驗：翠綠淡底、實心點 */
+/* 已核驗：翠綠淡底、實心點（字用 --green-text 先夠 4.5:1） */
 .badge--ok {
   background: var(--green-a12);
-  color: var(--green);
+  color: var(--green-text);
 }
 
 /* OCR 未校：琥珀淡底、空心點 */
@@ -1171,9 +1196,16 @@ mark {
   color: #fff;
 }
 
-/* 琥珀淡底（已回報、日期待考、未有）；--gold 係舊名 */
+/* 冇點純色徽章：700、1px 10px（日期待考、校對狀態嘅 2px 10px 由頁面覆寫） */
 .badge--amber,
-.badge--gold {
+.badge--blue,
+.badge--green {
+  padding: 1px 10px;
+  font-weight: 700;
+}
+
+/* 琥珀淡底（已回報、日期待考、未有） */
+.badge--amber {
   background: var(--amber-a12);
   color: var(--amber-text);
 }
@@ -1187,7 +1219,7 @@ mark {
 /* 翠綠淡底（已可取得、已採用） */
 .badge--green {
   background: var(--green-a14);
-  color: var(--green);
+  color: var(--green-text);
 }
 
 /* 狀態圓點（KWIC 資料行）：8px，已核驗實心翠綠、未校空心琥珀字色 */
@@ -1282,7 +1314,7 @@ mark {
 }
 
 .searchbox:focus-within {
-  outline: 2px solid var(--blue-a55);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 

@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-05）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-06）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 04 · 功能与界面规划
 
@@ -9,7 +9,7 @@
 - 词典参考：粤语辞丛（独立的粤语词典站）等公开资源；本站字词可外连其释义页，仅作参考，无隶属关系。
 - 技术方向已定，本文不重新论证：Astro（静态页面）+ Workers API（动态接口）+ D1（检索索引）+ R2（影像存储）+ OpenSeadragon（影像查看器）+ Pagefind（站内检索）。
 - UX 参照識典古籍与 ctext.org 的信息组织方式，仅作参照，不复制其内容或数据（ctext 明确禁止爬取）。
-- 视觉系统（2026-10-05 起）：全站按 design handoff 原型改用粤语辞丛设计系统（Scholar's Ink · Kapok Edition），见第 4 节。
+- 视觉系统（2026-10-06 起）：全站按 design handoff 原型改用「西关满洲窗」（Xiguan）视觉系统，见第 4 节。
 
 ## 1. 功能清单（三档）
 
@@ -104,8 +104,8 @@
 
 **页首与页尾**（`src/layouts/Base.astro`）：
 
-- 页首黏顶，半透明羊皮纸底加 12px 模糊（全站只有页首与阅读页工具条用模糊）；左为品牌（「叢」字方印 + 「粵語文叢 / 歷史粵語文獻數碼閱讀」），中为导航「書目庫 / 檢索 / 關於 / 數據開放」（当前页底部 3px 木棉红线），右为精简检索框（首页不显示）。
-- 页尾：品牌 + 同一组导航 + 底线一行「底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0」。
+- 页首黏顶，半透明纸色底加 12px 模糊（全站只有页首与阅读页工具条用模糊）；左为品牌（四格窗花标志「粵 / 語 / 文 / 叢」+ 「粵語文叢 / 歷史粵語文獻數碼閱讀」），中为导航「書目庫 / 檢索 / 關於 / 數據開放」（当前页宝蓝字，左边 8px 宝蓝方块加 2px 木色外框），右为精简检索框（首页不显示）。
+- 页尾：木色底，四格窗花标志（大号）+ 品牌 + 同一组导航 + 底线一行「底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0」。
 - 页首、页尾均不挂校对工作台入口。
 
 **首页**（`src/pages/index.astro`）：
@@ -249,49 +249,55 @@
 
 ### 4.1 设计方向
 
-2026-10-05 起采用粤语辞丛设计系统 Scholar's Ink · Kapok Edition（design handoff 落地，token 定义在 `src/styles/global.css` 的 `:root`）。主色为木棉红（kapok）、墨蓝（ink）、羊皮纸（parchment），辅以档案绿与金褐；语料按色调区分：廣東白話報木棉红、Canton Vernacular Handbook 墨蓝、Readings in Cantonese Colloquial 档案绿（`corpusMeta().tone` → `.tone-kapok` / `.tone-ink` / `.tone-green`）。
+2026-10-06 起采用「西关满洲窗」（Xiguan）视觉系统（design handoff `design_handoff_jyutman_xiguan` 落地，token 与共用原件定义在 `src/styles/global.css`）。主色为宝蓝 `#2733b0`，木色 `#1e1512` 作窗框、正文字与页尾，纸色 `#faf9f4` 作卡面，页面底 `#e5e2d8`；玻璃色另有翠绿、琥珀、金黄（角珠）、宝石红。语料按色调区分：廣東白話報宝蓝、Canton Vernacular Handbook 琥珀、Readings in Cantonese Colloquial 翠绿（`corpusMeta().tone` → `.tone-blue` / `.tone-amber` / `.tone-green`；琥珀底一律木色字，琥珀卡角珠用宝蓝，其余用金黄）。
 
 硬规则：
 
-- **只出浅色主题**：`color-scheme: light`，`<meta name="color-scheme" content="light">`；暗色主题已移除，不跟随系统暗色偏好。
-- **无圆角**：唯一例外是徽章 8px、chip 999px（状态圆点为正圆）。按钮、卡片、输入框一律直角。
-- **无阴影**；模糊只用于页首与阅读页工具条。
-- 点缀元素：大字水印（真文字、`aria-hidden`）、色块卡右上角 45° 方块、眉标（12px、0.22em 字距、大写、木棉红）、编号分隔线 `.ordinal`（「其一」「一」等 + 一条淡木棉红线）。旧版「鱼尾」分隔元素（`Yuwai.astro`）已删除，由编号分隔线取代。
+- **只出浅色主题**：`color-scheme: light`，`<meta name="color-scheme" content="light">`；不跟随系统暗色偏好。
+- **无圆角**：唯一例外是状态圆点（50%）；表单控件经全局规则强制方角（checkbox / radio 除外）。
+- **无阴影**；模糊只用于页首（12px）与阅读页工具条（10px）。
+- **hover**：只变色或底色（200ms），可点的灯笼框 `filter: brightness(1.05)`（300ms）；不上移、不缩放。
+- **焦点**：`:focus-visible` 为 2px 实色宝蓝、offset 2px（handoff 写 `.55` 透明度，但在页面底只有 2.78:1，未达 WCAG 1.4.11 的 3:1，故改实色）；页尾与木色容器 `.glass-row` 内改用 `--on-dark-72` 浅色环。
+- 招牌组件：灯笼框 `Glass`（木框 + 四粒角珠 + 抹角玻璃带 + 纸面八角幼线）、木色容器 `GlassRow`、青砖墙色带 `.brick`、扇形气窗 `Fanlight`（首页一处）、窗格眉标 `Eyebrow`（琥珀 / 宝蓝 / 浅翠绿 / 宝石红四格）、四格窗花标志 `Logo`（粵 / 語 / 文 / 叢）、编号分隔线 `.ordinal`（「其一」「一」等 + 一条淡宝蓝线）。装饰一律 `aria-hidden`。
 
 ### 4.2 色板
 
 | token | 值 | 用途 |
 |---|---|---|
-| `--kapok` | `#b53a25` | 木棉红：链接、主按钮、命中、叶序号、粤拼 |
-| `--accent-hover` | `#a2331f` | 木棉红悬停 |
-| `--kapok-container` | `#f8e7e4` | 木棉红浅底：`mark`、选区、行内 code、chip--kapok |
-| `--kapok-on-dark` | `#f1a08c` | 深色底上的眉标 |
-| `--ink` | `#031632` | 墨蓝：正文字色、次要按钮、分段掣选中 |
-| `--parchment` | `#fbf9f4` | 页面底色 |
-| `--card` | `#fff` | 正文卡 |
-| `--graphite` | `#44474d` | 次要文字、元数据 |
-| `--archive-green` | `#4a6b5d` | 档案绿：已核验、语料色调 |
-| `--muted-gold` | `#725b35` | 金褐：未校、今译、已回报 |
-| `--surface-low` / `-mid` / `-high` / `-highest` | `#f5f2ed` / `#f0eee9` / `#eae8e3` / `#e4e2dd` | 由浅到深的面板底色 |
+| `--blue` | `#2733b0` | 宝蓝：链接、主按钮、当前状态、粤拼、叶码；廣東白話報色调 |
+| `--blue-hover` | `#1f2990` | 实色按钮悬停 |
+| `--green` | `#0b7a31` | 翠绿：已核验、今译；Readings in Cantonese Colloquial 色调 |
+| `--green-text` | `#08652a` | 翠绿淡底徽章上的字（`#0b7a31` 在淡底上不足 4.5:1） |
+| `--green-glass` | `#14a83f` | 浅翠绿：眉标窗格 |
+| `--amber` | `#d38f12` | 琥珀：Canton Vernacular Handbook 色调（实色底配木色字） |
+| `--amber-line` / `--amber-num` / `--amber-text` | `#b07610` / `#a86d0b` / `#7f5306` | OCR 线框与琥珀进度条 / 纸面琥珀大数字（只限 40px 以上）/ 纸面琥珀字 |
+| `--gold` / `--gold-tint` | `#e2b821` / `#f1dd96` | 角珠 / 检索高亮、选区、行内 code、chip hover |
+| `--ruby` | `#ad1510` | 宝石红：标志「叢」格、眉标第四格 |
+| `--wood` | `#1e1512` | 窗框、正文字、页尾、分段掣选中 |
+| `--paper` / `--page` | `#faf9f4` / `#e5e2d8` | 卡面与正文纸 / 页面底色 |
+| `--surface` / `-2` / `-3` | `#f2f0ea` / `#efede6` / `#ebe8df` | 示意卡与侧栏底 / 输入框底 / hover |
+| `--graphite` | `#5c5450` | 次要文字 |
+| `--brick` / `--mortar` | `#8e8a82` / 半透明灰缝 | 青砖墙色带 |
 
-另有透明度派生 token：主色 10%–40%（`--kapok-a10` 等，用于徽章底与描边）、墨蓝 6%–20% 的分隔线（`--line-06` … `--line-20`）、深色块上的羊皮纸 12%–88%（`--on-dark-*`）。
+另有透明度派生 token：木色分隔线 `--line-06` … `--line-30`、深色底上的字与线 `--on-dark-*`、主色淡底 `--blue-a06` … `--blue-a55`、`--green-a12/-a14`、`--amber-a10` … `--amber-a50`、`--graphite-a12` … `--graphite-a60`。
 
-对比度（按 WCAG 公式由 token 计算，2026-10-05）：墨蓝 / 羊皮纸 17.14、石墨 / 羊皮纸 8.85、木棉红 / 羊皮纸 5.55、木棉红 / 白 5.84、档案绿 / 羊皮纸 5.62、金褐 / `--surface-low` 5.76、木棉红 / `--kapok-container` 4.88、羊皮纸 / 木棉红色块 5.55；均 ≥ 4.5:1。
+对比度（按 WCAG 公式由 token 计算，2026-10-06）：宝蓝 / 纸 9.11、宝蓝 / 页面底 7.41、石墨 / 纸 ≈ 7.0、石墨 / 页面底 ≈ 5.7、`--green-text` / 翠绿 .14 淡底（页面底上）4.66、琥珀字 `#7f5306` / 琥珀淡底 5.55、`--on-dark-92` / 翠绿色带 4.57（`.86` 只有 4.20，故翠绿色调次要字改用 `.92`）；`--amber-num` / 纸 ≈ 4.1，只用于 40px 以上数字。
 
 ### 4.3 字体策略
 
 | 用途 | 字体栈（`:root`） | 加载方式 |
 |---|---|---|
-| 衬线（标题、正文） | Chiron Sung HK → Noto Serif TC → Songti TC → serif | Google Fonts（`unicode-range` 切片按需取字） |
-| 无衬线（UI、今译、粤拼 `rt`） | Inter → Chiron Hei HK → Noto Sans TC → PingFang HK → sans-serif | 同上；拉丁字母由 Inter 负责 |
-| 等宽（代码、目录叶码） | `ui-monospace`, Menlo, Consolas | 系统字体 |
+| 衬线（全站中文：标题、正文、UI） | `--serif`：Noto Serif HK → Noto Serif TC → serif | Google Fonts（`unicode-range` 切片按需取字） |
+| 拉丁字母与数字（眉标、统计数字、粤拼 `rt`） | `--latin`：Jost → Noto Serif HK → sans-serif | 同上 |
+| 等宽（slug、代码、引用） | `--mono`：`ui-monospace`, Menlo, Consolas | 系统字体 |
 
-- 三套字体（Chiron Sung HK 400–900、Chiron Hei HK 300–800、Inter 400–700）合成一条 Google Fonts css2 请求（`display=swap`），`Base.astro` 预连接 `fonts.googleapis.com` / `fonts.gstatic.com`，样式表以 `media="print"` + `onload` 非阻塞加载（附 `<noscript>` 回退）；不自托管任何字体文件。
+- 正文 18px / 1.75（`body`）。
+- 两套字体（Noto Serif HK 400–700、Jost 300–700）合成一条 Google Fonts css2 请求（`display=swap`），`Base.astro` 预连接 `fonts.googleapis.com` / `fonts.gstatic.com`，样式表以 `media="print"` + `onload` 非阻塞加载（附 `<noscript>` 回退）；不自托管任何字体文件，不用 fontsource。
 - CJK 切片按页面实际用到的字向 Google 即时下载；连不到 Google Fonts 的读者（如中国大陆）页面照常渲染，只用系统字体。
-- 三套字体均为 SIL Open Font License。
+- 两套字体均为 SIL Open Font License。
 - 细节与取舍见 docs/02 第 8 节。
 - **已定 D3**：粤拼一律用 LSHK 数字调（如 `nei5`），这是粤拼唯一标准写法。传教士拼式的调号符号属底本原文，原样保留，不属粤拼层、不做现代化改写。
-- **待验证**：Chiron 两套字体对扩展区生僻字的覆盖；缺字时浏览器会回落到系统字体。
+- **待验证**：Noto Serif HK 对扩展区生僻字的覆盖；缺字时浏览器会回落到系统字体。
 
 ### 4.4 版式规则
 
@@ -329,7 +335,7 @@
 | skip-to-content | 每页第一个可聚焦元素「跳去正文」，直达 `#main` |
 | color-scheme | 只声明浅色（`light`）；不提供暗色主题 |
 | 对比度 | 正文与背景 ≥ 4.5:1，大字与图形元素 ≥ 3:1；现行色板计算值见 4.2 |
-| 键盘可达 | 所有控件可 Tab 到达，焦点环为 2px 木棉红（深色块上改羊皮纸色）；引用标签页支持方向键 / Home / End；翻叶有 `←` `→` |
+| 键盘可达 | 所有控件可 Tab 到达，焦点环为 2px 实色宝蓝、offset 2px（页尾与木色容器内改浅色 `--on-dark-72`）；引用标签页支持方向键 / Home / End；翻叶有 `←` `→` |
 | 语义与朗读 | 文本层是真实 DOM（S4）；`lang` 全站 `zh-Hant`，首页语料卡的英文书名标 `lang="en"`；英文篇章与罗马字的语言标记**待决策**；阅读页复制结果、检索结果数经 `role="status"` 播报 |
 | 影像替代 | 每张影像有 `alt`（叶码 + 别名），文本层作为等价内容（影像未开放） |
 | 动效 | 尊重 `prefers-reduced-motion`，平滑滚动与过渡退化为瞬时 |

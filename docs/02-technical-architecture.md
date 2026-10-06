@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-05）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-06）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 粤语文丛 Jyutman 技术架构
 
@@ -174,19 +174,19 @@ IIIF 值得采用，但第一版用静态形态：构建期预生成瓦片 / DZI
 | 影像 | AVIF/WebP + `srcset` + 懒加载 + 预取下一页 |
 | SEO | 每叶可索引 URL + sitemap + schema.org Book |
 
-字体策略（现行，2026-10-05）：全部字体经 Google Fonts 加载，不自托管；正文与 UI 共用同一套字体栈（栈与用途见 docs/04 §4.3）。
+字体策略（现行，2026-10-06）：全部字体经 Google Fonts 加载，不自托管；正文与 UI 共用同一套字体栈（栈与用途见 docs/04 §4.3）。
 
 | 项 | 现行做法 |
 |---|---|
-| 字体 | Chiron Sung HK（衬线，请求字重 400–900）、Chiron Hei HK（无衬线，300–800）、Inter（拉丁 UI，400–700），一条 css2 请求：`family=Chiron+Hei+HK:wght@300..800&family=Chiron+Sung+HK:wght@400..900&family=Inter:wght@400..700&display=swap` |
+| 字体 | Noto Serif HK（全站中文，请求字重 400–700）、Jost（拉丁字母与数字，300–700），一条 css2 请求：`family=Noto+Serif+HK:wght@400..700&family=Jost:wght@300..700&display=swap` |
 | 切片 | Google Fonts 已把 CJK 字体按 `unicode-range` 切成细片，浏览器只按页面实际用到的字下载对应切片 |
 | 加载 | `src/layouts/Base.astro`：对 `fonts.googleapis.com` / `fonts.gstatic.com` 预连接（`preconnect`）；样式表以 `media="print"` + `onload` 切回 `all` 的方式非阻塞加载，附 `<noscript>` 回退 |
-| 回退 | `src/styles/global.css` 的字体栈在 Google 字体之后接系统字体（Noto Serif / Sans TC、Songti TC、PingFang HK） |
+| 回退 | `src/styles/global.css` 的字体栈：`--serif` 为 Noto Serif HK → Noto Serif TC → serif；`--latin` 为 Jost → Noto Serif HK → sans-serif；连不到 Google 时落到系统字体 |
 
 - 取舍：CJK 切片按字向 Google 即时取，本站不控制缓存与可用性；连不到 Google Fonts 的读者（如中国大陆）页面照常渲染，但只见系统字体。
 - 不按语料现算子集（docs/04 D5）：Google Fonts 切片已能按需取字，免去每个语料一份子集的构建与缓存成本。
-- 授权：Chiron Sung HK、Chiron Hei HK 与 Inter 均以 SIL Open Font License 在 Google Fonts 发布。
-- **待验证**：Chiron 两套字体对扩展区生僻字的覆盖；缺字时回落到系统字体（Noto Serif / Sans TC、Songti TC、PingFang HK），见 §10 第 5 项。
+- 授权：Noto Serif HK 与 Jost 均以 SIL Open Font License 在 Google Fonts 发布。
+- **待验证**：Noto Serif HK 对扩展区生僻字的覆盖；缺字时回落到系统字体，见 §10 第 5 项。
 
 ## 9. 仓库布局
 
