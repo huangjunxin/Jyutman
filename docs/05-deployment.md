@@ -87,7 +87,16 @@ jobs:
 | 预览命令 | `npx wrangler preview`（默认；非生产分支构建出预览 URL，并回帖到 PR） |
 | 依赖 | 仓库根有 `wrangler.jsonc`（name / main / assets / d1 / routes / workers_dev 齐备），Workers Builds 无需 autoconfig |
 
-**状态**：连接需要一次性在浏览器完成 GitHub App 授权（Cloudflare 侧无法用 API 代劳；REST API 需账号级 API token，本机只有 wrangler OAuth）。授权完成前，`npx wrangler deploy` 手动部署仍是有效通道，并永久保留为**应急回退**（构建/连接故障、需立即回滚时用）。
+**状态（2026-10-06）**：连接分两步。
+
+1. **一次性 GitHub App 授权（必须走浏览器）**：Workers & Pages → Worker `jyutman` → Settings → Builds → Connect → 选 GitHub 并授权 Cloudflare GitHub App（可只授权 `huangjunxin/Jyutman` 一个仓库）。Cloudflare 没有提供代劳这步的接口。
+2. 授权之后可二选一：
+   - **继续用 dashboard**：填上表各项（Branch control 里确认生产分支 `main`、勾选 **Enable Preview Builds**），Save 即可。
+   - **改用 Workers Builds REST API**：需要**用户级** API token（权限 `Workers Builds Configuration: Edit`，另加 `Workers Scripts: Read`；**账号级 token 不支持**，会报 Invalid token）。流程：`GET /accounts/{account_id}/workers/scripts` 取 Worker `tag` → `PUT /accounts/{account_id}/builds/repos/connections`（`provider_type: github` + GitHub 用户 ID 与仓库 ID）→ `POST /accounts/{account_id}/builds/triggers` 建两条 trigger（生产 `branch_includes: ["main"]`；预览 `branch_includes: ["*"]`、`branch_excludes: ["main"]`、`deploy_command: "npx wrangler preview"`）→ `POST /accounts/{account_id}/builds/triggers/{uuid}/builds` 触发首次构建。参考：<https://developers.cloudflare.com/workers/ci-cd/builds/api-reference/>
+
+授权完成前，`npx wrangler deploy` 手动部署仍是有效通道，并永久保留为**应急回退**（构建/连接故障、需立即回滚时用）。
+
+**当前差异（需留意）**：`main` 已含西关满洲窗重设计（PR #1，fa932f3），但生产站仍是 2026-10-03 手动部署的版本；连接 Workers Builds 后首次构建（或手动 `npx wrangler deploy`）才会更新线上内容。
 
 **纪律（必须执行）**：push main 即触发自动构建并上线。**推 main 之前必须本地四连绿（`npm test` / `npm run lint` / `npm run typecheck` / `npm run build`）且 GitHub Actions CI 绿**；不确定就开分支走 PR 预览。
 
