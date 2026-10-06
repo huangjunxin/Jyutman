@@ -1,9 +1,59 @@
 ---
-import Yuwai from "../components/Yuwai.astro";
+import Glass from "../components/Glass.astro";
+import GlassRow from "../components/GlassRow.astro";
+import Icon from "../components/Icon.astro";
+import Longform from "../components/Longform.astro";
+import PageHero from "../components/PageHero.astro";
 import Base from "../layouts/Base.astro";
-import { getSiteTotals } from "../utils/corpus.ts";
+import { corpusMeta } from "../utils/corpus-meta.ts";
+import { getCorpora, getSiteTotals } from "../utils/corpus.ts";
 
 const totals = getSiteTotals();
+
+/** 收錄範圍（站點定位，見 docs/01）；時間軸標記位置 =（年份 − 起）/（止 − 起）。 */
+const SCOPE_START = 1842;
+const SCOPE_END = 1907;
+
+const timeline = getCorpora()
+  .map((corpus, index) => ({ corpus, meta: corpusMeta(corpus, index) }))
+  .filter(({ corpus }) => corpus.year !== null)
+  .map(({ corpus, meta }) => ({
+    year: corpus.year as number,
+    title: meta.shortTitle,
+    tone: meta.tone,
+    x: Math.round((((corpus.year as number) - SCOPE_START) / (SCOPE_END - SCOPE_START)) * 1000) / 10,
+  }))
+  .sort((a, b) => a.year - b.year);
+
+const sections = [
+  { id: "why", label: "點解要做呢件事" },
+  { id: "sources", label: "數據來源" },
+  { id: "design", label: "設計參考" },
+  { id: "scope", label: "現階段範圍" },
+  { id: "contact", label: "聯絡" },
+];
+
+/** 按網站現況整理（閱讀頁已有粵拼、今譯 v0、引用格式、匿名報錯）。 */
+const openItems = [
+  "書目庫",
+  "頁級閱讀器（分段正文、翻頁、每頁來源信息）",
+  "豎排／橫排切換",
+  "全庫檢索（簡體字自動轉繁體）",
+  "粵拼注音",
+  "今譯（v0 未校訂）",
+  "引用格式（文本、BibTeX、RIS）",
+  "匿名報錯",
+];
+const closedItems = ["字典釋義", "影像對照（掃描影像要逐件核查藏館條款）", "全量數據下載、開放 API、DOI"];
+
+const ISSUES_URL = "https://github.com/huangjunxin/Jyutman/issues";
+
+/** 頁頭三步管道卡：底本（琥珀）→ 數據管道（翠綠）→ 本站展示層（寶藍）。 */
+const pipeline = [
+  { tone: "amber", label: "01 · 底本", big: "掃描影像", note: "圖書館特藏 · Internet Archive" },
+  { tone: "green", label: "02 · 數據管道", big: "OCR 文本", note: "JyutmanDataPipeline 公開發佈層" },
+  { tone: "blue", label: "03 · 本站展示層", big: "可讀 · 可查 · 可引用", note: "閱讀器 · 檢索 · 頁級引用" },
+] as const;
 ---
 
 <Base
@@ -11,56 +61,441 @@ const totals = getSiteTotals();
   description="粵語文叢的項目緣起、數據來源、設計參考與現階段範圍：將 1842 至 1907 年的粵語白話文獻由掃描影像變成可讀、可查、可引用的文本。"
   current="about"
 >
-  <div class="wrap">
-    <div class="prose">
-      <h1>關於粵語文叢</h1>
-      <p class="lead">
-        將 1842 至 1907 年間出版嘅粵語白話文獻（傳教士教科書、方言報紙、讀本）由掃描影像變成可檢索、可對照、可引用嘅網頁文本。
-      </p>
+  <PageHero
+    eyebrow="About · 關於"
+    lead="將 1842 至 1907 年間出版嘅粵語白話文獻（傳教士教科書、方言報紙、讀本）由掃描影像變成可檢索、可對照、可引用嘅網頁文本。"
+  >
+    <Fragment slot="title">關於<span class="accent">粵語文叢</span></Fragment>
+    <GlassRow as="ol" class="flow">
+      {
+        pipeline.map((step) => (
+          <Glass as="li" tone={step.tone} size="sm" flush class="flow__card" paneClass="flow__pane">
+            <span class="flow__label label">{step.label}</span>
+            <span class="flow__big">{step.big}</span>
+            <span class="flow__note">{step.note}</span>
+          </Glass>
+        ))
+      }
+    </GlassRow>
+  </PageHero>
 
-      <h2>點解要做呢件事</h2>
-      <p>
+  <Longform sections={sections}>
+    <section class="lf-section" id="why">
+      <div class="ordinal ordinal--lg">一</div>
+      <h2 class="lf-h2">點解要做呢件事</h2>
+      <p class="lf-text">
         1842 至 1907 年係粵語白話書面文獻嘅一個特殊時期：傳教士用粵語寫教科書同讀本，報人用粵語辦報，句式同今日口語相當接近，但寫法混雜漢字、19
         世紀羅馬字同英文。呢批材料對語言史、社會史同粵語教學都有價值，但長期停留喺圖書館特藏同掃描影像層面。
       </p>
-      <p>
-        古籍閱讀器已經示範咗圖文對照、段落對齊、穩定標識可以做到幾好；粵語文獻欠缺嘅唔係技術想像力，而係一個將
-        OCR 產出整理成可讀、可查、可引用嘅展示層。本站就係補呢一層。
+      <figure class="timeline">
+        <div class="timeline__ends">
+          <span class="timeline__year">{SCOPE_START}</span>
+          <span class="label">收錄範圍</span>
+          <span class="timeline__year timeline__year--end">{SCOPE_END}</span>
+        </div>
+        <div class="timeline__axis" aria-hidden="true">
+          {timeline.map((item) => <span class={`timeline__mark tone-${item.tone}`} style={`--x:${item.x}%`} />)}
+        </div>
+        <ul class="timeline__legend">
+          {
+            timeline.map((item) => (
+              <li>
+                <span class={`timeline__swatch tone-${item.tone}`} aria-hidden="true" />
+                {item.year} · {item.title}
+              </li>
+            ))
+          }
+        </ul>
+      </figure>
+      <p class="lf-text">
+        古籍閱讀器已經示範咗圖文對照、段落對齊、穩定標識可以做到幾好；粵語文獻欠缺嘅唔係技術想像力，而係一個將 OCR
+        產出整理成可讀、可查、可引用嘅展示層。<strong class="emph">本站就係補呢一層。</strong>
       </p>
+    </section>
 
-      <h2>數據來源</h2>
-      <p>
-        本站只讀數據管道 <code>JyutmanDataPipeline</code> 嘅公開發佈層
+    <section class="lf-section" id="sources">
+      <div class="ordinal ordinal--lg">二</div>
+      <h2 class="lf-h2">數據來源</h2>
+      <p class="lf-text">
+        本站只讀數據管道 <code>JyutmanDataPipeline</code> 嘅公開發佈層{" "}
         <code>data/&lt;corpus&gt;/&#123;articles,pages,issues&#125;.jsonl</code>，唔會回寫上游。文章（article）係主要展示單元，頁面層嘅校對狀態會傳播到文章層。
       </p>
-      <ul>
-        <li>欄位語義、已知坑與容錯策略：見倉庫文檔 <code>docs/03-data-contract.md</code>。</li>
-        <li>
-          已發佈語料：{totals.corpusCount} 個，共 {totals.pageCount} 葉 / {totals.articleCount} 篇；其餘底本仍喺管道整理，未進入發佈層。
-        </li>
-        <li>正文逐字保留原貌，含未辨識字符號 □ 同 19 世紀傳教士拼式；展示層唔改寫、唔現代化。</li>
-      </ul>
+      <div class="facts">
+        <div class="fact fact--wood">
+          <div class="fact__big fact__big--latin">{totals.corpusCount} · {totals.pageCount} · {totals.articleCount}</div>
+          <div class="fact__label">語料 · 頁 · 篇</div>
+          <p>已發佈語料；其餘底本仍喺管道整理，未進入發佈層。</p>
+        </div>
+        <div class="fact">
+          <div class="fact__big fact__big--blue">□</div>
+          <div class="fact__label">逐字保留原貌</div>
+          <p>正文含未辨識字符號 □ 同 19 世紀傳教士拼式；展示層唔改寫、唔現代化。</p>
+        </div>
+        <div class="fact">
+          <div class="fact__big fact__big--mono">docs/03-data-contract.md</div>
+          <div class="fact__label">數據契約</div>
+          <p>欄位語義、已知坑與容錯策略，見倉庫文檔。</p>
+        </div>
+      </div>
+    </section>
 
-      <h2>設計參考</h2>
-      <p>
-        資訊組織方式參考識典古籍同 ctext.org 等古籍閱讀站，僅作 UX 參照，唔複製其內容或數據（ctext.org
-        明確禁止爬取）。本站獨立開發、獨立發佈，唔隸屬於任何其他項目。
+    <section class="lf-section" id="design">
+      <div class="ordinal ordinal--lg">三</div>
+      <h2 class="lf-h2">設計參考</h2>
+      <p class="lf-text">
+        資訊組織方式參考識典古籍同 ctext.org 等古籍閱讀站，僅作 UX 參照，唔複製其內容或數據（ctext.org 明確禁止爬取）。
       </p>
+      <p class="callout">本站獨立開發、獨立發佈，唔隸屬於任何其他項目。</p>
+    </section>
 
-      <h2>現階段範圍</h2>
-      <p>
-        現時開放嘅係閱讀同檢索：書目庫、葉級閱讀器（分段正文、豎排／橫排切換、翻葉、每葉來源信息）、
-        全庫檢索。粵拼標註、今譯、字典釋義、文字更正通道、影像對照都未開放。
-      </p>
+    <section class="lf-section" id="scope">
+      <div class="ordinal ordinal--lg">四</div>
+      <h2 class="lf-h2">現階段範圍</h2>
+      <p class="lf-text">現時開放嘅係閱讀同檢索，下面按網站現況整理：</p>
+      <div class="scope">
+        <div class="scope__card">
+          <h3 class="scope__head">
+            <span>已開放</span><span class="scope__count">{openItems.length}</span>
+          </h3>
+          <ul>
+            {
+              openItems.map((item) => (
+                <li>
+                  <Icon name="check" strokeWidth={2.2} />
+                  <span>{item}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+        <div class="scope__card scope__card--closed">
+          <h3 class="scope__head">
+            <span>未開放</span><span class="scope__count">{closedItems.length}</span>
+          </h3>
+          <ul>
+            {
+              closedItems.map((item) => (
+                <li>
+                  <Icon name="circle-dashed" />
+                  <span>{item}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
 
-      <h2>聯絡</h2>
-      <p>
-        專案、數據、校對或者授權問題，歡迎喺 GitHub Issues 聯絡我哋：
-        <a href="https://github.com/huangjunxin/Jyutman/issues">github.com/huangjunxin/Jyutman/issues</a>。
-        授權與下架安排見<a href="/data/">數據開放</a>頁。
-      </p>
-    </div>
-  </div>
-
-  <Yuwai size="sm" />
+    <section class="lf-section cta" id="contact">
+      <div class="ordinal ordinal--lg">五</div>
+      <h2 class="cta__title">聯絡</h2>
+      <p class="cta__text">專案、數據、校對或者授權問題，歡迎喺 GitHub Issues 聯絡我哋；授權與下架安排見數據開放頁。</p>
+      <div class="cta__actions">
+        <a class="btn btn--solid" href={ISSUES_URL} target="_blank" rel="noopener">
+          <Icon name="github" />GitHub Issues<span class="visually-hidden">（新分頁開啟）</span>
+        </a>
+        <a class="btn btn--outline" href="/data/#takedown">授權與下架安排 →</a>
+      </div>
+      <p class="cta__url">github.com/huangjunxin/Jyutman/issues</p>
+    </section>
+  </Longform>
 </Base>
+
+<style>
+  /* 頁頭三步管道卡：共用木色容器 + 細號燈籠框（琥珀／翠綠／寶藍） */
+  .flow {
+    margin-top: 48px;
+  }
+
+  .flow__card {
+    flex: 1 1 220px;
+  }
+
+  .flow__pane {
+    display: flex;
+    flex-direction: column;
+    padding: 24px 26px;
+  }
+
+  .flow__big {
+    margin-top: 10px;
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .flow__note {
+    margin-top: 6px;
+    font-size: 16px;
+    color: var(--graphite);
+  }
+
+  /* 一、收錄範圍時間軸：標記位置 =（年份 − 1842）/ 65，色跟語料 */
+  .timeline {
+    margin: 12px 0 30px;
+    padding: 24px 28px;
+    background: var(--surface);
+  }
+
+  .timeline__ends {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .timeline__year {
+    font-family: var(--latin);
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  .timeline__year--end {
+    color: var(--blue);
+  }
+
+  .timeline__axis {
+    position: relative;
+    height: 24px;
+    margin-top: 12px;
+  }
+
+  .timeline__axis::before,
+  .timeline__axis::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    background: var(--wood);
+  }
+
+  .timeline__axis::before {
+    right: 0;
+    top: 11px;
+    height: 2px;
+  }
+
+  .timeline__axis::after {
+    top: 5px;
+    width: 2px;
+    height: 14px;
+  }
+
+  .timeline__mark {
+    position: absolute;
+    z-index: 1;
+    left: var(--x);
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    background: var(--tone);
+    border: 2px solid var(--surface);
+  }
+
+  .timeline__legend {
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    font-size: 15px;
+  }
+
+  .timeline__legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .timeline__swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    background: var(--tone);
+  }
+
+  .emph {
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  /* 二、三張事實卡：木色一張、淺底兩張 */
+  .facts {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .fact {
+    padding: 22px;
+    background: var(--surface);
+  }
+
+  .fact--wood {
+    background: var(--wood);
+    color: var(--on-dark);
+  }
+
+  .fact__big {
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  .fact__big--latin {
+    font-family: var(--latin);
+  }
+
+  .fact__big--blue {
+    color: var(--blue);
+  }
+
+  .fact__big--mono {
+    font-family: var(--mono);
+    font-size: 18px;
+    line-height: 1.4;
+    word-break: break-all;
+  }
+
+  .fact__label {
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--graphite);
+  }
+
+  .fact--wood .fact__label {
+    color: var(--gold);
+  }
+
+  .fact p {
+    margin: 12px 0 0;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .fact--wood p {
+    color: var(--on-dark-86);
+  }
+
+  /* 三、翠綠 callout */
+  .callout {
+    margin: 0;
+    padding: 18px 22px;
+    border-left: 4px solid var(--green);
+    background: color-mix(in srgb, var(--green) 8%, transparent);
+    line-height: 1.8;
+  }
+
+  /* 四、已開放（紙面、翠綠頂邊）／未開放（淺底、琥珀虛線） */
+  .scope {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .scope__card {
+    padding: 24px;
+    background: var(--paper);
+    border: 1px solid var(--line-10);
+    border-top: 4px solid var(--green);
+    color: var(--green);
+  }
+
+  .scope__card--closed {
+    background: var(--surface);
+    border: 1px dashed color-mix(in srgb, var(--amber-line) 55%, transparent);
+    color: var(--amber-text);
+  }
+
+  .scope__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--wood);
+  }
+
+  .scope__count {
+    font-family: var(--latin);
+    font-size: 30px;
+    line-height: 1;
+    color: var(--green);
+  }
+
+  .scope__card--closed .scope__count {
+    color: var(--amber-text);
+  }
+
+  .scope ul {
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .scope li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .scope li :global(.icon) {
+    flex: none;
+    margin-top: 4px;
+  }
+
+  .scope li span {
+    color: var(--wood);
+  }
+
+  /* 五、聯絡 */
+  .cta {
+    padding: clamp(32px, 5vw, 64px);
+    background: var(--surface);
+  }
+
+  .cta__title {
+    margin-top: 16px;
+    font-size: clamp(30px, 3.2vw, 40px);
+    line-height: 1.1;
+    color: var(--blue);
+  }
+
+  .cta__text {
+    margin: 16px 0 0;
+    max-width: 34em;
+    line-height: 1.85;
+  }
+
+  .cta__actions {
+    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* 原型 13px 24px 冇邊框；.btn 有 1px 透明邊，所以減 1px */
+  .cta__actions .btn--solid {
+    gap: 10px;
+    padding: 12px 23px;
+  }
+
+  .cta__actions .btn--outline {
+    padding: 12px 24px;
+  }
+
+  .cta__url {
+    margin: 18px 0 0;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--graphite);
+    overflow-wrap: anywhere;
+  }
+</style>

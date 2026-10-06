@@ -1,0 +1,21 @@
+---
+/**
+ * 窗格眉標：左邊細窗格（琥珀、寶藍、淺翠綠、寶石紅；cells=3 唔要寶石紅），右邊 Jost 大寫文字；
+ * 首頁 hero 加 class="eyebrow--hero"（襯線、唔大寫、.16em、gap 14px，年份包 <span class="latin">）。
+ * 文字用 text，或者用 slot 放有標記嘅內容（例如年份包 <span class="latin">）。樣式見 global.css 嘅 .eyebrow。
+ */
+interface Props {
+  text?: string;
+  cells?: 3 | 4;
+  /** sm：側欄細版（14px 字、7px 格）。 */
+  size?: "md" | "sm";
+  class?: string;
+}
+
+const { text, cells = 4, size = "md", class: className, ...rest } = Astro.props;
+---
+
+<p class:list={["eyebrow", size === "sm" && "eyebrow--sm", className]} {...rest}>
+  <span class="lattice" aria-hidden="true">{Array.from({ length: cells }, () => <i />)}</span>
+  <span><slot>{text}</slot></span>
+</p>

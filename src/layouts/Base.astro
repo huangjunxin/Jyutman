@@ -1,18 +1,29 @@
 ---
 import "../styles/global.css";
 
+import Icon from "../components/Icon.astro";
+import Logo from "../components/Logo.astro";
+
 interface Props {
   /** 完整 title 文字（含站名），由頁面自行決定。 */
   title: string;
   description: string;
-  /** 當前導覽項，用於高亮。 */
+  /** 當前導覽項，用於高亮；書目庫、期號目錄、閱讀頁都傳 "browse"。 */
   current?: "browse" | "search" | "about" | "data";
   /** 檢索結果等頁面標記 noindex。 */
   noindex?: boolean;
+  /** 頁首精簡檢索框；首頁傳 false。 */
+  headerSearch?: boolean;
 }
 
-const { title, description, current, noindex = false } = Astro.props;
+const { title, description, current, noindex = false, headerSearch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://jyutman.com").href;
+// 導覽高亮：正係嗰頁用 "page"；同一欄目下嘅子頁（期號目錄、閱讀頁）用 "true"，免得同麵包屑爭「當前頁」
+const pathname = Astro.url.pathname.replace(/\/?$/, "/");
+
+/** Google Fonts：Noto Serif HK（全站中文）+ Jost（拉丁字母、數字）；CJK 按 unicode-range 切片，用到邊片先下載邊片。 */
+const googleFonts =
+  "https://fonts.googleapis.com/css2?family=Noto+Serif+HK:wght@400..700&family=Jost:wght@300..700&display=swap";
 
 const navItems = [
   { key: "browse", href: "/browse/", label: "書目庫" },
@@ -27,51 +38,89 @@ const navItems = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#2733b0" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {noindex && <meta name="robots" content="noindex" />}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    {/* 非阻塞：Google Fonts 連唔到（例如中國大陸）唔會卡住首次渲染，直接用系統字 */}
+    <link rel="stylesheet" href={googleFonts} media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href={googleFonts} /></noscript>
     <slot name="head" />
   </head>
   <body>
     <a class="skip-link" href="#main">跳去正文</a>
 
-    <header class="site-head">
-      <div class="inner">
+    <header class="site-header">
+      <div class="site-header__inner wrap">
         <a class="brand" href="/">
-          <b>粵語文叢</b>
-          <small>歷史粵語文獻數碼閱讀</small>
+          <Logo />
+          <span class="brand__text">
+            <span class="brand__name">粵語文叢</span>
+            <span class="brand__sub">歷史粵語文獻數碼閱讀</span>
+          </span>
         </a>
-        <nav class="nav" aria-label="主導覽">
+        <nav class="site-nav" aria-label="主導覽">
           {
             navItems.map((item) => (
-              <a href={item.href} aria-current={current === item.key ? "page" : undefined}>
+              <a href={item.href} aria-current={current === item.key ? (pathname === item.href ? "page" : "true") : undefined}>
                 {item.label}
               </a>
             ))
           }
         </nav>
+        {
+          headerSearch && (
+            <form class="header-search" action="/search/" method="get" role="search">
+              <Icon name="search" size={16} />
+              <input
+                type="search"
+                id="site-q"
+                name="q"
+                aria-label="檢索字詞"
+                placeholder="檢索字詞"
+                autocomplete="off"
+                enterkeyhint="search"
+              />
+            </form>
+          )
+        }
       </div>
     </header>
+    <script is:inline>
+      // 頁首換行會變高：同步 --header-h，閱讀頁工具列同側欄黏頂位靠佢（後備 78px）。
+      (() => {
+        const header = document.querySelector(".site-header");
+        if (!header || !("ResizeObserver" in window)) return;
+        const root = document.documentElement;
+        new ResizeObserver(() => root.style.setProperty("--header-h", `${header.offsetHeight}px`)).observe(header);
+      })();
+    </script>
 
     <main id="main">
       <slot />
     </main>
 
-    <footer class="site-foot">
-      <div class="foot-yin" aria-hidden="true"><span>叢</span></div>
-      <p class="foot-copy">
-        粵語文叢 · 歷史粵語文獻數碼閱讀<br />
-        底本公有領域 · 掃描影像來源見各葉 · 文本數據 CC BY-SA 4.0
-      </p>
-      <nav class="foot-nav" aria-label="頁腳導覽">
-        {
-          navItems.map((item) => (
-            <a href={item.href}>{item.label}</a>
-          ))
-        }
-      </nav>
+    <footer class="site-footer">
+      <div class="site-footer__main wrap">
+        <div class="foot-brand">
+          <Logo size="lg" />
+          <div>
+            <div class="foot-brand__name">粵語文叢</div>
+            <div class="foot-brand__sub">歷史粵語文獻數碼閱讀 · Jyutman</div>
+          </div>
+        </div>
+        <nav class="foot-nav" aria-label="頁尾導覽">
+          {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
+        </nav>
+      </div>
+      <div class="site-footer__base wrap">
+        <span>底本公有領域 · 掃描影像來源見各頁 · 文本數據 CC BY-SA 4.0</span>
+      </div>
     </footer>
   </body>
 </html>

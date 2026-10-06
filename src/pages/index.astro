@@ -1,36 +1,120 @@
 ---
+import Eyebrow from "../components/Eyebrow.astro";
+import Fanlight from "../components/Fanlight.astro";
+import Glass from "../components/Glass.astro";
+import GlassRow from "../components/GlassRow.astro";
 import JsonLd from "../components/JsonLd.astro";
-import Progress from "../components/Progress.astro";
 import SearchBar from "../components/SearchBar.astro";
-import Yuwai from "../components/Yuwai.astro";
+import StatusBadge from "../components/StatusBadge.astro";
 import Base from "../layouts/Base.astro";
-import { getCorpora, getIssues, getPages, getSiteTotals } from "../utils/corpus.ts";
-import { pageParam } from "../utils/reader.ts";
+import {
+  getCorpora,
+  getCorpus,
+  getCorpusTranslatedCount,
+  getFirstReadablePage,
+  getIssue,
+  getIssues,
+  getJyutping,
+  getPage,
+  getPages,
+  getSiteTotals,
+  getTranslations,
+} from "../utils/corpus.ts";
+import { corpusMeta, formatWan, issueLabel } from "../utils/corpus-meta.ts";
+import { leadExcerpt } from "../utils/excerpt.ts";
+import { normalize } from "../utils/normalize.ts";
+import {
+  pageParam,
+  percent,
+  readingsByIndex,
+  renderAnnotatedParagraph,
+  type ArticleBlock,
+} from "../utils/reader.ts";
+import { locateAndSlice } from "../utils/search-planner.ts";
 
-const corpora = getCorpora();
 const totals = getSiteTotals();
+const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 
-const cards = corpora.map((corpus) => {
-  const issues = getIssues(corpus.slug);
-  const first = issues[0];
-  const firstPage = first ? getPages(corpus.slug, first.issue)[0] : undefined;
+const readHref = (slug: string, issue: string, page: number) => `/read/${slug}/${issue}/${pageParam(page)}/`;
+const searchHref = (q: string) => `/search/?q=${encodeURIComponent(q)}`;
+
+// ---- 樣張同示意圖：廣東白話報第一期（第 006、009 頁；檢索示例喺同期搵首個命中） ----
+const GD = "gd-vernacular-paper";
+const GD_ISSUE = "issue-01";
+const gd = getCorpus(GD);
+const gdIssue = getIssue(GD, GD_ISSUE);
+if (!gd || !gdIssue) throw new Error(`首頁樣張：搵唔到 ${GD}/${GD_ISSUE}`);
+const gdTitle = corpusMeta(gd).shortTitle;
+const gdLabel = issueLabel(gd.issueCount, GD_ISSUE);
+const gdDate = gdIssue.issue_date ?? "日期待考";
+
+/** 某頁第一篇文章連篇首摘錄（截到 minChars 字之後嘅句末標點）。 */
+function sample(page: number, minChars: number) {
+  const doc = getPage(GD, GD_ISSUE, page);
+  const article = doc?.blocks.find((block): block is ArticleBlock => block.type === "article");
+  const lead = article && leadExcerpt(article.text, minChars);
+  if (!doc || !article || !lead) throw new Error(`首頁樣張：${GD}/${GD_ISSUE} 第 ${page} 頁冇正文`);
+  return { page, status: doc.status, article, lead, href: readHref(GD, GD_ISSUE, page) };
+}
+
+// 原文樣張截頭大約 45 字：第 40 字之後嘅第一個句末標點（第 006 頁剛好 45 字）
+const specimen = sample(6, 40);
+const specimenHtml = renderAnnotatedParagraph(
+  specimen.lead.text,
+  specimen.lead.start,
+  readingsByIndex(getJyutping(GD, GD_ISSUE)[specimen.article.id]),
+);
+const specimenTranslated = getTranslations(GD, GD_ISSUE)[specimen.article.id] !== undefined;
+const vertical = sample(9, 24);
+
+const DEMO_QUERY = "广东";
+const demoTarget = normalize(DEMO_QUERY);
+const kwic = getPages(GD, GD_ISSUE)
+  .flatMap((doc) =>
+    doc.blocks.flatMap((block) =>
+      block.type === "article" ? [{ page: doc.page, snippet: locateAndSlice(block.text, demoTarget, 8) }] : [],
+    ),
+  )
+  .find((hit) => hit.snippet.highlight !== null);
+
+// ---- 語料卡：首個多期語料做主打卡，其餘疊喺右邊 ----
+const cards = getCorpora().map((corpus, index) => {
+  const issues = getIssues(corpus.slug).map((issue) => ({
+    ...issue,
+    label: issueLabel(corpus.issueCount, issue.issue),
+    href: readHref(corpus.slug, issue.issue, getFirstReadablePage(corpus.slug, issue.issue)),
+    pct: percent(issue.verified_pages, issue.pages),
+  }));
   return {
     corpus,
-    issueLabel: corpus.issueCount > 1 ? `${corpus.issueCount} 期` : "單冊",
-    href:
-      first && firstPage
-        ? `/read/${corpus.slug}/${first.issue}/${pageParam(firstPage.page)}/`
-        : `/browse/${corpus.slug}/`,
+    meta: corpusMeta(corpus, index),
+    issues,
+    href: issues[0]?.href ?? `/browse/${corpus.slug}/`,
+    pct: percent(corpus.verifiedPages, corpus.pageCount),
+    translated: getCorpusTranslatedCount(corpus.slug),
   };
 });
+const featureIndex = Math.max(
+  0,
+  cards.findIndex((card) => card.corpus.issueCount > 1),
+);
+const feature = cards[featureIndex];
+const others = cards.filter((_, index) => index !== featureIndex);
 
-const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
+// 數字帶四格玻璃色固定：寶藍、琥珀、翠綠、寶石紅
+const stats = [
+  { tone: "blue", value: String(totals.corpusCount), unit: "個語料", label: "Corpora · 已發佈" },
+  { tone: "amber", value: String(totals.pageCount), unit: "頁", label: "Scanned pages · 掃描頁" },
+  { tone: "green", value: String(totals.articleCount), unit: "篇", label: "Articles · 篇章" },
+  { tone: "ruby", value: formatWan(totals.characterCount), unit: "萬字", label: "Characters · 正文字數" },
+] as const;
 ---
 
 <Base
-  title="粵語文叢 · 讀返十九世紀嘅粵語"
-  description="1842 至 1907 年粵語白話文獻的閱讀平台：方言報紙、傳教士讀本與識字課本，逐葉展示底本來源與校對狀態。"
+  title="粵語文叢 · 十九世紀粵語白話文"
+  description="1842 至 1907 年粵語白話文獻的閱讀平台：方言報紙、傳教士讀本與識字課本，逐頁展示底本來源與校對狀態。"
   current={undefined}
+  headerSearch={false}
 >
   <Fragment slot="head">
     <JsonLd
@@ -53,85 +137,992 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     />
   </Fragment>
 
-  <div class="wrap">
-    <section class="hero">
-      <h1>讀返十九世紀嘅粵語</h1>
-      <p class="lede">
-        1842 至 1907 年嘅粵語白話文獻：傳教士讀本、方言報紙、識字課本，而家可以檢索、閱讀、引用。
-      </p>
-
-      <SearchBar />
-    </section>
-
-    <Yuwai />
-
-    <section>
-      <div class="sec-head">
-        <h2>語料</h2>
-        <p>
-          已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 葉 · {totals.articleCount} 篇　<a
-            href="/browse/">全部書目 →</a
+  <section class="hero">
+    <div class="hero__inner wrap">
+      <div class="hero__main">
+        <Eyebrow class="eyebrow--hero"><span class="latin">1842</span> 至 <span class="latin">1907</span> · 粵語白話文獻</Eyebrow>
+        <h1 class="hero__title">
+          <span>十九世紀</span>
+          <span class="hero__accent">粵語白話文</span>
+        </h1>
+        <p class="hero__lede">
+          1842 至 1907 年嘅粵語白話文獻：傳教士讀本、方言報紙、識字課本……
+        </p>
+        <SearchBar variant="hero" inputId="home-q" class="hero__search" />
+        <p class="hero__try">
+          <span>試試：</span>
+          <a class="chip" href={searchHref("廣東")}>廣東</a>
+          <a class="chip" href={searchHref("唔係")}>唔係</a>
+          <a class="chip" href={searchHref(DEMO_QUERY)}
+            >{DEMO_QUERY}<span class="chip__simp" aria-hidden="true">簡</span><span class="visually-hidden"
+              >（簡體）</span
+            ></a
           >
         </p>
       </div>
 
-      <div class="grid">
+      <Fanlight class="hero__aside">
+        <figure class="specimen" data-specimen data-layout="vertical" aria-labelledby="specimen-title">
+          <div class="specimen__head">
+            <div class="specimen__id">
+              <div class="specimen__source" id="specimen-title">{gdTitle} · {gdLabel}</div>
+              <div class="specimen__meta">
+                <span class:list={[gdIssue.issue_date && "latin"]}>{gdDate}</span> · 第 {pageParam(specimen.page)} 頁
+              </div>
+            </div>
+            <div class="specimen__controls" hidden>
+              <div class="seg seg--sm" role="group" aria-label="排版方向">
+                <button type="button" data-layout-set="vertical" aria-pressed="true">豎排</button>
+                <button type="button" data-layout-set="horizontal" aria-pressed="false">橫排</button>
+              </div>
+              <button type="button" class="toggle toggle--sm" data-jp-toggle aria-pressed="true">粵拼</button>
+            </div>
+          </div>
+          <div class="specimen__body">
+            <div class="specimen__text">
+              <p class="specimen__title">{specimen.article.title}</p>
+              <p class="specimen__para" set:html={specimenHtml} />
+            </div>
+          </div>
+          <div class="specimen__foot">
+            <span class="specimen__badges">
+              <StatusBadge status={specimen.status} variant="outline" />
+              {specimenTranslated && <span class="badge badge--tr">附今譯</span>}
+            </span>
+            <a class="specimen__more" href={specimen.href}>讀全文 →</a>
+          </div>
+        </figure>
+      </Fanlight>
+    </div>
+  </section>
+
+  <section class="stats brick" aria-label="全站數字">
+    <div class="stats__grid wrap">
+      {
+        stats.map((stat) => (
+          <Glass tone={stat.tone} size="sm" paneClass="stat">
+            <div class="stat__figure">
+              <span class="stat__value">{stat.value}</span>
+              <span class="stat__unit">{stat.unit}</span>
+            </div>
+            <div class="stat__label">{stat.label}</div>
+          </Glass>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="corpora" aria-labelledby="corpora-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <Eyebrow class="corpora__eyebrow" text="Corpora · 語料" />
+          <h2 class="sec-head__title" id="corpora-title">語料</h2>
+          <p class="sec-head__sub">
+            已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 頁 · {totals.articleCount} 篇；全站已核驗 {
+              totals.verifiedPages
+            } 頁（{percent(totals.verifiedPages, totals.pageCount)}%）
+          </p>
+        </div>
+        <a class="sec-head__link" href="/browse/">全部書目 →</a>
+      </div>
+
+      <GlassRow size="lg">
         {
-          cards.map(({ corpus, issueLabel, href }) => (
-            <article class="card">
-              <div class="card-body">
-                <h3><a href={href}>{corpus.title}</a></h3>
-                <p class="sub">
-                  {corpus.year ?? "年代待考"} · {issueLabel} · {corpus.pageCount} 葉
-                </p>
-                <Progress
-                  verified={corpus.verifiedPages}
-                  total={corpus.pageCount}
-                  label={`葉級校對進度 · 已核驗 ${corpus.verifiedPages} / ${corpus.pageCount}`}
-                />
-                <p class="meta">
-                  <span class="badge pub">已發佈</span>
-                  <span>{corpus.articleCount} 篇</span>
-                  <a href={href}>閱讀 →</a>
+          feature && (
+            <Glass as="article" tone={feature.meta.tone} flush class="feature" paneClass="feature__pane">
+              <div class="feature__top">
+                <div class="feature__year">{feature.corpus.year ?? "年代待考"}</div>
+                <div class="feature__kind">
+                  {feature.meta.era && (
+                    <>
+                      {feature.meta.era}
+                      <br />
+                    </>
+                  )}
+                  {feature.meta.kind}
+                </div>
+              </div>
+              <div>
+                <h3 class="feature__title" lang={feature.meta.script === "en" ? "en" : undefined}>
+                  {feature.corpus.title}
+                </h3>
+                <p class="feature__facts">
+                  {feature.corpus.pageCount} 頁 · {feature.corpus.articleCount} 篇
+                  {feature.translated > 0 && ` · ${feature.translated} 篇附今譯`}
                 </p>
               </div>
-            </article>
-          ))
+              <ul class="feature__issues">
+                {feature.issues.map((issue) => (
+                  <li>
+                    <a class="issue-row" href={issue.href}>
+                      <span class="issue-row__label">{issue.label}</span>
+                      <span class="issue-row__facts">
+                        {issue.issue_date ? <span class="latin">{issue.issue_date}</span> : "日期待考"} · {issue.pages}{" "}
+                        頁 · {issue.articles} 篇
+                      </span>
+                      <span class="issue-row__progress">
+                        <span class="meter issue-row__meter" style={`--pct:${issue.pct}%`} aria-hidden="true">
+                          <i />
+                        </span>
+                        <span class="visually-hidden">已核驗</span>
+                        {issue.verified_pages} / {issue.pages}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <div class="feature__foot">
+                <div class="feature__progress">
+                  <span>
+                    頁級校對進度 · 已核驗 {feature.corpus.verifiedPages} / {feature.corpus.pageCount} 頁
+                  </span>
+                  <span class="feature__pct">{feature.pct}%</span>
+                </div>
+                <div class="meter feature__meter" style={`--pct:${feature.pct}%`} aria-hidden="true">
+                  <i />
+                </div>
+                <div class="feature__actions">
+                  <a class="btn btn--solid feature__read" href={feature.href}>進入閱讀 →</a>
+                  <a class="btn btn--outline feature__browse" href={`/browse/${feature.corpus.slug}/`}>逐頁校對狀態</a>
+                </div>
+              </div>
+            </Glass>
+          )
         }
-      </div>
-    </section>
 
-    <Yuwai />
+        {
+          others.length > 0 && (
+            <div class="corpora__side">
+              {others.map((card) => (
+                <Glass
+                  tone={card.meta.tone}
+                  flush
+                  href={card.href}
+                  class="side-card"
+                  paneClass="side-card__pane"
+                  aria-label={`開始閱讀：${card.corpus.title}`}
+                >
+                  <div class="side-card__top">
+                    <span class="side-card__year">{card.corpus.year ?? "年代待考"}</span>
+                    <span class="side-card__kind">
+                      {card.corpus.issueCount > 1 ? `${card.corpus.issueCount} 期` : "單冊"} · {card.corpus.pageCount} 頁 ·{" "}
+                      {card.corpus.articleCount} 篇
+                    </span>
+                  </div>
+                  <h3
+                    class:list={["side-card__title", card.meta.script === "en" && "side-card__title--en"]}
+                    lang={card.meta.script === "en" ? "en" : undefined}
+                  >
+                    {card.corpus.title}
+                  </h3>
+                  <div class="side-card__foot">
+                    <div class="side-card__progress">
+                      <span>
+                        已核驗 {card.corpus.verifiedPages} / {card.corpus.pageCount} 頁
+                      </span>
+                      <span class="side-card__pct">{card.pct}%</span>
+                    </div>
+                    <div class="meter side-card__meter" style={`--pct:${card.pct}%`} aria-hidden="true">
+                      <i />
+                    </div>
+                    <span class="side-card__cta" aria-hidden="true">
+                      開始閱讀 →
+                    </span>
+                  </div>
+                </Glass>
+              ))}
+            </div>
+          )
+        }
+      </GlassRow>
+    </div>
+  </section>
 
-    <section>
-      <div class="sec-head">
-        <h2>點樣讀</h2>
-        <p>三個動作：閱讀、豎排、檢索</p>
-      </div>
-      <div class="feats">
-        <div class="feat">
-          <span class="no">其一</span>
-          <h3>文本閱讀＋來源信息</h3>
-          <p>分段 OCR 文本配豎排閱讀，逐葉展示底本、藏館、葉碼同校對狀態。</p>
+  <section class="howto" aria-labelledby="howto-title">
+    <div class="wrap">
+      <Eyebrow text="How to read · 點樣讀" />
+      <!-- <h2 class="howto__title" id="howto-title">三個動作：閱讀、豎排、檢索</h2> -->
+      <div class="howto__grid">
+        <div class="howto__col">
+          <a
+            class="tile tile--source"
+            href={specimen.href}
+            aria-label={`打開${gdTitle}${gdLabel}第 ${pageParam(specimen.page)} 頁`}
+          >
+            <span class="mini-card">
+              <span class="mini-card__head">
+                <span class="mini-card__title">本頁來源</span>
+                <StatusBadge status={specimen.status} />
+              </span>
+              <span class="mini-card__rows">
+                <span class="mini-card__key">語料</span><span>{gd.title}</span>
+                <span class="mini-card__key">期號</span><span>{gdLabel}（{gdDate}）</span>
+                <span class="mini-card__key">頁序號</span><span class="mono">{pageParam(specimen.page)}</span>
+                <span class="mini-card__key">底本</span><span>{gd.sourceLine}</span>
+                <span class="mini-card__key">授權</span><span>CC BY-SA 4.0</span>
+              </span>
+            </span>
+          </a>
+          <div class="ordinal">其一</div>
+          <h3 class="howto__h3">文本閱讀＋來源信息</h3>
+          <p class="howto__text">分段 OCR 文本配豎排閱讀，逐頁展示底本、藏館、頁碼同校對狀態。</p>
         </div>
-        <div class="feat">
-          <span class="no">其二</span>
-          <h3>豎排閱讀</h3>
-          <p>
+
+        <div class="howto__col">
+          <a
+            class="tile tile--vertical"
+            href={vertical.href}
+            aria-label={`打開〈${vertical.article.title}〉（${gdLabel}第 ${pageParam(vertical.page)} 頁）`}
+          >
+            <span class="tile__vertical">
+              <span class="tile__vtitle">{vertical.article.title}</span>
+              <span>{vertical.lead.text}</span>
+            </span>
+          </a>
+          <div class="ordinal">其二</div>
+          <h3 class="howto__h3">豎排閱讀</h3>
+          <p class="howto__text">
             跟底本方向排印，右起豎排、標點用豎排字形；亦可即時切換橫排。正文一律用襯線，豎排時行氣唔會斷。
           </p>
         </div>
-        <div class="feat">
-          <span class="no">其三</span>
-          <h3>繁簡異體歸一檢索</h3>
-          <p>
-            輸入簡體或異體字，都查得到底本嘅繁體原文。歸一只發生喺檢索層，展示層永遠保留原字，唔改寫、唔現代化。
+
+        <div class="howto__col">
+          <a class="tile tile--search" href={searchHref(DEMO_QUERY)} aria-label={`檢索「${DEMO_QUERY}」`}>
+            <span class="fold">
+              <span class="fold__from">{DEMO_QUERY}</span>
+              <span class="label fold__arrow">歸一 →</span>
+              <span class="fold__to">{demoTarget}</span>
+            </span>
+            {
+              kwic && (
+                <span class="kwic">
+                  <span class="kwic__line">
+                    {kwic.snippet.pre}
+                    <mark>{kwic.snippet.highlight}</mark>
+                    {kwic.snippet.post}
+                  </span>
+                  <span class="kwic__src">
+                    {gdTitle} · {gdLabel} · 第 {pageParam(kwic.page)} 頁
+                  </span>
+                </span>
+              )
+            }
+          </a>
+          <div class="ordinal">其三</div>
+          <h3 class="howto__h3">繁簡歸一檢索</h3>
+          <p class="howto__text">
+            輸入簡體字，都查得到底本嘅繁體原文。歸一只發生喺檢索層，展示層永遠保留原字，唔改寫、唔現代化。
           </p>
-          <span class="feat-state">已開放。</span>
         </div>
       </div>
-    </section>
-  </div>
-
-  <Yuwai size="sm" />
+    </div>
+  </section>
 </Base>
+
+<script>
+  // 首頁樣張：豎排／橫排、粵拼開關（狀態只靠 aria-pressed 同 figure 上嘅 data／class）。
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-specimen]")) {
+    figure.querySelector(".specimen__controls")?.removeAttribute("hidden");
+    const layoutButtons = [...figure.querySelectorAll<HTMLButtonElement>("[data-layout-set]")];
+    for (const button of layoutButtons) {
+      button.addEventListener("click", () => {
+        figure.dataset.layout = button.dataset.layoutSet;
+        for (const other of layoutButtons) other.setAttribute("aria-pressed", String(other === button));
+      });
+    }
+    const jp = figure.querySelector<HTMLButtonElement>("[data-jp-toggle]");
+    jp?.addEventListener("click", () => {
+      const on = jp.getAttribute("aria-pressed") !== "true";
+      jp.setAttribute("aria-pressed", String(on));
+      figure.classList.toggle("no-jp", !on);
+    });
+  }
+</script>
+
+<style>
+  /* 數值照 design_handoff_jyutman_saigwaan 原型「首頁」四段（Hero／數字／語料／點樣讀）。 */
+
+  /* ---- 1a Hero ---- */
+  /* 左欄頂（眉標）同右邊滿洲窗上沿對齊 */
+  .hero__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: clamp(40px, 5vw, 64px);
+    padding-top: clamp(48px, 6vw, 72px);
+    padding-bottom: clamp(64px, 7vw, 96px);
+  }
+
+  /* 眉標行高（15px × 1.75）令窗格低咗約 7px，上移抵銷，等窗格頂同氣窗頂齊 */
+  .hero__main {
+    flex: 1 1 540px;
+    min-width: 0;
+    margin-top: -7px;
+  }
+
+  .hero__title {
+    margin-top: 26px;
+    font-size: clamp(52px, 6.2vw, 80px);
+    line-height: 1.18;
+    letter-spacing: 0.02em;
+  }
+
+  .hero__title span {
+    display: block;
+  }
+
+  .hero__title .hero__accent {
+    color: var(--blue);
+  }
+
+  .hero__lede {
+    margin: 28px 0 0;
+    max-width: 28em;
+    font-size: 20px;
+    line-height: 1.85;
+    color: var(--graphite);
+    text-wrap: pretty;
+  }
+
+  .hero__search {
+    margin-top: 36px;
+  }
+
+  .hero__try {
+    margin: 18px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    color: var(--graphite);
+  }
+
+  /* 原文樣張：扇形氣窗（.arch 最闊 500px）→ 木色窗身 → 紙面 */
+  .hero__aside {
+    flex: 1 1 420px;
+    min-width: 0;
+    margin: 0 auto;
+  }
+
+  .specimen {
+    margin: 0;
+    background: var(--paper);
+  }
+
+  .specimen__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-12);
+  }
+
+  .specimen__id {
+    line-height: 1.4;
+  }
+
+  .specimen__source {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  .specimen__meta {
+    font-size: 14px;
+    color: var(--graphite);
+  }
+
+  .specimen__controls {
+    display: flex;
+    gap: 6px;
+  }
+
+  .specimen__body {
+    display: flex;
+    justify-content: flex-end;
+    height: 330px;
+    padding: 22px 24px;
+    overflow: hidden;
+  }
+
+  .specimen__text {
+    writing-mode: vertical-rl;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    font-size: 26px;
+    line-height: 2.3;
+    letter-spacing: 0.06em;
+  }
+
+  /* 豎排有粵拼：字距 0.3em（同閱讀頁，2026-10-06 維護者要求）；行高保持 2.3，同關粵拼一致，開關粵拼時行唔會郁 */
+  .specimen[data-layout="vertical"]:not(.no-jp) .specimen__text {
+    letter-spacing: 0.3em;
+  }
+
+  .specimen[data-layout="horizontal"] .specimen__text {
+    writing-mode: horizontal-tb;
+    width: 100%;
+  }
+
+  .specimen__title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+
+  .specimen__para {
+    margin: 0;
+  }
+
+  .specimen__para :global(rt) {
+    font-family: var(--latin);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--blue);
+  }
+
+  .specimen[data-layout="vertical"] .specimen__para :global(rt) {
+    padding-inline: 0.3em;
+    padding-block-end: 4px;
+  }
+
+  .specimen.no-jp .specimen__para :global(rt) {
+    display: none;
+  }
+
+  .specimen__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 18px;
+    border-top: 1px solid var(--line-12);
+    font-size: 14px;
+  }
+
+  .specimen__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .specimen__more {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  /* ---- 1b 數字帶：青磚牆上開四扇細號燈籠框 ---- */
+  /* 四張固定 1／2／4 欄，唔好 auto-fit（790 至 1066px 會變 3+1） */
+  .stats__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding-top: 44px;
+    padding-bottom: 44px;
+  }
+
+  @media (min-width: 560px) {
+    .stats__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .stats__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .stat {
+    padding: 20px 22px 18px;
+  }
+
+  .stat__figure {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .stat__value {
+    font-family: var(--latin);
+    font-size: 52px;
+    line-height: 1;
+  }
+
+  .stat__unit {
+    font-size: 18px;
+    color: var(--tone-text);
+  }
+
+  .stat__label {
+    margin-top: 8px;
+    font-family: var(--latin);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--graphite);
+  }
+
+  /* ---- 1c 語料 ---- */
+  .corpora {
+    padding: clamp(64px, 7vw, 88px) 0 clamp(72px, 8vw, 96px);
+  }
+
+  .sec-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px 32px;
+    margin-bottom: 32px;
+  }
+
+  .corpora__eyebrow {
+    gap: 14px;
+  }
+
+  .sec-head__title {
+    margin-top: 12px;
+    font-size: clamp(32px, 3.6vw, 44px);
+    line-height: 1.2;
+  }
+
+  .sec-head__sub {
+    margin: 8px 0 0;
+    font-size: 17px;
+    color: var(--graphite);
+  }
+
+  .sec-head__link {
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  /* 主打卡（多期語料）：大號燈籠框 */
+  .feature {
+    flex: 1.35 1 560px;
+    min-width: 0;
+  }
+
+  .feature__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 34px 38px;
+  }
+
+  .feature__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+
+  .feature__year {
+    font-family: var(--latin);
+    font-size: 64px;
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--tone-num);
+  }
+
+  /* 窄卡換行時仍然貼右 */
+  .feature__kind {
+    margin-left: auto;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.7;
+    letter-spacing: 0.1em;
+    text-align: right;
+    color: var(--graphite);
+  }
+
+  .feature__title {
+    font-size: clamp(34px, 3.6vw, 46px);
+    line-height: 1.15;
+    letter-spacing: 0.06em;
+  }
+
+  .feature__facts {
+    margin: 10px 0 0;
+    font-size: 16px;
+    color: var(--graphite);
+  }
+
+  .feature__issues {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--line-14);
+    container-type: inline-size;
+  }
+
+  .issue-row {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 6px;
+    border-top: 1px solid var(--line-14);
+    color: inherit;
+    transition: background-color 200ms;
+  }
+
+  .issue-row:hover {
+    background: var(--blue-a06);
+    text-decoration: none;
+  }
+
+  .issue-row__label {
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .issue-row__facts {
+    font-size: 16px;
+    color: var(--graphite);
+  }
+
+  /* 窄卡換行時日期同「n / N」唔好斷開 */
+  .issue-row__facts .latin {
+    white-space: nowrap;
+  }
+
+  .issue-row__progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--latin);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .issue-row__meter {
+    --h: 5px;
+    width: 72px;
+  }
+
+  /* 窄卡（約 500px 以下視口）：進度落去第二行，日期唔使逐字斷 */
+  @container (max-width: 360px) {
+    .issue-row {
+      grid-template-columns: 76px minmax(0, 1fr);
+      row-gap: 6px;
+    }
+
+    .issue-row__label {
+      grid-row: span 2;
+    }
+
+    .issue-row__progress {
+      grid-column: 2;
+    }
+  }
+
+  .feature__foot {
+    margin-top: auto;
+  }
+
+  .feature__progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .feature__pct {
+    font-family: var(--latin);
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .feature__meter {
+    margin-top: 10px;
+  }
+
+  .feature__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  /* 原型實色掣冇邊 13px 24px；.btn 有 1px 透明邊，所以減 1px */
+  .feature__read {
+    padding: 12px 23px;
+  }
+
+  .feature__browse {
+    padding: 12px 24px;
+    border-color: var(--blue-a35);
+  }
+
+  .feature__browse:hover {
+    background: var(--blue-a08);
+    border-color: var(--blue-a35);
+  }
+
+  /* 次卡（其餘語料）：成張卡撳得（連結 ::after 鋪滿紙面），hover 變光 */
+  .corpora__side {
+    flex: 1 1 360px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .side-card {
+    flex: 1;
+  }
+
+  .side-card__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 28px 30px;
+  }
+
+  .side-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px 16px;
+  }
+
+  .side-card__year {
+    font-family: var(--latin);
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--tone-num);
+  }
+
+  .side-card__kind {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--graphite);
+  }
+
+  .side-card__title {
+    font-size: 24px;
+    line-height: 1.3;
+  }
+
+  .side-card__title--en {
+    font-family: var(--latin);
+    font-weight: 400;
+  }
+
+  .side-card__foot {
+    margin-top: auto;
+  }
+
+  .side-card__progress {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .side-card__pct {
+    font-family: var(--latin);
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  .side-card__meter {
+    --h: 6px;
+    margin-top: 10px;
+  }
+
+  .side-card__cta {
+    display: inline-flex;
+    margin-top: 18px;
+    padding-bottom: 2px;
+    border-bottom: 2px solid var(--tone);
+    color: var(--wood);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  /* ---- 1d 點樣讀 ---- */
+  .howto {
+    padding: clamp(64px, 8vw, 112px) 0;
+    background: var(--paper);
+    border-top: 1px solid var(--line-06);
+  }
+
+  .howto__title {
+    margin-top: 14px;
+    font-size: clamp(30px, 3.2vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .howto__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: clamp(26px, 2.6vw, 32px);
+    margin-top: 48px;
+  }
+
+  /* subgrid：同一行三欄嘅插圖、其一二三、H3、說明各自對齊（插圖取最高嗰張） */
+  .howto__col {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    row-gap: 18px;
+    align-content: start;
+  }
+
+  .howto__h3 {
+    font-size: 28px;
+    line-height: 1.25;
+  }
+
+  .howto__text {
+    margin: 0;
+    color: var(--graphite);
+    text-wrap: pretty;
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 270px;
+    padding: 24px;
+    background: var(--surface);
+    color: var(--wood);
+    transition: background-color 200ms;
+  }
+
+  .tile:hover {
+    background: var(--surface-3);
+    text-decoration: none;
+  }
+
+  .mini-card {
+    display: block;
+    background: var(--paper);
+    border: 1px solid var(--line-08);
+  }
+
+  .mini-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line-08);
+  }
+
+  .mini-card__title {
+    font-size: 18px;
+  }
+
+  .mini-card__rows {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 16px;
+    padding: 12px 16px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .mini-card__key {
+    color: var(--graphite);
+  }
+
+  .tile--vertical {
+    flex-direction: row;
+    align-items: center;
+    padding: 20px 24px;
+  }
+
+  .tile__vertical {
+    writing-mode: vertical-rl;
+    height: 236px;
+    font-size: 21px;
+    line-height: 1.9;
+    letter-spacing: 0.08em;
+  }
+
+  .tile__vertical > span {
+    display: block;
+  }
+
+  .tile__vertical .tile__vtitle {
+    margin-block-end: 10px;
+    color: var(--blue);
+  }
+
+  .tile--search {
+    gap: 14px;
+  }
+
+  .fold {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .fold__from,
+  .fold__to {
+    padding: 6px 14px;
+    font-size: 19px;
+  }
+
+  .fold__from {
+    background: var(--paper);
+    border: 1px solid rgba(30, 21, 18, 0.16);
+  }
+
+  .fold__arrow {
+    color: var(--blue);
+  }
+
+  .fold__to {
+    background: var(--blue);
+    color: #fff;
+  }
+
+  .kwic {
+    display: block;
+    padding: 14px 16px;
+    background: var(--paper);
+    border: 1px solid var(--line-08);
+  }
+
+  .kwic__line {
+    display: block;
+    font-size: 18px;
+    line-height: 1.8;
+  }
+
+  .kwic__line mark {
+    padding: 0 2px;
+  }
+
+  .kwic__src {
+    display: block;
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--graphite);
+  }
+</style>

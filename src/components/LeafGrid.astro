@@ -1,0 +1,33 @@
+---
+/**
+ * 逐頁格：每頁一格（13×13、gap 3px），已核驗翠綠實心、待校透明加琥珀幼邊，hover 寶藍，撳落去直達該頁。
+ * 補充導航（目錄同上一頁／下一頁係等效途徑），每格有 aria-label（例如「第 006 頁 · 已核驗」）。
+ */
+import { pageParam } from "../utils/reader.ts";
+
+interface Props {
+  corpus: string;
+  issue: string;
+  pages: readonly { page: number; status: string }[];
+  class?: string;
+}
+
+const { corpus, issue, pages, class: className, ...rest } = Astro.props;
+---
+
+<div class:list={["leaf-grid", className]} {...rest}>
+  {
+    pages.map(({ page, status }) => {
+      const verified = status === "verified";
+      const label = `第 ${pageParam(page)} 頁 · ${verified ? "已核驗" : "待校"}`;
+      return (
+        <a
+          class:list={["leaf", verified ? "leaf--ok" : "leaf--todo"]}
+          href={`/read/${corpus}/${issue}/${pageParam(page)}/`}
+          title={label}
+          aria-label={label}
+        ></a>
+      );
+    })
+  }
+</div>

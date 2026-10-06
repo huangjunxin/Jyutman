@@ -1,54 +1,37 @@
 ---
 /**
- * 一體化檢索欄：首頁 hero 與 /search 共用。
- * 移動端隨頁面邊距通欄，桌面 max-width 540px 居中；iOS 外觀重置見 global.css 的 .sbar 段。
+ * 大檢索框（64px 高、2px 木色框、寶藍「檢索」掣）：首頁 hero（variant="hero"，白底、最闊 600px、掣帶箭咀）
+ * 同 /search 檢索窗格（variant="band"，紙色底、填滿窗格、掣冇箭咀）共用。
+ * GET /search/?q=；示例 chip 由各頁自己出。樣式見 global.css 嘅 .searchbox 段。
  */
+import Icon from "./Icon.astro";
+
 interface Props {
   /** 當前查詢字（/search 頁由 URL 帶入）。 */
   value?: string;
-  /** 輸入框 id（/search 頁的腳本靠它取值）。 */
+  /** 輸入框 id（頁面腳本靠它取值）；唔好用 site-q（頁首精簡檢索框已用）。 */
   inputId?: string;
-  /** 是否顯示示例 pill 行。 */
-  examples?: boolean;
+  placeholder?: string;
+  variant?: "hero" | "band";
   class?: string;
 }
 
-const { value = "", inputId, examples = true, class: className } = Astro.props;
-
-const EXAMPLES = ["廣東", "唔係", "teng"];
+const { value = "", inputId, placeholder = "搵字詞，或者簡體字", variant = "hero", class: className, ...rest } = Astro.props;
 ---
 
-<div class:list={["sbar-wrap", className]}>
-  <form class="sbar" action="/search/" method="get" role="search">
-    <input
-      type="search"
-      name="q"
-      id={inputId}
-      value={value === "" ? undefined : value}
-      aria-label="全站檢索"
-      placeholder="搵字詞、專名或者拼式"
-      autocomplete="off"
-      enterkeyhint="search"
-    />
-    <button type="submit" class="sbar-go" aria-label="檢索">
-      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-        <circle cx="8.6" cy="8.6" r="5.9" fill="none" stroke="currentColor" stroke-width="2"></circle>
-        <line x1="13" y1="13" x2="17.6" y2="17.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        ></line>
-      </svg>
-    </button>
-  </form>
-
-  {
-    examples && (
-      <p class="sbar-examples">
-        <span>試試：</span>
-        {EXAMPLES.map((term) => (
-          <a class="sbar-pill" href={`/search/?q=${encodeURIComponent(term)}`}>
-            {term}
-          </a>
-        ))}
-      </p>
-    )
-  }
-</div>
+<form class:list={["searchbox", `searchbox--${variant}`, className]} action="/search/" method="get" role="search" {...rest}>
+  <span class="searchbox__icon"><Icon name="search" size={22} /></span>
+  <input
+    type="search"
+    name="q"
+    id={inputId}
+    value={value === "" ? undefined : value}
+    aria-label="全站檢索"
+    placeholder={placeholder}
+    autocomplete="off"
+    enterkeyhint="search"
+  />
+  <button type="submit" class="searchbox__go">
+    檢索{variant === "hero" && <Icon name="arrow-right" size={18} />}
+  </button>
+</form>

@@ -11,6 +11,9 @@ export interface CorrectionInput {
   fragment: string;
   selectedText: string;
   paragraphIndex: number;
+  /** 篇內正文碼點區間 [spanStart, spanEnd)；舊客戶端唔送就係 null。 */
+  spanStart: number | null;
+  spanEnd: number | null;
   type: string;
   suggestion: string | null;
 }
@@ -20,6 +23,8 @@ export interface ReportRow {
   fragment: string;
   selected_text: string;
   paragraph_index: number | null;
+  span_start: number | null;
+  span_end: number | null;
   type: string;
   suggestion: string | null;
   created_at: string;
@@ -43,7 +48,7 @@ export interface QueueRow {
   title: string | null;
 }
 
-/** 由文章 id 推出葉級 page_id（<corpus>/<issue>/<三位葉碼>）；查唔到回 null。 */
+/** 由文章 id 推出頁級 page_id（<corpus>/<issue>/<三位頁碼>）；查唔到回 null。 */
 export async function findPageId(db: D1Database, articleId: string): Promise<string | null> {
   const row = await db
     .prepare("SELECT corpus, issue, page FROM articles WHERE id = ?")
@@ -58,8 +63,8 @@ export async function insertCorrection(db: D1Database, input: CorrectionInput): 
   const result = await db
     .prepare(
       `INSERT INTO corrections
-         (article_id, page_id, span_start, span_end, fragment, selected_text, paragraph_index, type, suggestion, note, status, created_at)
-       VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, NULL, 'pending', ?)`,
+         (article_id, page_id, fragment, selected_text, paragraph_index, type, suggestion, span_start, span_end, note, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', ?)`,
     )
     .bind(
       input.articleId,
@@ -69,17 +74,19 @@ export async function insertCorrection(db: D1Database, input: CorrectionInput): 
       input.paragraphIndex,
       input.type,
       input.suggestion,
+      input.spanStart,
+      input.spanEnd,
       new Date().toISOString(),
     )
     .run();
   return Number(result.meta.last_row_id ?? 0);
 }
 
-/** 某篇仲待審嘅上報（供已回報角標還原）。 */
+/** 某篇仲待審嘅上報（供已回報角標還原；有區間就按區間標）。 */
 export async function listReports(db: D1Database, articleId: string): Promise<ReportRow[]> {
   const result = await db
     .prepare(
-      `SELECT id, fragment, selected_text, paragraph_index, type, suggestion, created_at
+      `SELECT id, fragment, selected_text, paragraph_index, span_start, span_end, type, suggestion, created_at
          FROM corrections
         WHERE article_id = ? AND status = 'pending'
         ORDER BY id DESC

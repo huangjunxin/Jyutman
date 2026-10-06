@@ -151,7 +151,7 @@ test("buildPageRecord：整段標記的無題文章不產生空文章塊", () =>
   );
 });
 
-test("buildPageRecord：status 由葉傳播，不取文章自身的 status", () => {
+test("buildPageRecord：status 由頁傳播，不取文章自身的 status", () => {
   const article = {
     id: "gdvp-01-002-04",
     title: "告白",

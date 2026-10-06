@@ -2,6 +2,7 @@
  * GET /api/search：查詢歸一與路由、查 D1、組命中片段。
  * 響應形狀與 src/pages/search/index.astro 的解析對齊；命中可緩存一分鐘。
  * 分頁：page 由 1 起，page_size 默認 20、上限 50。
+ * facets：逐語料命中篇數（唔受 corpus 過濾影響），供檢索頁篩選 pill 顯示。
  */
 
 import type { Context } from "hono";
@@ -53,13 +54,14 @@ export async function handleSearch(c: Context<{ Bindings: Env }>): Promise<Respo
   const corpora = (c.req.queries("corpus") ?? [])
     .filter((slug) => slug !== "")
     .slice(0, MAX_CORPUS_FILTERS);
-  const { rows, total } = await searchArticles(c.env.DB, plan, corpora, { page, pageSize });
+  const { rows, total, facets } = await searchArticles(c.env.DB, plan, corpora, { page, pageSize });
   const results = rows.map((row) => ({
     id: row.id,
     corpus: row.corpus,
     issue: row.issue,
     page: row.page,
     title: row.title,
+    status: row.status,
     ...locateAndSlice(row.text, plan.query),
   }));
   return c.json(
@@ -70,6 +72,7 @@ export async function handleSearch(c: Context<{ Bindings: Env }>): Promise<Respo
       page,
       page_size: pageSize,
       total,
+      facets,
       results,
       more: page * pageSize < total,
     },

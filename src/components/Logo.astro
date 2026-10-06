@@ -1,0 +1,16 @@
+---
+/**
+ * 標誌：2×2 窗花（粵 寶藍、語 琥珀、文 翠綠、叢 寶石紅），樣式見 global.css 嘅 .logo。
+ * 純裝飾（aria-hidden），旁邊一定要有「粵語文叢」文字。md 用喺頁首，lg 用喺頁尾。
+ */
+interface Props {
+  size?: "md" | "lg";
+  class?: string;
+}
+
+const { size = "md", class: className, ...rest } = Astro.props;
+---
+
+<span class:list={["logo", size === "lg" && "logo--lg", className]} aria-hidden="true" {...rest}
+  ><span>粵</span><span>語</span><span>文</span><span>叢</span></span
+>

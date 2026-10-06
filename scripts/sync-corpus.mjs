@@ -24,9 +24,9 @@ const DATA_README = `# 派生數據
 
 本目錄全部係派生數據，可由 \`scripts/sync-corpus.mjs\` 重建（讀上游 \`JyutmanDataPipeline/data/<corpus>/*.jsonl\` 發佈層）：
 
-- \`manifest.json\`：語料級摘要（標題照錄底本原名、年代、葉數、篇數、校對進度、掃描來源）。
-- \`<corpus>/issues.json\`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
-- \`<corpus>/<issue>/pages.json\`：葉級頁面數據，每葉 \`{page, status, blocks}\`；\`blocks\` 由文章切分而來，\`type\` 為 \`article\`（\`id\` / \`title\` / \`seq\` / \`text\` / \`text_norm\`）或 \`marker\`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
+- \`manifest.json\`：語料級摘要（標題照錄底本原名、年代、頁數、篇數、校對進度、掃描來源）。
+- \`<corpus>/issues.json\`：期號清單（日期、考證說明、頁數、篇數、已核驗與待校頁數）。
+- \`<corpus>/<issue>/pages.json\`：頁級數據，每頁 \`{page, status, blocks}\`；\`blocks\` 由文章切分而來，\`type\` 為 \`article\`（\`id\` / \`title\` / \`seq\` / \`text\` / \`text_norm\`）或 \`marker\`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
 - \`<corpus>/<issue>/jyutping.json\`：粵拼音表，\`{文章 id: [[字在正文中的下標, 字, 粵拼], …]}\`；來源為姊妹倉 \`Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json\`（tojyutping 生成），下標已換算到本站正文（標記段內的字略去）。
 - \`<corpus>/<issue>/translations.json\`（目前只有廣東白話報）：現代粵文今譯，\`{文章 id: {paragraphs: [譯文…], note_count}}\`；paragraphs 與本站正文段一一對應（標記段略去），來源為姊妹倉 \`Jyutman-Corpus/translations/gdvp.translations.json\`。
 
@@ -119,7 +119,7 @@ export function pickArticle(record) {
   };
 }
 
-/** 校驗並裁剪單葉記錄；status 由此傳播到葉級展示（見 docs/03 坑清單 ②）。 */
+/** 校驗並裁剪單頁記錄；status 由此傳播到頁級展示（見 docs/03 坑清單 ②）。 */
 export function pickPage(record) {
   if (!isRecord(record)) return null;
   if (!isText(record.corpus) || !isText(record.issue)) return null;
@@ -168,7 +168,7 @@ export function splitArticleText(text) {
 }
 
 /**
- * 由葉記錄與該葉文章生成 blocks。
+ * 由頁記錄與該頁文章生成 blocks。
  * 文章塊按 seq 排序；標記塊跟在所屬文章塊之後；text_norm 為檢索輔助字段。
  */
 export function buildPageRecord(page, articles) {
@@ -618,22 +618,22 @@ function syncCorpus(dataRoot, slug, jyutping, translations) {
     const issuePages = pageRecords
       .filter((page) => page.issue === issue.issue)
       .sort((a, b) => a.page - b.page);
-    if (issuePages.length === 0) warn(`期號 ${issue.issue} 沒有對應的葉記錄`);
+    if (issuePages.length === 0) warn(`期號 ${issue.issue} 沒有對應的頁記錄`);
 
     const document = [];
     const issueArticles = [];
     for (const page of issuePages) {
       const list = articlesByPage.get(`${page.issue}\u0000${page.page}`) ?? [];
-      if (list.length === 0) warn(`第 ${page.page} 葉沒有對應的文章記錄，正文可能缺失`);
+      if (list.length === 0) warn(`第 ${page.page} 頁沒有對應的文章記錄，正文可能缺失`);
       else if (page.articles !== 0 && list.length !== page.articles) {
-        warn(`第 ${page.page} 葉文章數不一致：pages.jsonl 記 ${page.articles}，articles.jsonl 有 ${list.length}`);
+        warn(`第 ${page.page} 頁文章數不一致：pages.jsonl 記 ${page.articles}，articles.jsonl 有 ${list.length}`);
       }
       const joined = list
         .slice()
         .sort((a, b) => a.seq - b.seq)
         .map((article) => article.text)
         .join("\n\n");
-      if (page.text !== joined) warn(`第 ${page.page} 葉頁文本與文章拼接不一致，已以文章切分為準`);
+      if (page.text !== joined) warn(`第 ${page.page} 頁的頁文本與文章拼接不一致，已以文章切分為準`);
 
       document.push(buildPageRecord(page, list));
       for (const article of list) {
@@ -667,7 +667,7 @@ function syncCorpus(dataRoot, slug, jyutping, translations) {
   if (translationMismatched > 0) warn(`今譯有 ${translationMismatched} 篇段數或原文對唔上，已略去`);
 
   const orphanCount = articleRecords.length - usedArticles.length;
-  if (orphanCount > 0) warn(`articles.jsonl 有 ${orphanCount} 篇不屬於任何已發佈葉，已略去`);
+  if (orphanCount > 0) warn(`articles.jsonl 有 ${orphanCount} 篇不屬於任何已發佈頁，已略去`);
 
   return {
     slug,
@@ -788,10 +788,10 @@ function main() {
       0,
     );
     console.log(
-      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 葉 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）｜粵拼 ${jyutpingArticles} 篇 / ${jyutpingReadings} 條｜今譯 ${translatedArticles} 篇`,
+      `  ${corpus.slug}：${corpus.issues.length} 期 / ${pageCount} 頁 / ${corpus.articles.length} 篇 / ${blocks} 塊（含 ${markers} 標記塊）｜粵拼 ${jyutpingArticles} 篇 / ${jyutpingReadings} 條｜今譯 ${translatedArticles} 篇`,
     );
   }
-  console.log(`  已核驗葉 ${corpora.reduce((t, c) => t + c.verifiedPages, 0)}，待校葉 ${corpora.reduce((t, c) => t + c.needsReviewPages, 0)}`);
+  console.log(`  已核驗頁 ${corpora.reduce((t, c) => t + c.verifiedPages, 0)}，待校頁 ${corpora.reduce((t, c) => t + c.needsReviewPages, 0)}`);
 
   if (warnings.length > 0) {
     console.warn(`\n容錯告警 ${warnings.length} 條：`);

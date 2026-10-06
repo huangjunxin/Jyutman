@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   endsWithSentenceEnd,
+  isCjkDominant,
   LATIN_RATIO_THRESHOLD,
   isLatinDominant,
   latinRatio,
@@ -15,7 +16,6 @@ import {
   percent,
   readingsByIndex,
   renderAnnotatedParagraph,
-  renderMergedParagraph,
   splitParagraphs,
   splitParagraphSpans,
   statusBadge,
@@ -47,9 +47,22 @@ test("isLatinDominant：英文原文與傳教士拼式歸羅馬字層，中文�
   assert.equal(LATIN_RATIO_THRESHOLD, 0.5);
 });
 
+test("isCjkDominant：漢字多過拉丁字母先豎排；純英文目錄、頁碼、半中半英唔豎", () => {
+  assert.equal(isCjkDominant("唔係茶杯；係水杯"), true);
+  assert.equal(isCjkDominant("𠝹開"), true, "擴展區字照計");
+  assert.equal(isCjkDominant("PREFACE ... ... ... ... ... ... page iii\n\nINTRODUCTION ... ... ... iv"), false, "點線拉低字母佔比都唔豎");
+  assert.equal(isCjkDominant("(22)"), false, "冇漢字唔豎");
+  assert.equal(isCjkDominant(""), false);
+  assert.equal(
+    isCjkDominant("（數字化告示頁：Internet Archive 掃描，cu31924023550951；無已知版權限制聲明）"),
+    false,
+    "漢字同字母一樣多唔豎",
+  );
+});
+
 test("markerNote：已登記標記有說明，未登記標記唔強作解釋", () => {
   assert.equal(markerNote("［插圖］"), "底本此處為插圖，影像待版權核查後開放。");
-  assert.equal(markerNote("［空白頁］"), "掃描確認為空白葉。");
+  assert.equal(markerNote("［空白頁］"), "掃描確認為空白頁。");
   assert.equal(markerNote("［現代襯頁］"), "現代掃描襯頁，非底本內容。");
   assert.equal(markerNote("［其他］"), null);
 });
@@ -61,7 +74,7 @@ test("statusBadge：verified 為已核驗，其餘按未校呈現", () => {
   assert.deepEqual(statusBadge("未來新狀態"), { label: "OCR 未校", tone: "ocr" });
 });
 
-test("pageParam：葉碼三位補零", () => {
+test("pageParam：頁碼三位補零", () => {
   assert.equal(pageParam(1), "001");
   assert.equal(pageParam(9), "009");
   assert.equal(pageParam(41), "041");
@@ -175,27 +188,6 @@ test("mergeParagraphSpans：合併只喺文章塊內發生，塊與塊之間唔�
   const second = mergeParagraphSpans(splitParagraphSpans("丙丁"));
   assert.deepEqual([...first, ...second].map((group) => group.text), ["甲乙", "丙丁"]);
   assert.deepEqual(mergeParagraphSpans([]), []);
-});
-
-test("renderMergedParagraph：逐片按各自下標注音，連排唔會令讀音走位", () => {
-  const readings = new Map([
-    [0, "gwong2"],
-    [1, "dung1"],
-    [4, "baak6"],
-    [5, "waa2"],
-  ]);
-  const merged = mergeParagraphSpans(splitParagraphSpans("廣東\n\n白話"));
-  assert.equal(
-    renderMergedParagraph(merged[0], readings),
-    "<ruby>廣<rt>gwong2</rt></ruby><ruby>東<rt>dung1</rt></ruby><ruby>白<rt>baak6</rt></ruby><ruby>話<rt>waa2</rt></ruby>",
-    "第二片嘅讀音仍然對正文下標 4、5",
-  );
-  const latin = mergeParagraphSpans(splitParagraphSpans("a tumhler\n\n唔係茶杯"));
-  assert.equal(
-    renderMergedParagraph(latin[0], new Map([[11, "m4"]])),
-    '<span class="rom">a tumhler</span> <ruby>唔<rt>m4</rt></ruby>係茶杯',
-    "拉丁片包 .rom，連接位補空格，讀音按正文下標 11",
-  );
 });
 
 test("pairTranslations：原文組合併之後，譯文按同組順序連排", () => {

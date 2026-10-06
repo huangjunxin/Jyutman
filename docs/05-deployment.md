@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-03）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-06）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 部署方案
 
@@ -11,7 +11,7 @@ Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上�
 **不用 Cloudflare Pages 的理由**：
 
 - 官方已推荐新项目使用 Workers + Static Assets，而非 Pages。
-- 静态文件数上限：Pages 免费 2 万 / 付费 10 万。若「每叶一页」，文件数会撞限（应对见 02 §3 与 §10：按卷/章合并出页 + 叶级内容客户端渲染）。
+- 静态文件数上限：Pages 免费 2 万 / 付费 10 万。若「每页一个页面」，文件数会撞限（应对见 02 §3 与 §10：按卷/章合并出页 + 页级内容客户端渲染）。
 - Workers 免费 10 万请求/日；单一 Worker 即可同时托管静态站点与 API，D1/R2 绑定更直接。
 - 静态资产请求如何计入/是否计入 Workers 免费额度：**待验证**，以 Cloudflare 最新计费说明为准。
 
@@ -49,7 +49,7 @@ GitHub 仓库 Jyutman
 - canonical-host 中间件：**已落地**（`server/index.ts` + `src/utils/host-policy.ts`）：Host 非 `jyutman.com` 且非 `*.workers.dev` 时 301 到 `https://jyutman.com` 同路径同查询串；本地 `localhost` / `127.0.0.1` 放行，方便开发。
 - `*.workers.dev`（含版本预览域）所有响应加 `X-Robots-Tag: noindex`，避免被搜索引擎收录：**已落地**（静态资产与 API 响应同样生效）。
 - 注意：跳转与 noindex 要覆盖静态资产，故 `assets.run_worker_first` 为 `true`，全部请求都计入 Workers 请求数（免费 10 万/日，当前规模远低于额度）。
-- URL 结构（与 04 §2.2 一致）：`/`、`/browse/:corpus`、`/read/:corpus/:issue/:page`、`/search`；每叶可索引 URL + sitemap + schema.org Book。
+- URL 结构（与 04 §2.2 一致）：`/`、`/browse/:corpus`、`/read/:corpus/:issue/:page`、`/search`；每页可索引 URL + sitemap + schema.org Book。
 
 ## 5. CI/CD
 

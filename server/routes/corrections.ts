@@ -14,8 +14,10 @@ import {
   listReports,
 } from "../db/corrections.ts";
 import type { Env } from "../env.ts";
+import { CORRECTION_TYPES } from "../../src/utils/reader-view.ts";
 import { bearerToken, safeEqual } from "../lib/auth.ts";
 import {
+  type FieldResult,
   isRecord,
   readEnum,
   readInteger,
@@ -25,8 +27,8 @@ import {
 
 type AppContext = Context<{ Bindings: Env }>;
 
-/** 上報類型：與閱讀器表單 chips 一致。 */
-export const CORRECTION_TYPES = ["錯字", "缺字", "標點分段", "今譯疑問", "其他"] as const;
+/** 上報類型：與閱讀器表單 chips 一致（定義喺 src/utils/reader-view.ts，前後端共用）。 */
+export { CORRECTION_TYPES };
 export type CorrectionType = (typeof CORRECTION_TYPES)[number];
 
 export const ADJUDICATE_ACTIONS = {
@@ -42,6 +44,7 @@ const LIMITS = {
   fragment: 600,
   suggestion: 1000,
   paragraphIndex: 5000,
+  spanOffset: 100000,
 } as const;
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
@@ -56,6 +59,21 @@ function isAdmin(c: AppContext): boolean {
   const expected = c.env.ADMIN_TOKEN;
   if (token === null || expected === undefined || expected === "") return false;
   return safeEqual(token, expected);
+}
+
+const isAbsent = (value: unknown): boolean => value === undefined || value === null;
+
+/** 選填正文區間（篇內碼點下標）：span_start / span_end 齊出或齊缺，0 ≤ start ≤ end ≤ 上限。 */
+function readSpan(record: Record<string, unknown>): FieldResult<{ start: number; end: number } | null> {
+  const noStart = isAbsent(record.span_start);
+  if (noStart && isAbsent(record.span_end)) return { ok: true, value: null };
+  if (noStart || isAbsent(record.span_end)) return { ok: false, error: "區間起點同終點要一齊提供" };
+  const start = readInteger(record.span_start, { label: "區間起點", min: 0, max: LIMITS.spanOffset });
+  if (!start.ok) return start;
+  const end = readInteger(record.span_end, { label: "區間終點", min: 0, max: LIMITS.spanOffset });
+  if (!end.ok) return end;
+  if (end.value < start.value) return { ok: false, error: "區間終點唔可以早過起點" };
+  return { ok: true, value: { start: start.value, end: end.value } };
 }
 
 /** POST /api/correct：匿名上報，寫入 pending。 */
@@ -89,6 +107,8 @@ export async function handleCorrect(c: AppContext): Promise<Response> {
     max: LIMITS.paragraphIndex,
   });
   if (!paragraphIndex.ok) return badRequest(c, paragraphIndex.error);
+  const span = readSpan(record);
+  if (!span.ok) return badRequest(c, span.error);
 
   const pageId = await findPageId(c.env.DB, articleId.value);
   const id = await insertCorrection(c.env.DB, {
@@ -97,6 +117,8 @@ export async function handleCorrect(c: AppContext): Promise<Response> {
     fragment: fragment.value,
     selectedText: selectedText.value,
     paragraphIndex: paragraphIndex.value,
+    spanStart: span.value?.start ?? null,
+    spanEnd: span.value?.end ?? null,
     type: type.value,
     suggestion: suggestion.value,
   });

@@ -82,8 +82,49 @@ test("POST /api/correct：有效上報寫入 pending，page_id 由文章推出",
   assert.equal(insert.params[4], 1);
   assert.equal(insert.params[5], "錯字");
   assert.equal(insert.params[6], "似係「聖葯」");
+  assert.equal(insert.params[7], null, "冇送區間就寫 NULL（舊客戶端照用得）");
+  assert.equal(insert.params[8], null);
   assert.ok(insert.sql.includes("'pending'"), "狀態寫死 pending");
   assert.ok(!insert.sql.includes("submitter"), "匿名制，唔存任何提交者資料");
+});
+
+test("POST /api/correct：span_start / span_end 寫入區間欄位", async () => {
+  const db = createDb();
+  const response = await post("/api/correct", { ...validPayload, span_start: 12, span_end: 14 }, makeEnv(db));
+  assert.equal(response.status, 200);
+  const insert = db.calls.find((call) => call.sql.includes("INSERT INTO corrections"));
+  assert.match(insert.sql, /suggestion, span_start, span_end/u);
+  assert.equal(insert.params[7], 12);
+  assert.equal(insert.params[8], 14);
+
+  const empty = createDb();
+  const same = await post("/api/correct", { ...validPayload, span_start: "5", span_end: "5", website: "" }, makeEnv(empty));
+  assert.equal(same.status, 200, "起點等於終點、數字字串都接受");
+  const row = empty.calls.find((call) => call.sql.includes("INSERT INTO corrections"));
+  assert.deepEqual([row.params[7], row.params[8]], [5, 5]);
+
+  const nulls = createDb();
+  assert.equal((await post("/api/correct", { ...validPayload, span_start: null, span_end: null }, makeEnv(nulls))).status, 200);
+});
+
+test("POST /api/correct：區間唔合法一律 400，唔寫入", async () => {
+  const db = createDb();
+  const env = makeEnv(db);
+  const cases = [
+    { span_start: 3 },
+    { span_end: 3 },
+    { span_start: 9, span_end: 3 },
+    { span_start: -1, span_end: 3 },
+    { span_start: 0, span_end: 100001 },
+    { span_start: 1.5, span_end: 3 },
+    { span_start: "一", span_end: 3 },
+  ];
+  for (const span of cases) {
+    const response = await post("/api/correct", { ...validPayload, ...span }, env);
+    assert.equal(response.status, 400, JSON.stringify(span));
+    assert.match((await response.json()).error, /區間/u);
+  }
+  assert.equal(db.calls.length, 0, "校驗失敗時唔會寫入");
 });
 
 test("POST /api/correct：缺欄位或類型唔合法一律 400", async () => {
@@ -133,6 +174,8 @@ test("GET /api/reports：返回該篇待審上報形狀", async () => {
         fragment: "乜野叫做聖藥呢。白話報就係喇。",
         selected_text: "聖藥",
         paragraph_index: 1,
+        span_start: 8,
+        span_end: 10,
         type: "錯字",
         suggestion: null,
         created_at: "2026-10-03T00:00:00.000Z",
@@ -148,12 +191,15 @@ test("GET /api/reports：返回該篇待審上報形狀", async () => {
   const body = await response.json();
   assert.equal(body.article_id, "gdvp-01-009-01");
   assert.equal(body.reports.length, 1);
+  assert.match(db.calls[0].sql, /paragraph_index, span_start, span_end/u, "已回報角標按區間還原");
   assert.deepEqual(Object.keys(body.reports[0]).sort(), [
     "created_at",
     "fragment",
     "id",
     "paragraph_index",
     "selected_text",
+    "span_end",
+    "span_start",
     "suggestion",
     "type",
   ]);

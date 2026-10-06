@@ -133,25 +133,6 @@ export function mergeParagraphSpans(spans: readonly ParagraphSpan[]): MergedPara
   return merged;
 }
 
-/**
- * 連排段落嘅 HTML：逐片按各自正文章節下標注音，再按連接規則拼埋；
- * 拉丁為主嘅切片包一層 .rom（等寬層），令連排之後嘅漢字仍然用襯線正文。
- */
-export function renderMergedParagraph(
-  paragraph: MergedParagraph,
-  readings: ReadonlyMap<number, string>,
-): string {
-  let html = "";
-  let previous = "";
-  for (const span of paragraph.spans) {
-    if (previous !== "") html += paragraphJoin(previous, span.text);
-    const inner = renderAnnotatedParagraph(span.text, span.start, readings);
-    html += isLatinDominant(span.text) ? `<span class="rom">${inner}</span>` : inner;
-    previous = span.text;
-  }
-  return html;
-}
-
 /** 今譯段落連排用嘅分隔：全角空格。 */
 export const MODTRANS_JOIN = "\u3000";
 
@@ -196,7 +177,8 @@ export function readingsByIndex(entries: readonly JyutpingEntry[] | undefined): 
   return readings;
 }
 
-function escapeHtml(text: string): string {
+/** HTML 轉義（& < >）：正文、粵拼、今譯共用。 */
+export function escapeHtml(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
@@ -237,13 +219,18 @@ export function isLatinDominant(text: string): boolean {
   return latinRatio(text) >= LATIN_RATIO_THRESHOLD;
 }
 
+/** 漢文為主（豎排條件）：漢字多過拉丁字母；冇漢字嘅英文、目錄點線、頁碼一律唔算。 */
+export function isCjkDominant(text: string): boolean {
+  return [...text].filter(isCjkIdeograph).length > (text.match(/[A-Za-z]/gu) ?? []).length;
+}
+
 /** 版面標記的說明文字；未登記的標記只照錄原文，不強作解釋。 */
 export function markerNote(marker: string): string | null {
   switch (marker) {
     case "［插圖］":
       return "底本此處為插圖，影像待版權核查後開放。";
     case "［空白頁］":
-      return "掃描確認為空白葉。";
+      return "掃描確認為空白頁。";
     case "［現代襯頁］":
       return "現代掃描襯頁，非底本內容。";
     default:
@@ -268,7 +255,7 @@ export function statusBadge(status: string): StatusBadge {
   return { label: "OCR 未校", tone: "ocr" };
 }
 
-/** 葉碼在 URL 與展示中一律三位補零（掃描序號，永遠連續）。 */
+/** 頁碼在 URL 與展示中一律三位補零（掃描序號，永遠連續）。 */
 export function pageParam(page: number): string {
   return String(page).padStart(3, "0");
 }
