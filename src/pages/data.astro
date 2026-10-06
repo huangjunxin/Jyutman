@@ -580,13 +580,16 @@ const steps = [
   }
 
   /* 五、已發佈語料表 */
+  /* 左右各留 4px 畀焦點框（2px + offset 2px），唔係會俾滾動容器裁走；負邊距抵銷，表格位置唔變 */
   .table-wrap {
+    margin: 0 -4px;
+    padding: 0 4px;
     overflow-x: auto;
-    border-top: 2px solid var(--wood);
   }
 
   table {
     width: 100%;
+    border-top: 2px solid var(--wood);
     min-width: 640px;
     border-collapse: collapse;
     font-size: 17px;
@@ -608,12 +611,6 @@ const steps = [
 
   td {
     padding: 14px 16px 14px 0;
-  }
-
-  /* 留 4px 畀焦點框（2px + offset 2px），唔係會俾滾動容器裁走左邊 */
-  th:first-child,
-  td:first-child {
-    padding-left: 4px;
   }
 
   td.source {
