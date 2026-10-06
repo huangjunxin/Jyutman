@@ -559,9 +559,8 @@ const stats = [
     letter-spacing: 0.06em;
   }
 
-  /* 豎排有粵拼：同閱讀頁一致（行高 1.9、字距 0.3em，2026-10-06 維護者要求）；橫排同關粵拼照舊 2.3／0.06em */
+  /* 豎排有粵拼：字距 0.3em（同閱讀頁，2026-10-06 維護者要求）；行高保持 2.3，同關粵拼一致，開關粵拼時行唔會郁 */
   .specimen[data-layout="vertical"]:not(.no-jp) .specimen__text {
-    line-height: 1.9;
     letter-spacing: 0.3em;
   }
 

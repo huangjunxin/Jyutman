@@ -1519,8 +1519,8 @@ const articleJsonLd = {
   }
 
   /* 正文：橫排 CJK 22px；英文為主 19px；豎排只畀 CJK 篇章 26px。
-     豎排有粵拼：行高 1.9、字距 0.3em（2026-10-06 維護者要求，偏離 handoff 嘅 2.5／0.08em）：
-     同一行字拉開、行與行收窄，每個字連埋粵拼自成一格，唔會睇錯隔籬行。 */
+     豎排有粵拼：字距 0.3em、行高 2（同關粵拼一致，開關粵拼時行唔會郁）；2026-10-06 維護者要求，
+     偏離 handoff 嘅 2.5／0.08em：同一行字拉開，每個字連埋粵拼自成一格，唔會睇錯隔籬行。 */
   .art-text {
     display: flex;
     justify-content: flex-end;
@@ -1556,13 +1556,12 @@ const articleJsonLd = {
     overflow-y: hidden;
     padding-bottom: 6px;
     font-size: 26px;
-    line-height: 1.9;
+    line-height: 2;
     letter-spacing: 0.3em;
   }
 
-  /* 豎排冇粵拼：冇 rt 要讓位，行高 2、字距 0.08em 照舊 */
+  /* 豎排冇粵拼：冇 rt 要讓位，字距收返 0.08em；行高同開粵拼一樣係 2 */
   :global(html.rd-nojp:not(.rd-h)) .art--cjk .art-flow {
-    line-height: 2;
     letter-spacing: 0.08em;
   }
 
