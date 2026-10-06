@@ -301,7 +301,14 @@ const stats = [
           others.length > 0 && (
             <div class="corpora__side">
               {others.map((card) => (
-                <Glass as="article" tone={card.meta.tone} flush class="side-card" paneClass="side-card__pane">
+                <Glass
+                  tone={card.meta.tone}
+                  flush
+                  href={card.href}
+                  class="side-card"
+                  paneClass="side-card__pane"
+                  aria-label={`開始閱讀：${card.corpus.title}`}
+                >
                   <div class="side-card__top">
                     <span class="side-card__year">{card.corpus.year ?? "年代待考"}</span>
                     <span class="side-card__kind">
@@ -325,12 +332,9 @@ const stats = [
                     <div class="meter side-card__meter" style={`--pct:${card.pct}%`} aria-hidden="true">
                       <i />
                     </div>
-                    <a class="side-card__cta" href={card.href}>
+                    <span class="side-card__cta" aria-hidden="true">
                       開始閱讀 →
-                      <span class="visually-hidden">
-                        ：<span lang={card.meta.script === "en" ? "en" : undefined}>{card.corpus.title}</span>
-                      </span>
-                    </a>
+                    </span>
                   </div>
                 </Glass>
               ))}
@@ -860,11 +864,6 @@ const stats = [
 
   .side-card {
     flex: 1;
-    transition: filter 300ms;
-  }
-
-  .side-card:hover {
-    filter: brightness(1.05);
   }
 
   .side-card__pane {
@@ -938,16 +937,6 @@ const stats = [
     color: var(--wood);
     font-size: 17px;
     font-weight: 600;
-  }
-
-  .side-card__cta::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-  }
-
-  .side-card__cta:hover {
-    text-decoration: none;
   }
 
   /* ---- 1d 點樣讀 ---- */
