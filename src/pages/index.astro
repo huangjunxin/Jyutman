@@ -450,18 +450,21 @@ const stats = [
   /* 數值照 design_handoff_jyutman_xiguan 原型「首頁」四段（Hero／數字／語料／點樣讀）。 */
 
   /* ---- 1a Hero ---- */
+  /* 左欄頂（眉標）同右邊滿洲窗上沿對齊 */
   .hero__inner {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
     gap: clamp(40px, 5vw, 64px);
     padding-top: clamp(48px, 6vw, 72px);
     padding-bottom: clamp(64px, 7vw, 96px);
   }
 
+  /* 眉標行高（15px × 1.75）令窗格低咗約 7px，上移抵銷，等窗格頂同氣窗頂齊 */
   .hero__main {
     flex: 1 1 540px;
     min-width: 0;
+    margin-top: -7px;
   }
 
   .hero__title {
