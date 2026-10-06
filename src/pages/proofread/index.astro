@@ -31,7 +31,7 @@ const tiles = [
     <section class="head">
       <div class="wrap head__inner">
         <div>
-          <span class="badge badge--gold head__badge">內部工具 · 唔對外開放</span>
+          <span class="badge badge--amber head__badge">內部工具 · 唔對外開放</span>
           <h1>校對工作台</h1>
           <p class="head__sub">匿名上報經此審閱 · 本站唔會直接回寫上游</p>
         </div>
@@ -75,7 +75,7 @@ const tiles = [
               data-status={tile.status}
               aria-pressed={tile.status === "pending" ? "true" : "false"}
             >
-              <span class="tile__n" data-count={tile.status}>–</span>
+              <span class="tile__n" data-count={tile.status}>…</span>
               <span class="tile__label">{tile.label}</span>
             </button>
           ))
@@ -431,10 +431,6 @@ const tiles = [
   </script>
 
   <style>
-    .proof [hidden] {
-      display: none !important;
-    }
-
     /* 頁頭 */
     .head {
       border-bottom: 1px solid var(--line-10);
@@ -452,22 +448,18 @@ const tiles = [
 
     .head__badge {
       padding: 3px 10px;
-      font-weight: 700;
-      line-height: 1.75;
       letter-spacing: 0.12em;
     }
 
     h1 {
       margin-top: 16px;
-      font-size: clamp(48px, 7vw, 88px);
+      font-size: clamp(40px, 4.4vw, 56px);
       line-height: 1;
       letter-spacing: -0.03em;
-      color: var(--ink);
     }
 
     .head__sub {
       margin: 14px 0 0;
-      font-size: 16px;
       color: var(--graphite);
     }
 
@@ -480,17 +472,16 @@ const tiles = [
     .tool-btn,
     .text-btn {
       padding: 9px 16px;
-      font-size: 14px;
+      font-size: 16px;
     }
 
     .tool-btn {
-      border-color: rgba(3, 22, 50, 0.25);
-      background: var(--card);
-      color: var(--ink);
+      border-color: rgba(30, 21, 18, 0.25);
+      background: var(--paper);
     }
 
     .tool-btn:hover {
-      background: var(--surface-low);
+      background: var(--surface);
     }
 
     .text-btn {
@@ -499,7 +490,7 @@ const tiles = [
     }
 
     .text-btn:hover {
-      color: var(--kapok);
+      color: var(--blue);
     }
 
     /* 密碼頁 */
@@ -515,7 +506,7 @@ const tiles = [
       max-width: 520px;
       padding: clamp(28px, 4vw, 44px);
       border: 1px solid var(--line-12);
-      background: var(--card);
+      background: var(--paper);
     }
 
     .gate__lock {
@@ -524,20 +515,19 @@ const tiles = [
       justify-content: center;
       width: 48px;
       height: 48px;
-      background: var(--ink);
-      color: var(--parchment);
+      background: var(--wood);
+      color: var(--on-dark);
     }
 
     h2 {
       margin-top: 22px;
       font-size: 30px;
       line-height: 1.2;
-      color: var(--ink);
     }
 
     .gate__hint {
       margin: 10px 0 0;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1.8;
       color: var(--graphite);
     }
@@ -548,27 +538,23 @@ const tiles = [
       height: 52px;
       margin-top: 22px;
       padding: 0 16px;
-      border: 2px solid var(--ink);
-      border-radius: 0;
-      background: var(--parchment);
-      color: var(--ink);
-      font-family: var(--font-mono);
-      font-size: 16px;
-      -webkit-appearance: none;
-      appearance: none;
+      border: 2px solid var(--wood);
+      background: var(--surface-2);
+      font-family: var(--mono);
+      font-size: 18px;
     }
 
     .gate__error {
       margin: 10px 0 0;
-      font-size: 13px;
-      color: var(--kapok);
+      font-size: 15px;
+      color: var(--blue);
     }
 
     .gate__go {
       width: 100%;
       height: 52px;
       margin-top: 14px;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 700;
       letter-spacing: 0.1em;
     }
@@ -586,32 +572,32 @@ const tiles = [
     }
 
     .tile {
-      --n: var(--ink);
+      --n: var(--wood);
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 6px;
       padding: 18px 20px;
       border: 1px solid var(--line-12);
-      background: var(--card);
-      color: var(--ink);
+      background: var(--paper);
       text-align: left;
       cursor: pointer;
       transition:
         background-color 200ms,
-        border-color 200ms;
+        border-color 200ms,
+        color 200ms;
     }
 
     .tile:hover {
-      background: var(--surface-low);
+      background: var(--surface);
     }
 
     .tile--pending {
-      --n: var(--kapok);
+      --n: var(--blue);
     }
 
     .tile--accepted {
-      --n: var(--archive-green);
+      --n: var(--green);
     }
 
     .tile--rejected {
@@ -619,25 +605,26 @@ const tiles = [
     }
 
     .tile--deferred {
-      --n: var(--muted-gold);
+      --n: var(--amber-text);
     }
 
     .tile[aria-pressed="true"] {
-      --n: var(--parchment);
-      border-color: var(--ink);
-      background: var(--ink);
-      color: var(--parchment);
+      --n: var(--on-dark);
+      border-color: var(--wood);
+      background: var(--wood);
+      color: var(--on-dark);
     }
 
     .tile__n {
-      font-family: var(--font-serif);
-      font-size: 44px;
+      font-family: var(--latin);
+      font-size: 36px;
+      font-weight: 300;
       line-height: 1;
       color: var(--n);
     }
 
     .tile__label {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
     }
 
@@ -648,34 +635,34 @@ const tiles = [
       /* 冇 row-gap：空嘅導出訊息喺窄螢幕換行時唔好撐高 */
       gap: 0 24px;
       margin: 20px 0 4px;
-      font-size: 13px;
+      font-size: 15px;
       color: var(--graphite);
     }
 
+    /* 頁面底上翠綠字唔夠 4.5:1，用 --green-text */
     .meta__msg {
       font-weight: 600;
-      color: var(--archive-green);
+      color: var(--green-text);
     }
 
     .state {
       margin: 40px 0 0;
       text-align: center;
-      font-family: var(--font-serif);
       font-size: 24px;
       color: var(--graphite);
     }
 
     .state--error {
-      color: var(--kapok);
+      color: var(--blue);
     }
 
     .empty {
       margin-top: 20px;
       padding: 40px 24px;
       border: 1px dashed var(--line-20);
-      background: var(--surface-low);
+      background: var(--surface);
       text-align: center;
-      font-size: 14px;
+      font-size: 16px;
       color: var(--graphite);
     }
 
@@ -703,43 +690,42 @@ const tiles = [
 
     .row__type {
       padding: 1px 10px;
-      border: 1px solid var(--kapok);
-      border-radius: 8px;
-      color: var(--kapok);
-      font-size: 12px;
+      border: 1px solid var(--blue);
+      color: var(--blue);
+      font-size: 14px;
       font-weight: 700;
-      line-height: 1.75;
     }
 
     .row__status {
+      padding: 2px 10px;
       font-weight: 700;
-      line-height: 1.75;
     }
 
     .row__status[data-status="pending"] {
-      background: var(--kapok-a10);
-      color: var(--kapok);
+      background: var(--blue-a10);
+      color: var(--blue);
     }
 
+    /* 已採用：翠綠淡底上用 --green-text 先夠 4.5:1 */
     .row__status[data-status="accepted"] {
       background: var(--green-a14);
-      color: var(--archive-green);
+      color: var(--green-text);
     }
 
     .row__status[data-status="rejected"] {
-      background: var(--graphite-a10);
+      background: var(--graphite-a12);
       color: var(--graphite);
     }
 
     .row__status[data-status="deferred"] {
-      background: var(--gold-a12);
-      color: var(--muted-gold);
+      background: var(--amber-a16);
+      color: var(--amber-text);
     }
 
     .row__where,
     .row__when {
-      font-family: var(--font-mono);
-      font-size: 12px;
+      font-family: var(--mono);
+      font-size: 14px;
       color: var(--graphite);
       overflow-wrap: anywhere;
     }
@@ -750,10 +736,8 @@ const tiles = [
 
     .row__frag {
       margin: 12px 0 0;
-      font-family: var(--font-serif);
       font-size: 21px;
       line-height: 1.9;
-      color: var(--ink);
       overflow-wrap: anywhere;
     }
 
@@ -763,7 +747,7 @@ const tiles = [
 
     .row__sugg {
       margin: 6px 0 0;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 1.8;
       color: var(--graphite);
       overflow-wrap: anywhere;
@@ -772,7 +756,7 @@ const tiles = [
     .row__go {
       display: inline-block;
       margin-top: 8px;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 600;
     }
 
@@ -786,7 +770,7 @@ const tiles = [
       padding: 8px 16px;
       border: 1px solid transparent;
       background: transparent;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       cursor: pointer;
       transition: background-color 200ms;
@@ -795,30 +779,30 @@ const tiles = [
     .act--accept {
       padding: 9px 16px;
       border: 0;
-      background: var(--archive-green);
+      background: var(--green);
       color: #fff;
     }
 
     .act--accept:hover {
-      background: var(--archive-green-hover);
+      background: #086228;
     }
 
     .act--reject {
-      border-color: var(--kapok-a40);
-      color: var(--kapok);
+      border-color: var(--blue-a40);
+      color: var(--blue);
     }
 
     .act--reject:hover {
-      background: rgba(181, 58, 37, 0.08);
+      background: var(--blue-a08);
     }
 
     .act--defer {
-      border-color: rgba(114, 91, 53, 0.45);
-      color: var(--muted-gold);
+      border-color: rgba(176, 118, 16, 0.45);
+      color: var(--amber-text);
     }
 
     .act--defer:hover {
-      background: rgba(114, 91, 53, 0.08);
+      background: rgba(176, 118, 16, 0.08);
     }
   </style>
 </Base>
