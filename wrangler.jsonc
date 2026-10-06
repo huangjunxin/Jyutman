@@ -29,5 +29,14 @@
   ],
   "observability": {
     "enabled": true
+  },
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "jyutman",
+        "database_id": "7c4ba286-7a32-408f-920e-d55d0d0bc0d9"
+      }
+    ]
   }
 }

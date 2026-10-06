@@ -20,7 +20,9 @@ Astro 构建产物（`dist/`）作为 Static Assets 挂在同一个 Worker 上�
 ```text
 GitHub 仓库 Jyutman
    ├─ Actions: CI（test / lint / typecheck / build）
-   ├─ Actions: deploy（push main → wrangler deploy）
+   ├─ Cloudflare Workers Builds（Git 集成，正式部署通道）：
+   │     push main   → 构建 + npx wrangler deploy → jyutman.com
+   │     其他分支/PR → npx wrangler preview → 预览 URL（见 §3）
    └─ Actions: sync-data（corpus release → D1 + R2）
                                    │
                     ┌──────────────┴──────────────┐
@@ -37,10 +39,12 @@ GitHub 仓库 Jyutman
 
 | 环境 | 触发 | 说明 |
 |---|---|---|
-| production | push main | jyutman.com |
-| preview | PR | Workers 原生支持 preview 环境与 URL；每个 PR 一个预览地址 |
+| production | push main | Cloudflare Workers Builds 自动构建并部署：构建命令 `npm ci && npm run build`，部署命令 `npx wrangler deploy` → jyutman.com |
+| preview | 非 main 分支 / PR | Workers Previews：预览命令 `npx wrangler preview`（默认），预览名默认取分支名；URL 形态 `<preview-name>-jyutman.huangjunxin.workers.dev`（另有 `<deployment-id>-jyutman.huangjunxin.workers.dev` 固定版本 URL）。预览自带 `X-Robots-Tag: noindex`（workers.dev 域） |
 
-**待决策**：preview 连生产 D1/R2，还是连独立 staging 资源。倾向独立（避免预览写入污染生产 corrections），但成本与复杂度待评估。
+**已定（2026-10-06）**：预览经 `wrangler.jsonc` 的 `previews.d1_databases` 绑**同一个生产 D1**（`7c4ba286-7a32-408f-920e-d55d0d0bc0d9`），让预览的 `/api/search` 可用；写路径风险可接受：`/api/correct` 公开但有 IP 令牌桶与蜜罐，`/api/queue`、`/api/adjudicate` 需 `ADMIN_TOKEN`，预览未设该 secret 时一律 401。实测：手动建一次预览（`npx wrangler preview --name config-check`）后 `/api/search?q=唔` 返回 `total 426`，预览页 200 且带 noindex，验证完已 `npx wrangler preview delete` 清理。
+
+注意：预览**不继承**生产设置（bindings / vars / secrets 都要在 `previews` 块或 Previews Base 配置里显式给）；secrets 不入配置文件，需用 `npx wrangler preview secret put` 或 dashboard 的 Previews Base。
 
 ## 4. 域名与 URL
 
@@ -73,7 +77,19 @@ jobs:
 
 工作流已落地 `.github/workflows/ci.yml`（Node 24，`npm ci` / `npm test` / `npm run lint` / `npm run typecheck` / `npm run build`），首个 run 已通过。
 
-部署目前由本机 `npx wrangler deploy` 手动执行（Worker + Static Assets + D1 绑定，配置见 `wrangler.jsonc`）；deploy workflow 待补。
+**部署通道（2026-10-06 起）**：正式通道是 Cloudflare **Workers Builds**（Git 集成），不再依赖 GitHub Actions 部署 job：
+
+| 项 | 值 |
+|---|---|
+| 连接 | Worker `jyutman` → Settings → Builds → Connect，仓库 `huangjunxin/Jyutman`，分支 `main`，根目录 `/` |
+| 构建命令 | `npm ci && npm run build` |
+| 部署命令 | `npx wrangler deploy`（默认；生产分支构建即上线） |
+| 预览命令 | `npx wrangler preview`（默认；非生产分支构建出预览 URL，并回帖到 PR） |
+| 依赖 | 仓库根有 `wrangler.jsonc`（name / main / assets / d1 / routes / workers_dev 齐备），Workers Builds 无需 autoconfig |
+
+**状态**：连接需要一次性在浏览器完成 GitHub App 授权（Cloudflare 侧无法用 API 代劳；REST API 需账号级 API token，本机只有 wrangler OAuth）。授权完成前，`npx wrangler deploy` 手动部署仍是有效通道，并永久保留为**应急回退**（构建/连接故障、需立即回滚时用）。
+
+**纪律（必须执行）**：push main 即触发自动构建并上线。**推 main 之前必须本地四连绿（`npm test` / `npm run lint` / `npm run typecheck` / `npm run build`）且 GitHub Actions CI 绿**；不确定就开分支走 PR 预览。
 
 数据同步为独立 workflow `sync-data.yml`，不随代码部署触发（见 §9）。
 
@@ -103,12 +119,13 @@ jobs:
 
 | 名称 | 用途 | 存放 |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | Actions 部署与数据同步 | GitHub Secrets |
-| `CLOUDFLARE_ACCOUNT_ID` | 同上 | GitHub Secrets |
-| `TURNSTILE_SECRET_KEY` | 校对提交防滥用（**待决策**：是否第一版启用 Turnstile） | GitHub Secrets + Worker secret |
-| 本地开发变量 | `wrangler dev` 本地 D1/R2 模拟所需 | `.dev.vars`（.gitignore，绝不进 Git） |
+| `ADMIN_TOKEN` | 校对工作台鉴权（`/api/queue`、`/api/adjudicate`） | Worker secret（`npx wrangler secret put ADMIN_TOKEN`）；预览要用的話 `npx wrangler preview secret put` 或 dashboard Previews Base |
+| Workers Builds API token | 构建时上传与部署 | Cloudflare 在首次连接时自动生成（用户级 token），无需人工管理 |
+| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | 仅在需要 Actions 部署或数据同步时用 | 目前未写入 GitHub Secrets；本机部署走 wrangler OAuth |
+| `TURNSTILE_SECRET_KEY` | 校对提交防滥用（**待决策**：是否启用 Turnstile） | 预留：GitHub Secrets + Worker secret |
+| 本地开发变量 | `wrangler dev` 本地 D1 模拟所需 | `.dev.vars`（.gitignore，绝不进 Git） |
 
-原则：密钥只存在于 GitHub Secrets 与 Worker secrets；任何 key 文件不进仓库。
+原则：密钥只存在于 Cloudflare secret 与 GitHub Secrets；任何 key 文件不进仓库。
 
 ## 9. 数据更新节奏
 
@@ -120,7 +137,8 @@ jobs:
        2. 归一化 + 构建 FTS5 索引 → D1
        3. 新影像 / 瓦片 → R2（ASCII object key）
        4. 写 sync_meta（源 release、行数、跳过行数、映射表版本）
-  → 若静态页受影响（新语料 / 新期号）→ 触发一次站点重建部署
+  → 若静态页受影响（新语料 / 新期号）→ push main 触发 Workers Builds 自动重建部署
+       （应急时改用本机 `npx wrangler deploy`；D1 数据更新目前仍由本机 `wrangler d1 execute` 完成，未自动化）
 ```
 
 **待决策**：D1 索引更新用全量重建 + 原子表切换（简单、可回滚、可预期），还是增量 upsert（省额度但复杂）。数据量小，倾向全量重建。

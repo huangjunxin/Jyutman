@@ -40,7 +40,9 @@
 | `npm run build` | 生产构建，产物在 `dist/` |
 | `npm run preview` | 预览生产构建产物 |
 | `npm run sync` | 从上游 `JyutmanDataPipeline/data/` 与姊妹仓 `Jyutman-Corpus/translations/jyutping/` 重建站点数据层与 `db/import.sql`（派生数据，已提交 git，CI 不需要跑；`db/import.sql` 已于 2026-10-03 灌入生产 D1） |
-| `npx wrangler deploy` | 部署 Worker 与静态资产到 `jyutman.com`（需 wrangler OAuth 登录，配置见 `wrangler.jsonc`） |
+| `git push origin main` | 正式部署通道：Cloudflare Workers Builds（Git 集成）自动构建并部署到 `jyutman.com`（见 docs/05 第 5 节）。**推之前必须本地四连绿 + CI 绿** |
+| `npx wrangler deploy` | 应急回退：本机直接部署 Worker 与静态资产（Workers Builds 故障或需立即上线时用，需 wrangler OAuth） |
+| `npx wrangler preview --name <名>` | 手动建一次预览（非 main 分支/PR 由 Workers Builds 自动做）；`npx wrangler preview delete --name <名>` 清理 |
 | `npx wrangler d1 execute jyutman --remote --file db/import.sql` | 重建生产 D1 数据（单条语句控制在 32 KB 以内） |
 | `npx wrangler d1 execute jyutman --remote --file db/migrations/*.sql` | 生产 D1 建表（如 corrections，见 docs/03 第 7 节） |
 | `npx wrangler secret put ADMIN_TOKEN` | 写入维护端令牌（值只存 Cloudflare secret，唔入仓唔入档） |
@@ -51,6 +53,8 @@
 CI 已配置：`.github/workflows/ci.yml` 在 push 与 PR 时依次执行 `npm ci`、`npm test`、`npm run lint`、`npm run typecheck`、`npm run build`（Node 24）。
 
 目录结构：`src/pages/` 页面路由（含内部校对工作台，noindex、导航唔挂入口、路径唔对外公布）；`src/layouts/` 版式（`Base.astro` 页首页尾与字体加载）；`src/components/` 共用组件（`Glass` 灯笼框、`GlassRow` 木色容器、`Eyebrow` 窗格眉标、`Logo` 四格窗花标志、`Fanlight` 扇形气窗、`LeafGrid` 逐页格、`PageHero` / `Longform` 长文页、`SearchBar`、`StatusBadge`、`Icon`、`JsonLd`）；`src/styles/global.css` 全站 token、字体栈与共用原件（西关满洲窗 Saigwaan 视觉系统，只出浅色；Noto Serif HK + Jost 经 Google Fonts 加载，不自托管）；`src/utils/` 纯函数与数据层读取（检索管线在 `src/utils/search-planner.ts`，主機策略在 `src/utils/host-policy.ts`，粵拼注音与今譯分組在 `src/utils/reader.ts`，索引端与查询端共用；阅读页展示层在 `reader-view.ts`（构建期与浏览器端共用，含报错类型 `CORRECTION_TYPES`），检索页展示层在 `search-view.ts`，逐语料展示字串在 `corpus-meta.ts`，字数等统计在 `corpus-stats.ts`，篇首摘录在 `excerpt.ts`）；`src/data/generated/` 由 `npm run sync` 生成的派生数据（已提交 git，勿手改；含各期 `jyutping.json` 粵拼音表与（廣東白話報）`translations.json` 今譯，来源为姊妹仓 `Jyutman-Corpus/translations/`）；`scripts/` 数据同步脚本；`server/` Worker API（Hono 入口、主機策略分派、检索与校对通道路由、D1 访问、限流与维护端鉴权）；`wrangler.jsonc` Worker、静态资产（`run_worker_first` 为 `true`，全量请求经 Worker）与 D1 绑定配置；`db/import.sql` 生产 D1 建表与灌数 SQL（已于 2026-10-03 执行）、`db/migrations/` 一次性建表 SQL；`tests/` 测试与 fixture；`.github/workflows/` CI。
+
+纪律：push `main` 即上线（Workers Builds 自动部署）；本地四连绿与 GitHub Actions 绿之前不要推 main，未定稿的改动走分支 + PR 预览。
 
 测试约定：纯函数放 `src/utils/`，测试放 `tests/*.test.mjs`（`node:test` + `node:assert/strict`，零额外依赖；Node 24 原生支持测试直接导入 `.ts`）。新增函数须配断言测试。
 
