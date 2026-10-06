@@ -1,4 +1,8 @@
 ---
+import Eyebrow from "../components/Eyebrow.astro";
+import Fanlight from "../components/Fanlight.astro";
+import Glass from "../components/Glass.astro";
+import GlassRow from "../components/GlassRow.astro";
 import JsonLd from "../components/JsonLd.astro";
 import SearchBar from "../components/SearchBar.astro";
 import StatusBadge from "../components/StatusBadge.astro";
@@ -19,7 +23,14 @@ import {
 import { corpusMeta, formatWan, issueLabel } from "../utils/corpus-meta.ts";
 import { leadExcerpt } from "../utils/excerpt.ts";
 import { normalize } from "../utils/normalize.ts";
-import { pageParam, percent, readingsByIndex, renderAnnotatedParagraph, type ArticleBlock } from "../utils/reader.ts";
+import {
+  pageParam,
+  percent,
+  readingsByIndex,
+  renderAnnotatedParagraph,
+  statusBadge,
+  type ArticleBlock,
+} from "../utils/reader.ts";
 import { locateAndSlice } from "../utils/search-planner.ts";
 
 const totals = getSiteTotals();
@@ -47,6 +58,7 @@ function sample(page: number, minChars: number) {
   return { page, status: doc.status, article, lead, href: readHref(GD, GD_ISSUE, page) };
 }
 
+// 原文樣張截頭大約 45 字：第 40 字之後嘅第一個句末標點（第 006 葉剛好 45 字）
 const specimen = sample(6, 40);
 const specimenHtml = renderAnnotatedParagraph(
   specimen.lead.text,
@@ -54,6 +66,8 @@ const specimenHtml = renderAnnotatedParagraph(
   readingsByIndex(getJyutping(GD, GD_ISSUE)[specimen.article.id]),
 );
 const specimenTranslated = getTranslations(GD, GD_ISSUE)[specimen.article.id] !== undefined;
+// 樣張底行用線框版 OCR 徽章；已核驗照用翠綠淡底
+const specimenBadge = statusBadge(specimen.status);
 const vertical = sample(9, 24);
 
 const DEMO_QUERY = "广东";
@@ -90,12 +104,13 @@ const featureIndex = Math.max(
 const feature = cards[featureIndex];
 const others = cards.filter((_, index) => index !== featureIndex);
 
+// 數字帶四格玻璃色固定：寶藍、琥珀、翠綠、寶石紅
 const stats = [
-  { value: String(totals.corpusCount), unit: "個語料", label: "Corpora · 已發佈" },
-  { value: String(totals.pageCount), unit: "葉", label: "Scanned pages · 掃描葉" },
-  { value: String(totals.articleCount), unit: "篇", label: "Articles · 篇章" },
-  { value: formatWan(totals.characterCount), unit: "萬字", label: "Characters · 正文字數" },
-];
+  { tone: "blue", value: String(totals.corpusCount), unit: "個語料", label: "Corpora · 已發佈" },
+  { tone: "amber", value: String(totals.pageCount), unit: "葉", label: "Scanned pages · 掃描葉" },
+  { tone: "green", value: String(totals.articleCount), unit: "篇", label: "Articles · 篇章" },
+  { tone: "ruby", value: formatWan(totals.characterCount), unit: "萬字", label: "Characters · 正文字數" },
+] as const;
 ---
 
 <Base
@@ -125,11 +140,10 @@ const stats = [
     />
   </Fragment>
 
-  <section class="hero watermark-host">
-    <span class="watermark" aria-hidden="true">叢</span>
+  <section class="hero">
     <div class="hero__inner wrap">
       <div class="hero__main">
-        <p class="eyebrow eyebrow--rule">1842 至 1907 · 粵語白話文獻</p>
+        <Eyebrow class="eyebrow--hero"><span class="latin">1842</span> 至 <span class="latin">1907</span> · 粵語白話文獻</Eyebrow>
         <h1 class="hero__title">
           <span>讀返</span>
           <span class="hero__accent">十九世紀</span>
@@ -138,23 +152,27 @@ const stats = [
         <p class="hero__lede">
           1842 至 1907 年嘅粵語白話文獻：傳教士讀本、方言報紙、識字課本，而家可以檢索、閱讀、引用。
         </p>
-        <div class="hero__search">
-          <SearchBar variant="hero" inputId="home-q" />
-        </div>
+        <SearchBar variant="hero" inputId="home-q" class="hero__search" />
         <p class="hero__try">
           <span>試試：</span>
           <a class="chip" href={searchHref("廣東")}>廣東</a>
           <a class="chip" href={searchHref("唔係")}>唔係</a>
-          <a class="chip" href={searchHref(DEMO_QUERY)}>{DEMO_QUERY}<span class="hero__simp" aria-hidden="true">簡</span><span class="visually-hidden">（簡體）</span></a>
+          <a class="chip" href={searchHref(DEMO_QUERY)}
+            >{DEMO_QUERY}<span class="chip__simp" aria-hidden="true">簡</span><span class="visually-hidden"
+              >（簡體）</span
+            ></a
+          >
         </p>
       </div>
 
-      <div class="specimen-wrap">
+      <Fanlight class="hero__aside">
         <figure class="specimen" data-specimen data-layout="vertical" aria-labelledby="specimen-title">
           <div class="specimen__head">
             <div class="specimen__id">
               <div class="specimen__source" id="specimen-title">{gdTitle} · {gdLabel}</div>
-              <div class="specimen__meta">{gdDate} · 第 {pageParam(specimen.page)} 葉</div>
+              <div class="specimen__meta">
+                <span class:list={[gdIssue.issue_date && "latin"]}>{gdDate}</span> · 第 {pageParam(specimen.page)} 葉
+              </div>
             </div>
             <div class="specimen__controls" hidden>
               <div class="seg seg--sm" role="group" aria-label="排版方向">
@@ -172,27 +190,29 @@ const stats = [
           </div>
           <div class="specimen__foot">
             <span class="specimen__badges">
-              <StatusBadge status={specimen.status} />
-              {specimenTranslated && <span class="badge badge--kapok">附今譯</span>}
+              <span class:list={["badge", specimenBadge.tone === "ocr" ? "badge--ocr-outline" : `badge--${specimenBadge.tone}`]}>
+                {specimenBadge.label}
+              </span>
+              {specimenTranslated && <span class="badge badge--tr">附今譯</span>}
             </span>
             <a class="specimen__more" href={specimen.href}>讀全文 →</a>
           </div>
         </figure>
-      </div>
+      </Fanlight>
     </div>
   </section>
 
-  <section class="stats" aria-label="全站數字">
+  <section class="stats brick" aria-label="全站數字">
     <div class="stats__grid wrap">
       {
         stats.map((stat) => (
-          <div class="stat">
+          <Glass tone={stat.tone} size="sm" paneClass="stat">
             <div class="stat__figure">
               <span class="stat__value">{stat.value}</span>
               <span class="stat__unit">{stat.unit}</span>
             </div>
             <div class="stat__label">{stat.label}</div>
-          </div>
+          </Glass>
         ))
       }
     </div>
@@ -202,7 +222,7 @@ const stats = [
     <div class="wrap">
       <div class="sec-head">
         <div>
-          <p class="eyebrow">Corpora · 語料</p>
+          <Eyebrow class="corpora__eyebrow" text="Corpora · 語料" />
           <h2 class="sec-head__title" id="corpora-title">語料</h2>
           <p class="sec-head__sub">
             已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 葉 · {totals.articleCount} 篇；全站已核驗 {
@@ -213,11 +233,10 @@ const stats = [
         <a class="sec-head__link" href="/browse/">全部書目 →</a>
       </div>
 
-      <div class="corpora__grid">
+      <GlassRow size="lg">
         {
           feature && (
-            <article class:list={["feature", "tone-block", `tone-${feature.meta.tone}`]}>
-              <span class="corner" aria-hidden="true" />
+            <Glass as="article" tone={feature.meta.tone} flush class="feature" paneClass="feature__pane">
               <div class="feature__top">
                 <div class="feature__year">{feature.corpus.year ?? "年代待考"}</div>
                 <div class="feature__kind">
@@ -245,10 +264,11 @@ const stats = [
                     <a class="issue-row" href={issue.href}>
                       <span class="issue-row__label">{issue.label}</span>
                       <span class="issue-row__facts">
-                        {issue.issue_date ?? "日期待考"} · {issue.pages} 葉 · {issue.articles} 篇
+                        {issue.issue_date ? <span class="latin">{issue.issue_date}</span> : "日期待考"} · {issue.pages}{" "}
+                        葉 · {issue.articles} 篇
                       </span>
                       <span class="issue-row__progress">
-                        <span class="meter meter--on-dark issue-row__meter" style={`--pct:${issue.pct}%`} aria-hidden="true">
+                        <span class="meter issue-row__meter" style={`--pct:${issue.pct}%`} aria-hidden="true">
                           <i />
                         </span>
                         <span class="visually-hidden">已核驗</span>
@@ -265,19 +285,15 @@ const stats = [
                   </span>
                   <span class="feature__pct">{feature.pct}%</span>
                 </div>
-                <div class="meter meter--on-dark feature__meter" style={`--pct:${feature.pct}%`} aria-hidden="true">
+                <div class="meter feature__meter" style={`--pct:${feature.pct}%`} aria-hidden="true">
                   <i />
                 </div>
                 <div class="feature__actions">
-                  <a class="btn feature__read" href={feature.href}>
-                    進入閱讀 →
-                  </a>
-                  <a class="btn feature__browse" href={`/browse/${feature.corpus.slug}/`}>
-                    逐葉校對狀態
-                  </a>
+                  <a class="btn btn--solid feature__read" href={feature.href}>進入閱讀 →</a>
+                  <a class="btn btn--outline feature__browse" href={`/browse/${feature.corpus.slug}/`}>逐葉校對狀態</a>
                 </div>
               </div>
-            </article>
+            </Glass>
           )
         }
 
@@ -285,8 +301,7 @@ const stats = [
           others.length > 0 && (
             <div class="corpora__side">
               {others.map((card) => (
-                <article class:list={["side-card", "tone-block", `tone-${card.meta.tone}`, "lift"]}>
-                  <span class="corner" aria-hidden="true" />
+                <Glass as="article" tone={card.meta.tone} flush class="side-card" paneClass="side-card__pane">
                   <div class="side-card__top">
                     <span class="side-card__year">{card.corpus.year ?? "年代待考"}</span>
                     <span class="side-card__kind">
@@ -294,7 +309,10 @@ const stats = [
                       {card.corpus.articleCount} 篇
                     </span>
                   </div>
-                  <h3 class="side-card__title" lang={card.meta.script === "en" ? "en" : undefined}>
+                  <h3
+                    class:list={["side-card__title", card.meta.script === "en" && "side-card__title--en"]}
+                    lang={card.meta.script === "en" ? "en" : undefined}
+                  >
                     {card.corpus.title}
                   </h3>
                   <div class="side-card__foot">
@@ -314,18 +332,18 @@ const stats = [
                       </span>
                     </a>
                   </div>
-                </article>
+                </Glass>
               ))}
             </div>
           )
         }
-      </div>
+      </GlassRow>
     </div>
   </section>
 
   <section class="howto" aria-labelledby="howto-title">
     <div class="wrap">
-      <p class="eyebrow">How to read · 點樣讀</p>
+      <Eyebrow text="How to read · 點樣讀" />
       <h2 class="howto__title" id="howto-title">三個動作：閱讀、豎排、檢索</h2>
       <div class="howto__grid">
         <div class="howto__col">
@@ -375,7 +393,7 @@ const stats = [
           <a class="tile tile--search" href={searchHref(DEMO_QUERY)} aria-label={`檢索「${DEMO_QUERY}」`}>
             <span class="fold">
               <span class="fold__from">{DEMO_QUERY}</span>
-              <span class="eyebrow eyebrow--sm">歸一 →</span>
+              <span class="label fold__arrow">歸一 →</span>
               <span class="fold__to">{demoTarget}</span>
             </span>
             {
@@ -425,36 +443,28 @@ const stats = [
 </script>
 
 <style>
-  /* ---- 1a Hero ---- */
-  .hero {
-    --wm-top: -7vw;
-    --wm-right: -4vw;
-  }
+  /* 數值照 design_handoff_jyutman_xiguan 原型「首頁」四段（Hero／數字／語料／點樣讀）。 */
 
+  /* ---- 1a Hero ---- */
   .hero__inner {
-    position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: clamp(48px, 6vw, 88px);
-    padding-top: clamp(48px, 7vw, 104px);
-    padding-bottom: clamp(64px, 8vw, 120px);
+    gap: clamp(40px, 5vw, 64px);
+    padding-top: clamp(48px, 6vw, 72px);
+    padding-bottom: clamp(64px, 7vw, 96px);
   }
 
   .hero__main {
-    flex: 1 1 520px;
+    flex: 1 1 540px;
     min-width: 0;
   }
 
-  .hero__main .eyebrow {
-    margin: 0;
-  }
-
   .hero__title {
-    margin-top: 28px;
-    font-size: clamp(64px, 9.2vw, 136px);
-    line-height: 0.98;
-    letter-spacing: -0.03em;
+    margin-top: 26px;
+    font-size: clamp(52px, 6.2vw, 80px);
+    line-height: 1.18;
+    letter-spacing: 0.02em;
   }
 
   .hero__title span {
@@ -462,20 +472,20 @@ const stats = [
   }
 
   .hero__title .hero__accent {
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .hero__lede {
-    margin: 32px 0 0;
-    max-width: 30em;
-    font-size: clamp(17px, 1.5vw, 20px);
-    line-height: 1.75;
+    margin: 28px 0 0;
+    max-width: 28em;
+    font-size: 20px;
+    line-height: 1.85;
     color: var(--graphite);
     text-wrap: pretty;
   }
 
   .hero__search {
-    margin-top: 40px;
+    margin-top: 36px;
   }
 
   .hero__try {
@@ -484,40 +494,20 @@ const stats = [
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
+    font-size: 16px;
     color: var(--graphite);
   }
 
-  .hero__simp {
-    font-size: 11px;
-    color: var(--muted-gold);
-  }
-
-  /* 原文樣張：後面一塊錯位木棉紅，前面白色 figure */
-  .specimen-wrap {
-    position: relative;
-    flex: 1 1 400px;
+  /* 原文樣張：扇形氣窗（.arch 最闊 500px）→ 木色窗身 → 紙面 */
+  .hero__aside {
+    flex: 1 1 420px;
     min-width: 0;
-    max-width: 520px;
     margin: 0 auto;
-    padding: 0 0 22px 22px;
-  }
-
-  .specimen-wrap::before {
-    content: "";
-    position: absolute;
-    top: 22px;
-    right: 22px;
-    bottom: 0;
-    left: 0;
-    background: var(--kapok);
   }
 
   .specimen {
-    position: relative;
     margin: 0;
-    background: var(--card);
-    border: 1px solid var(--line-12);
+    background: var(--paper);
   }
 
   .specimen__head {
@@ -526,22 +516,21 @@ const stats = [
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--line-08);
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-12);
   }
 
   .specimen__id {
-    line-height: 1.35;
+    line-height: 1.4;
   }
 
   .specimen__source {
-    font-family: var(--font-serif);
-    font-size: 16px;
+    font-size: 17px;
+    font-weight: 600;
   }
 
   .specimen__meta {
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    font-size: 14px;
     color: var(--graphite);
   }
 
@@ -550,16 +539,11 @@ const stats = [
     gap: 6px;
   }
 
-  /* 冇 JS 時唔顯示開關（預設豎排＋粵拼） */
-  .specimen__controls[hidden] {
-    display: none;
-  }
-
   .specimen__body {
     display: flex;
     justify-content: flex-end;
-    height: 400px;
-    padding: 26px 28px;
+    height: 330px;
+    padding: 22px 24px;
     overflow: hidden;
   }
 
@@ -567,8 +551,8 @@ const stats = [
     writing-mode: vertical-rl;
     max-width: 100%;
     max-height: 100%;
-    font-family: var(--font-serif);
-    font-size: 27px;
+    overflow: hidden;
+    font-size: 26px;
     line-height: 2.3;
     letter-spacing: 0.06em;
   }
@@ -580,11 +564,9 @@ const stats = [
 
   .specimen__title {
     margin: 0;
-    margin-block-end: 16px;
-    font-size: 32px;
-    line-height: 1.6;
+    font-size: 28px;
+    font-weight: 600;
     letter-spacing: 0.12em;
-    color: var(--kapok);
   }
 
   .specimen__para {
@@ -592,11 +574,11 @@ const stats = [
   }
 
   .specimen__para :global(rt) {
-    font-family: var(--font-sans);
-    font-size: 10px;
+    font-family: var(--latin);
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--kapok);
+    letter-spacing: 0.03em;
+    color: var(--blue);
   }
 
   .specimen.no-jp .specimen__para :global(rt) {
@@ -609,9 +591,9 @@ const stats = [
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 12px 18px;
-    border-top: 1px solid var(--line-08);
-    font-size: 13px;
+    padding: 11px 18px;
+    border-top: 1px solid var(--line-12);
+    font-size: 14px;
   }
 
   .specimen__badges {
@@ -620,32 +602,22 @@ const stats = [
     gap: 8px;
   }
 
-  .specimen__badges :global(.badge) {
-    font-size: 13px;
-  }
-
   .specimen__more {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
   }
 
-  /* ---- 1b 數字帶 ---- */
-  .stats {
-    background: var(--ink);
-    color: var(--parchment);
-  }
-
+  /* ---- 1b 數字帶：青磚牆上開四扇細號燈籠框 ---- */
   .stats__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 28px 40px;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: 28px;
     padding-top: 44px;
     padding-bottom: 44px;
   }
 
   .stat {
-    padding-left: 20px;
-    border-left: 1px solid var(--on-dark-20);
+    padding: 20px 22px 18px;
   }
 
   .stat__figure {
@@ -655,28 +627,29 @@ const stats = [
   }
 
   .stat__value {
-    font-family: var(--font-serif);
-    font-size: clamp(44px, 4.6vw, 64px);
+    font-family: var(--latin);
+    font-size: 52px;
     line-height: 1;
   }
 
   .stat__unit {
-    font-size: 17px;
-    color: var(--kapok-on-dark);
+    font-size: 18px;
+    color: var(--tone-text);
   }
 
   .stat__label {
-    margin-top: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
+    margin-top: 8px;
+    font-family: var(--latin);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--on-dark-66);
+    color: var(--graphite);
   }
 
   /* ---- 1c 語料 ---- */
   .corpora {
-    padding: clamp(64px, 8vw, 112px) 0;
+    padding: clamp(64px, 7vw, 88px) 0 clamp(72px, 8vw, 96px);
   }
 
   .sec-head {
@@ -685,52 +658,41 @@ const stats = [
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px 32px;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
   }
 
-  .sec-head .eyebrow {
-    margin: 0;
+  .corpora__eyebrow {
+    gap: 14px;
   }
 
   .sec-head__title {
-    margin-top: 14px;
-    font-size: clamp(40px, 5vw, 64px);
-    line-height: 1.05;
-    letter-spacing: -0.02em;
+    margin-top: 12px;
+    font-size: clamp(32px, 3.6vw, 44px);
+    line-height: 1.2;
   }
 
   .sec-head__sub {
-    margin: 12px 0 0;
+    margin: 8px 0 0;
+    font-size: 17px;
     color: var(--graphite);
   }
 
   .sec-head__link {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 600;
   }
 
-  .corpora__grid {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 24px;
-  }
-
-  /* 主打卡（多期語料） */
+  /* 主打卡（多期語料）：大號燈籠框 */
   .feature {
-    --corner-size: 140px;
-    --corner-offset: -56px;
-    --rule: rgba(251, 249, 244, 0.28);
     flex: 1.35 1 560px;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    padding: clamp(28px, 4vw, 48px);
   }
 
-  .feature :focus-visible {
-    outline-color: var(--parchment);
+  .feature__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 34px 38px;
   }
 
   .feature__top {
@@ -742,90 +704,94 @@ const stats = [
   }
 
   .feature__year {
-    font-family: var(--font-serif);
-    font-size: clamp(80px, 9vw, 128px);
-    line-height: 0.82;
-    letter-spacing: -0.04em;
+    font-family: var(--latin);
+    font-size: 64px;
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--tone-num);
   }
 
+  /* 窄卡換行時仍然貼右 */
   .feature__kind {
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.9;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    margin-left: auto;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.7;
+    letter-spacing: 0.1em;
     text-align: right;
+    color: var(--graphite);
   }
 
   .feature__title {
-    font-size: clamp(44px, 5vw, 68px);
-    line-height: 1;
-    letter-spacing: 0.04em;
+    font-size: clamp(34px, 3.6vw, 46px);
+    line-height: 1.15;
+    letter-spacing: 0.06em;
   }
 
   .feature__facts {
-    margin: 14px 0 0;
-    font-size: 15px;
-    color: var(--on-dark-88);
+    margin: 10px 0 0;
+    font-size: 16px;
+    color: var(--graphite);
   }
 
   .feature__issues {
     margin: 0;
     padding: 0;
     list-style: none;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line-14);
     container-type: inline-size;
   }
 
   .issue-row {
     display: grid;
-    grid-template-columns: 72px minmax(0, 1fr) auto;
+    grid-template-columns: 76px minmax(0, 1fr) auto;
     align-items: center;
     gap: 16px;
-    padding: 13px 6px;
-    border-top: 1px solid var(--rule);
+    padding: 12px 6px;
+    border-top: 1px solid var(--line-14);
     color: inherit;
     transition: background-color 200ms;
   }
 
   .issue-row:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--blue-a06);
     text-decoration: none;
   }
 
   .issue-row__label {
-    font-family: var(--font-serif);
-    font-size: 22px;
+    font-size: 20px;
+    font-weight: 600;
   }
 
   .issue-row__facts {
-    font-size: 14px;
-    color: var(--on-dark-88);
+    font-size: 16px;
+    color: var(--graphite);
   }
 
-  /* hover 底色變淺，字要用實色先夠 4.5:1 */
-  .issue-row:hover .issue-row__facts {
-    color: var(--parchment);
+  /* 窄卡換行時日期同「n / N」唔好斷開 */
+  .issue-row__facts .latin {
+    white-space: nowrap;
   }
 
   .issue-row__progress {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 12px;
-    font-weight: 600;
+    font-family: var(--latin);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
   }
 
   .issue-row__meter {
-    --h: 4px;
-    display: block;
+    --h: 5px;
     width: 72px;
   }
 
-  /* 窄卡（約 375px 以下視口）：進度落去第二行，日期唔使逐字斷 */
-  @container (max-width: 296px) {
+  /* 窄卡（約 500px 以下視口）：進度落去第二行，日期唔使逐字斷 */
+  @container (max-width: 360px) {
     .issue-row {
-      grid-template-columns: 72px minmax(0, 1fr);
+      grid-template-columns: 76px minmax(0, 1fr);
       row-gap: 6px;
     }
 
@@ -848,15 +814,13 @@ const stats = [
     align-items: baseline;
     justify-content: space-between;
     gap: 8px;
-    font-size: 13px;
-    letter-spacing: 0.04em;
+    font-size: 15px;
   }
 
   .feature__pct {
-    font-family: var(--font-serif);
+    font-family: var(--latin);
     font-size: 36px;
     line-height: 1;
-    letter-spacing: 0;
   }
 
   .feature__meter {
@@ -870,53 +834,44 @@ const stats = [
     margin-top: 24px;
   }
 
+  /* 原型實色掣冇邊 13px 24px；.btn 有 1px 透明邊，所以減 1px */
   .feature__read {
-    background: var(--parchment);
-    color: var(--tone);
-    font-weight: 700;
-  }
-
-  .feature__read:hover {
-    background: #fff;
+    padding: 12px 23px;
   }
 
   .feature__browse {
-    border-color: var(--on-dark-60);
-    color: var(--parchment);
+    padding: 12px 24px;
+    border-color: var(--blue-a35);
   }
 
   .feature__browse:hover {
-    background: var(--on-dark-12);
+    background: var(--blue-a08);
+    border-color: var(--blue-a35);
   }
 
-  /* 次卡（其餘語料） */
+  /* 次卡（其餘語料）：成張卡撳得（連結 ::after 鋪滿紙面），hover 變光 */
   .corpora__side {
     flex: 1 1 360px;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 8px;
   }
 
   .side-card {
-    --accent: var(--parchment);
-    --cta-line: var(--parchment);
-    --kind: rgba(251, 249, 244, 0.85);
-    --meter-track: var(--on-dark-25);
-    --meter-fill: var(--accent);
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 32px;
+    transition: filter 300ms;
   }
 
-  .side-card.tone-ink {
-    --accent: var(--kapok-on-dark);
-    --cta-line: var(--kapok);
-    --kind: var(--on-dark-72);
-    --meter-track: var(--on-dark-20);
-    --corner-color: rgba(255, 255, 255, 0.06);
+  .side-card:hover {
+    filter: brightness(1.05);
+  }
+
+  .side-card__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 28px 30px;
   }
 
   .side-card__top {
@@ -928,23 +883,28 @@ const stats = [
   }
 
   .side-card__year {
-    font-family: var(--font-serif);
-    font-size: 72px;
-    line-height: 0.85;
-    letter-spacing: -0.04em;
+    font-family: var(--latin);
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--tone-num);
   }
 
   .side-card__kind {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--kind);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--graphite);
   }
 
   .side-card__title {
-    font-size: 26px;
-    line-height: 1.25;
+    font-size: 24px;
+    line-height: 1.3;
+  }
+
+  .side-card__title--en {
+    font-family: var(--latin);
+    font-weight: 400;
   }
 
   .side-card__foot {
@@ -956,14 +916,13 @@ const stats = [
     align-items: baseline;
     justify-content: space-between;
     gap: 8px;
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .side-card__pct {
-    font-family: var(--font-serif);
+    font-family: var(--latin);
     font-size: 30px;
     line-height: 1;
-    color: var(--accent);
   }
 
   .side-card__meter {
@@ -971,15 +930,14 @@ const stats = [
     margin-top: 10px;
   }
 
-  /* 成張卡撳得：連結 ::after 鋪滿卡面 */
   .side-card__cta {
     display: inline-flex;
-    margin-top: 20px;
+    margin-top: 18px;
     padding-bottom: 2px;
-    border-bottom: 2px solid var(--cta-line);
-    color: var(--parchment);
-    font-size: 15px;
-    font-weight: 700;
+    border-bottom: 2px solid var(--tone);
+    color: var(--wood);
+    font-size: 17px;
+    font-weight: 600;
   }
 
   .side-card__cta::after {
@@ -992,32 +950,24 @@ const stats = [
     text-decoration: none;
   }
 
-  .side-card__cta:focus-visible {
-    outline-color: var(--parchment);
-  }
-
   /* ---- 1d 點樣讀 ---- */
   .howto {
     padding: clamp(64px, 8vw, 112px) 0;
-    background: var(--card);
+    background: var(--paper);
     border-top: 1px solid var(--line-06);
-  }
-
-  .howto .eyebrow {
-    margin: 0;
   }
 
   .howto__title {
     margin-top: 14px;
-    font-size: clamp(36px, 4.4vw, 56px);
+    font-size: clamp(30px, 3.2vw, 40px);
     line-height: 1.1;
     letter-spacing: -0.01em;
   }
 
   .howto__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: clamp(28px, 3vw, 40px);
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: clamp(26px, 2.6vw, 32px);
     margin-top: 48px;
   }
 
@@ -1044,19 +994,19 @@ const stats = [
     justify-content: center;
     min-height: 270px;
     padding: 24px;
-    background: var(--surface-low);
-    color: var(--ink);
+    background: var(--surface);
+    color: var(--wood);
     transition: background-color 200ms;
   }
 
   .tile:hover {
-    background: var(--surface-high);
+    background: var(--surface-3);
     text-decoration: none;
   }
 
   .mini-card {
     display: block;
-    background: var(--card);
+    background: var(--paper);
     border: 1px solid var(--line-08);
   }
 
@@ -1069,13 +1019,8 @@ const stats = [
     border-bottom: 1px solid var(--line-08);
   }
 
-  .mini-card__head :global(.badge) {
-    padding: 1px 9px;
-  }
-
   .mini-card__title {
-    font-family: var(--font-serif);
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .mini-card__rows {
@@ -1083,7 +1028,7 @@ const stats = [
     grid-template-columns: auto minmax(0, 1fr);
     gap: 6px 16px;
     padding: 12px 16px;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1.5;
   }
 
@@ -1094,14 +1039,12 @@ const stats = [
   .tile--vertical {
     flex-direction: row;
     align-items: center;
-    justify-content: center;
     padding: 20px 24px;
   }
 
   .tile__vertical {
     writing-mode: vertical-rl;
     height: 236px;
-    font-family: var(--font-serif);
     font-size: 21px;
     line-height: 1.9;
     letter-spacing: 0.08em;
@@ -1111,9 +1054,9 @@ const stats = [
     display: block;
   }
 
-  .tile__vtitle {
+  .tile__vertical .tile__vtitle {
     margin-block-end: 10px;
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .tile--search {
@@ -1130,31 +1073,33 @@ const stats = [
   .fold__from,
   .fold__to {
     padding: 6px 14px;
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .fold__from {
-    background: var(--card);
-    border: 1px solid rgba(3, 22, 50, 0.16);
+    background: var(--paper);
+    border: 1px solid rgba(30, 21, 18, 0.16);
+  }
+
+  .fold__arrow {
+    color: var(--blue);
   }
 
   .fold__to {
-    background: var(--kapok);
+    background: var(--blue);
     color: #fff;
-    font-family: var(--font-serif);
   }
 
   .kwic {
     display: block;
     padding: 14px 16px;
-    background: var(--card);
+    background: var(--paper);
     border: 1px solid var(--line-08);
   }
 
   .kwic__line {
     display: block;
-    font-family: var(--font-serif);
-    font-size: 17px;
+    font-size: 18px;
     line-height: 1.8;
   }
 
@@ -1165,7 +1110,7 @@ const stats = [
   .kwic__src {
     display: block;
     margin-top: 6px;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--graphite);
   }
 </style>
