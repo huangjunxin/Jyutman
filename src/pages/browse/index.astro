@@ -1,4 +1,6 @@
 ---
+import Eyebrow from "../../components/Eyebrow.astro";
+import Glass from "../../components/Glass.astro";
 import LeafGrid from "../../components/LeafGrid.astro";
 import Base from "../../layouts/Base.astro";
 import {
@@ -41,7 +43,7 @@ const sections = getCorpora().map((corpus, index) => {
   <section class="head">
     <div class="wrap head__top">
       <div class="head__text">
-        <div class="eyebrow">Catalogue · 書目庫</div>
+        <Eyebrow text="Catalogue · 書目庫" />
         <h1>書目庫</h1>
         <p class="lede">1842 至 1907 年粵語白話文獻 · 底本屬公有領域 · 掃描影像來自 Internet Archive</p>
       </div>
@@ -65,17 +67,16 @@ const sections = getCorpora().map((corpus, index) => {
     sections.map(({ corpus, meta, issues, pct, readHref }) => (
       <section class="corpus" aria-labelledby={`c-${corpus.slug}`}>
         <div class="wrap corpus__inner">
-          <div class:list={["spine", "tone-block", `tone-${meta.tone}`]}>
-            <div class="corner" aria-hidden="true" />
+          <Glass tone={meta.tone} class="cover" paneClass="cover__pane">
             <div>
-              <div class="spine__kind">{meta.kind}</div>
-              <div class:list={["spine__year", { "spine__year--none": corpus.year == null }]}>{corpus.year ?? "年代待考"}</div>
+              <div class="cover__kind">{meta.kind}</div>
+              <div class:list={["cover__year", { "cover__year--none": corpus.year == null }]}>{corpus.year ?? "年代待考"}</div>
             </div>
-            <div class:list={["spine__title", { "spine__title--en": meta.script === "en" }]} aria-hidden="true">
+            <div class:list={["cover__title", { "cover__title--en": meta.script === "en" }]} aria-hidden="true">
               {meta.spineTitle}
             </div>
-            <div class="spine__slug">{corpus.slug}</div>
-          </div>
+            <div class="cover__slug">{corpus.slug}</div>
+          </Glass>
 
           <div class="info">
             <h2 id={`c-${corpus.slug}`} class:list={{ en: meta.script === "en" }}>
@@ -94,7 +95,7 @@ const sections = getCorpora().map((corpus, index) => {
               </div>
             </div>
 
-            <div class="progress">
+            <div>
               <div class="progress__head">
                 <span class="progress__label">
                   葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
@@ -135,6 +136,7 @@ const sections = getCorpora().map((corpus, index) => {
   <p class="wrap note">只列上游已發佈嘅語料；其餘底本仍喺資料管道整理，未進入發佈層，故此處唔顯示。</p>
 </Base>
 
+
 <style>
   .head,
   .corpus {
@@ -158,21 +160,15 @@ const sections = getCorpora().map((corpus, index) => {
 
   h1 {
     margin: 14px 0 18px;
-    font-size: clamp(56px, 8vw, 112px);
+    font-size: clamp(44px, 5vw, 64px);
     line-height: 0.95;
     letter-spacing: -0.03em;
-  }
-
-  /* 原型設計系統 p { line-height: 1.75rem }：導語同頁底註都係 28px 行高 */
-  .lede,
-  .note {
-    line-height: 1.75rem;
   }
 
   .lede {
     margin: 0;
     max-width: 34em;
-    font-size: 18px;
+    font-size: 19px;
     color: var(--graphite);
     text-wrap: pretty;
   }
@@ -190,24 +186,25 @@ const sections = getCorpora().map((corpus, index) => {
   .total__num,
   .fact__num {
     display: block;
-    font-family: var(--font-serif);
+    font-family: var(--latin);
+    font-weight: 300;
   }
 
   .total__num {
-    font-size: 44px;
+    font-size: 36px;
     line-height: 1;
   }
 
   .total__unit,
   .fact__unit {
     display: block;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
   .total--ok .total__num,
   .fact--ok .fact__num {
-    color: var(--archive-green);
+    color: var(--green);
   }
 
   .legend {
@@ -216,7 +213,7 @@ const sections = getCorpora().map((corpus, index) => {
     align-items: center;
     gap: 8px 28px;
     padding-bottom: 24px;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
@@ -233,11 +230,11 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .swatch--ok {
-    background: var(--archive-green);
+    background: var(--green);
   }
 
   .swatch--todo {
-    border: 1px solid rgba(114, 91, 53, 0.6);
+    border: 1px solid rgba(176, 118, 16, 0.6);
   }
 
   .corpus__inner {
@@ -247,62 +244,65 @@ const sections = getCorpora().map((corpus, index) => {
     padding-block: 48px;
   }
 
-  /* 書脊卡 */
-  .spine {
-    --corner-size: 90px;
-    --corner-offset: -36px;
+  /* 封面：大號燈籠框（自己木框） */
+  .cover {
     flex: 0 1 240px;
     min-width: 200px;
     min-height: 340px;
+  }
+
+  .cover__pane {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 20px;
-    padding: 26px;
+    padding: 24px 22px;
   }
 
-  .spine.tone-ink {
-    --corner-color: rgba(255, 255, 255, 0.06);
-  }
-
-  .spine__kind {
-    font-size: 11px;
+  .cover__kind {
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
   }
 
-  .spine__year {
+  .cover__year {
     margin-top: 10px;
-    font-family: var(--font-serif);
-    font-size: 72px;
+    font-family: var(--latin);
+    font-size: 52px;
+    font-weight: 300;
     line-height: 0.85;
     letter-spacing: -0.04em;
+    color: var(--tone-num);
   }
 
-  .spine__year--none {
-    font-size: 34px;
+  /* 年代待考：細字木色（琥珀 --tone-num 只可以用喺 40px 以上） */
+  .cover__year--none {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1;
     letter-spacing: 0;
+    color: var(--wood);
   }
 
-  .spine__title {
+  .cover__title {
     align-self: flex-end;
     writing-mode: vertical-rl;
-    font-family: var(--font-serif);
-    font-size: 34px;
+    font-size: 30px;
     line-height: 1;
     letter-spacing: 0.18em;
   }
 
-  .spine__title--en {
+  .cover__title--en {
     font-size: 24px;
     letter-spacing: 0.06em;
   }
 
-  .spine__slug {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--on-dark-88);
+  .cover__slug {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--graphite);
   }
 
   /* 資料欄 */
@@ -315,17 +315,17 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   h2 {
-    font-size: clamp(32px, 3.6vw, 48px);
+    font-size: clamp(28px, 2.8vw, 36px);
     line-height: 1.1;
   }
 
   h2.en {
-    font-size: clamp(28px, 3vw, 40px);
+    font-size: clamp(26px, 2.6vw, 32px);
     line-height: 1.15;
   }
 
   h2 a {
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .facts {
@@ -345,7 +345,7 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .fact__num {
-    font-size: 40px;
+    font-size: 34px;
     line-height: 1.1;
   }
 
@@ -358,22 +358,24 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .progress__label {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .progress__pct {
-    font-family: var(--font-serif);
+    font-family: var(--latin);
     font-size: 32px;
     line-height: 1;
-    color: var(--archive-green);
+    color: var(--green);
   }
 
-  .progress .meter {
+  .meter {
     --h: 10px;
+    --meter-track: var(--line-14);
+    --meter-fill: var(--green);
     margin-top: 10px;
   }
 
-  /* 每期一列：期號／日期／核驗數 + 逐葉格 */
+  /* 每期一列：期名／日期／核驗數 + 逐葉格；上邊虛線 */
   .issue {
     display: grid;
     grid-template-columns: 116px minmax(0, 1fr);
@@ -388,22 +390,22 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .issue__label {
-    font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .issue__date,
   .issue__stat {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .issue__date {
     color: var(--graphite);
   }
 
+  /* 14px 細字：#0b7a31 喺頁面底只有 4.2:1，用 --green-text 先夠 4.5:1 */
   .issue__stat {
     font-weight: 600;
-    color: var(--archive-green);
+    color: var(--green-text);
   }
 
   .foot {
@@ -415,7 +417,7 @@ const sections = getCorpora().map((corpus, index) => {
   }
 
   .foot__src {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
@@ -428,7 +430,7 @@ const sections = getCorpora().map((corpus, index) => {
   .note {
     margin-block: 0;
     padding-block: 28px 72px;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 </style>
