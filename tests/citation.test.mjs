@@ -12,20 +12,20 @@ const base = {
   url: "https://jyutman.com/read/gd-vernacular-paper/issue-01/009/#gdvp-01-009-01",
 };
 
-test("buildCitations：純文字一行含篇名、底本、年代、葉碼、永久 URL", () => {
+test("buildCitations：純文字一行含篇名、底本、年代、頁碼、永久 URL", () => {
   const { text } = buildCitations(base);
   assert.equal(
     text,
-    "〈白話報係中國人嘅聖藥〉。《廣東白話報》，1907-04-01，第 009 葉。粵語文叢（Jyutman）。https://jyutman.com/read/gd-vernacular-paper/issue-01/009/#gdvp-01-009-01",
+    "〈白話報係中國人嘅聖藥〉。《廣東白話報》，1907-04-01，第 009 頁。粵語文叢（Jyutman）。https://jyutman.com/read/gd-vernacular-paper/issue-01/009/#gdvp-01-009-01",
   );
 });
 
-test("buildCitations：無題用「語料 + 葉碼」且純文字唔加篇名括號", () => {
+test("buildCitations：無題用「語料 + 頁碼」且純文字唔加篇名括號", () => {
   const { text, bibtex } = buildCitations({ ...base, title: null });
-  assert.equal(citationTitle({ ...base, title: null }), "廣東白話報 第 009 葉");
+  assert.equal(citationTitle({ ...base, title: null }), "廣東白話報 第 009 頁");
   assert.ok(!text.includes("〈"));
-  assert.ok(text.startsWith("《廣東白話報》，1907-04-01，第 009 葉。"));
-  assert.ok(bibtex.includes("title        = {廣東白話報 第 009 葉}"));
+  assert.ok(text.startsWith("《廣東白話報》，1907-04-01，第 009 頁。"));
+  assert.ok(bibtex.includes("title        = {廣東白話報 第 009 頁}"));
 });
 
 test("buildCitations：BibTeX 取年份、帶授權註與 URL，無作者字段", () => {
@@ -47,7 +47,7 @@ test("buildCitations：RIS 為 TY/TI/T2/PY/DA/SP/PB/UR/ER 行；無日期時省�
   assert.ok(lines.includes("T2  - 廣東白話報"));
   assert.ok(lines.includes("PY  - 1907"));
   assert.ok(lines.includes("DA  - 1907-04-01"));
-  assert.ok(lines.includes("SP  - 第 009 葉"));
+  assert.ok(lines.includes("SP  - 第 009 頁"));
   assert.ok(lines.includes(`UR  - ${base.url}`));
   assert.equal(lines.at(-1), "ER  - ");
 

@@ -11,7 +11,7 @@
 | 部署 | Cloudflare（Workers + Static Assets），域名 jyutman.com |
 | 成本 | $0–5/月（不含域名） |
 | 数据 | 只消费上游发布层 jsonl，不回写上游（见 03） |
-| 内容量级 | 文本几十 MB；影像目标 1–3 万叶 / 10GB 起 |
+| 内容量级 | 文本几十 MB；影像目标 1–3 万页 / 10GB 起 |
 | 端 | 桌面与移动浏览器、竖排阅读、文本可选中、SEO 可索引 |
 | 许可 | 站点代码 MIT；OCR 文本 CC BY-SA 4.0 |
 
@@ -33,7 +33,7 @@
 
 1. **检索质量必须自控。** 古籍与粤语的词典分词覆盖差（唔係 / 乜嘢 / 冇 这类口语词，以及大量异体字），必须自建「字符级 n-gram + 繁简归一 + 粤拼/历史拼式字段」三件套（繁简归一只做同一个字的简转繁，不同的字不归并，见 §6.2）。D1 + SQL 可以直接表达归一化字段与组合查询；Pagefind 是黑盒，分词与打分不可调。
 2. **成本结构匹配。** 文本仅几十 MB，远小于 D1 免费 5GB；R2 出网永久免费；Workers 免费 10 万请求/日；静态资产由同一 Worker 直出（为统一加 canonical 跳转与预览域 noindex，`assets.run_worker_first` 为 `true`），全部请求计入 Workers 请求数，当前规模远低于额度。
-3. **跟随 Cloudflare 平台方向。** 官方已明确新项目推荐 Workers + Static Assets 而非 Pages。Pages 静态文件数上限为免费 2 万 / 付费 10 万、单文件 ≤ 25 MiB，若「每叶一页」会撞限；应对：按卷/章合并出页 + 叶级内容客户端按 JSON 渲染，或升级静态资产档位（列入 §10 实测清单）。
+3. **跟随 Cloudflare 平台方向。** 官方已明确新项目推荐 Workers + Static Assets 而非 Pages。Pages 静态文件数上限为免费 2 万 / 付费 10 万、单文件 ≤ 25 MiB，若「每页一个页面」会撞限；应对：按卷/章合并出页 + 页级内容客户端按 JSON 渲染，或升级静态资产档位（列入 §10 实测清单）。
 4. **演进路径自然。** 静态 IIIF manifest → iiif-worker 动态裁切；众包走 Workers API；AI 走 Workers AI。
 
 ## 4. 框架对比
@@ -63,7 +63,7 @@
   静态资产（Astro dist/）                     Worker：API（Hono）
   /                首页                       /api/search    检索
   /browse/<c>      书目页                     /api/correct   校对提交
-  /read/<c>/<i>/<p> 叶/篇页（按卷合并）        /api/iiif/*    动态裁切（后续）
+  /read/<c>/<i>/<p> 页/篇页（按卷合并）        /api/iiif/*    动态裁切（后续）
               │                                         │
               │                              ┌──────────┴──────────┐
               │                              ▼                     ▼
@@ -149,7 +149,7 @@ JyutmanDataPipeline（上游：Python + GLM-OCR 远程服务 + PyMuPDF）
 
 | 存储 | 价格要点 | 判断 |
 |---|---|---|
-| R2 | $0.015/GB-月，免费 10GB，出网免费（Class A 前 1M / Class B 前 10M 免费） | 采用；10GB ≈ 1–3 万叶 |
+| R2 | $0.015/GB-月，免费 10GB，出网免费（Class A 前 1M / Class B 前 10M 免费） | 采用；10GB ≈ 1–3 万页 |
 | Vercel Blob | 出网 $0.05/GB，Hobby 禁商用 | 不推荐 |
 | Git LFS | 按存储与带宽计费，克隆体验差 | 不可作影像主库 |
 
@@ -172,7 +172,7 @@ IIIF 值得采用，但第一版用静态形态：构建期预生成瓦片 / DZI
 | 字体 | 必须子集化 + `unicode-range` 分片；整字体加载会拖死首屏 |
 | 正文 | 必须在 DOM（可选中 / 复制 / 朗读 / 被索引），不用 canvas 画正文 |
 | 影像 | AVIF/WebP + `srcset` + 懒加载 + 预取下一页 |
-| SEO | 每叶可索引 URL + sitemap + schema.org Book |
+| SEO | 每页可索引 URL + sitemap + schema.org Book |
 
 字体策略（现行，2026-10-06）：全部字体经 Google Fonts 加载，不自托管；正文与 UI 共用同一套字体栈（栈与用途见 docs/04 §4.3）。
 
@@ -233,7 +233,7 @@ Jyutman/
 |---|---|---|---|
 | 1 | D1 是否启用 FTS5 trigram tokenizer（官方只确认支持 FTS5，tokenizer 选项未逐一确认）；已通过（本地 + 生产 D1 复核，`docs/spikes/0.1-d1-trigram.md`） | 实跑 `CREATE VIRTUAL TABLE t USING fts5(x, tokenize='trigram')` | 退回 unicode61 + 应用层自建 n-gram 列（普通表存三元组） |
 | 2 | Pagefind 在真实古籍语料上的召回；已实测：不宜承担正文检索，仅作标题与罗马字辅助（`docs/spikes/0.2-pagefind.md`） | 从 gdvp 抽 20–50 篇构造查询集，人工判召回 | 站内即时搜索降级为「只搜标题」 |
-| 3 | 静态文件数测算 | 按「按卷/章合并出页」估算文件数 vs 免费 2 万上限 | 升付费档，或叶级内容改为客户端按 JSON 渲染 |
+| 3 | 静态文件数测算 | 按「按卷/章合并出页」估算文件数 vs 免费 2 万上限 | 升付费档，或页级内容改为客户端按 JSON 渲染 |
 | 4 | 历史拼式 → 粤拼映射工作量 | 抽样传教士罗马字，人工标注映射覆盖率 | 第一版只做罗马字归一（去变音符 / 统一调号），不做严格粤拼对齐 |
 | 5 | 生僻字字形来源 | 统计语料字符集，核对候选字体的覆盖与授权 | 扩大回退字体链；必要时按语料现算子集 |
 | 6 | trigram 下的短查询（1–2 字）；已实测：bigram/unigram 辅助表方案可行（`docs/spikes/0.1-d1-trigram.md`） | 见 §6.3 降级方案 | unigram/bigram 辅助表，或 LIKE + 结果缓存 |

@@ -37,7 +37,7 @@ const sections = getCorpora().map((corpus, index) => {
 
 <Base
   title="書目庫 · 粵語文叢"
-  description={`已發佈 ${totals.corpusCount} 個粵語語料，共 ${totals.pageCount} 葉 / ${totals.articleCount} 篇；逐葉列出底本年代、葉數與校對進度。`}
+  description={`已發佈 ${totals.corpusCount} 個粵語語料，共 ${totals.pageCount} 頁 / ${totals.articleCount} 篇；逐頁列出底本年代、頁數與校對進度。`}
   current="browse"
 >
   <section class="head">
@@ -49,17 +49,17 @@ const sections = getCorpora().map((corpus, index) => {
       </div>
       <div class="totals">
         <div class="total"><span class="total__num">{totals.corpusCount}</span><span class="total__unit">個語料</span></div>
-        <div class="total"><span class="total__num">{totals.pageCount}</span><span class="total__unit">葉</span></div>
+        <div class="total"><span class="total__num">{totals.pageCount}</span><span class="total__unit">頁</span></div>
         <div class="total"><span class="total__num">{totals.articleCount}</span><span class="total__unit">篇</span></div>
         <div class="total total--ok">
-          <span class="total__num">{totals.verifiedPages}</span><span class="total__unit">葉已核驗</span>
+          <span class="total__num">{totals.verifiedPages}</span><span class="total__unit">頁已核驗</span>
         </div>
       </div>
     </div>
     <div class="wrap legend">
       <span><i class="swatch swatch--ok" aria-hidden="true"></i>已核驗（上游 status 為 verified）</span>
-      <span><i class="swatch swatch--todo" aria-hidden="true"></i>待校葉</span>
-      <span>每一格係一葉 · 撳落去直接跳去嗰葉</span>
+      <span><i class="swatch swatch--todo" aria-hidden="true"></i>待校頁</span>
+      <span>每一格係一頁 · 撳落去直接跳去嗰頁</span>
     </div>
   </section>
 
@@ -84,21 +84,21 @@ const sections = getCorpora().map((corpus, index) => {
             </h2>
 
             <div class="facts">
-              <div class="fact"><span class="fact__num">{corpus.pageCount}</span><span class="fact__unit">葉（掃描）</span></div>
+              <div class="fact"><span class="fact__num">{corpus.pageCount}</span><span class="fact__unit">頁（掃描）</span></div>
               <div class="fact"><span class="fact__num">{corpus.articleCount}</span><span class="fact__unit">篇</span></div>
               <div class="fact">
                 <span class="fact__num">{corpus.issueCount}</span>
                 <span class="fact__unit">{corpus.issueCount > 1 ? "期" : "冊"}</span>
               </div>
               <div class="fact fact--ok">
-                <span class="fact__num">{corpus.verifiedPages}</span><span class="fact__unit">葉已核驗</span>
+                <span class="fact__num">{corpus.verifiedPages}</span><span class="fact__unit">頁已核驗</span>
               </div>
             </div>
 
             <div>
               <div class="progress__head">
                 <span class="progress__label">
-                  葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
+                  頁級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 頁（另 {corpus.needsReviewPages} 頁待校）
                 </span>
                 <span class="progress__pct">{pct}%</span>
               </div>
@@ -389,7 +389,7 @@ const sections = getCorpora().map((corpus, index) => {
     margin-top: 10px;
   }
 
-  /* 每期一列：期名／日期／核驗數 + 逐葉格；上邊虛線 */
+  /* 每期一列：期名／日期／核驗數 + 逐頁格；上邊虛線 */
   .issue {
     display: grid;
     grid-template-columns: 116px minmax(0, 1fr);

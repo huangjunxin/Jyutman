@@ -1,5 +1,5 @@
 /**
- * 站點數據層讀取：語料清單、期號、葉文件。
+ * 站點數據層讀取：語料清單、期號、頁文件。
  * 數據由 scripts/sync-corpus.mjs 生成，已提交 git（見 src/data/generated/README.md）。
  */
 
@@ -96,7 +96,7 @@ export function getIssue(slug: string, issue: string): IssueSummary | undefined 
   return getIssues(slug).find((record) => record.issue === issue);
 }
 
-/** 某期的全部葉，按掃描序號排列。 */
+/** 某期的全部頁，按掃描序號排列。 */
 export function getPages(slug: string, issue: string): PageDocument[] {
   return pagesByIssue.get(`${slug}/${issue}`) ?? [];
 }
@@ -121,7 +121,7 @@ export interface PageRoute {
   page: number;
 }
 
-/** 全站葉級路由（閱讀器靜態生成的來源）。 */
+/** 全站頁級路由（閱讀器靜態生成的來源）。 */
 export function getPageRoutes(): PageRoute[] {
   const routes: PageRoute[] = [];
   for (const corpus of manifest.corpora) {
@@ -177,12 +177,12 @@ export function getCorpusTranslatedCount(slug: string): number {
   return countTranslated(getIssues(slug).map((issue) => getTranslations(slug, issue.issue)));
 }
 
-/** 「進入閱讀」落腳葉：首個有 40 字以上正文嘅葉，避開封面；冇就第一葉。 */
+/** 「進入閱讀」落腳頁：首個有 40 字以上正文嘅頁，避開封面；冇就第一頁。 */
 export function getFirstReadablePage(slug: string, issue: string): number {
   return firstReadablePage(getPages(slug, issue)) ?? 1;
 }
 
-/** 期號篇目（有篇名嘅文章，按葉序）。 */
+/** 期號篇目（有篇名嘅文章，按頁序）。 */
 export function getIssueToc(slug: string, issue: string): TocEntry[] {
   return issueToc(getPages(slug, issue));
 }

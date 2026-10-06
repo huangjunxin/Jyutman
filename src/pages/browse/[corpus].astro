@@ -57,7 +57,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 
 <Base
   title={`${corpus.title} · 書目庫 · 粵語文叢`}
-  description={`${corpus.title}（${corpus.year ?? "年代待考"}）：${corpus.pageCount} 葉 / ${corpus.articleCount} 篇，逐期列出葉數與校對進度，可進入閱讀器。`}
+  description={`${corpus.title}（${corpus.year ?? "年代待考"}）：${corpus.pageCount} 頁 / ${corpus.articleCount} 篇，逐期列出頁數與校對進度，可進入閱讀器。`}
   current="browse"
 >
   <Fragment slot="head">
@@ -92,17 +92,17 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
           <p class="band__source">底本來源：{corpus.sourceLine}</p>
         </div>
         <dl class="band__stats">
-          <div><dt>葉（掃描）</dt><dd class="latin">{corpus.pageCount}</dd></div>
+          <div><dt>頁（掃描）</dt><dd class="latin">{corpus.pageCount}</dd></div>
           <div><dt>篇</dt><dd class="latin">{corpus.articleCount}</dd></div>
           <div><dt>{single ? "冊" : "期"}</dt><dd class="latin">{corpus.issueCount}</dd></div>
-          <div><dt>葉已核驗</dt><dd class="latin">{corpus.verifiedPages}</dd></div>
+          <div><dt>頁已核驗</dt><dd class="latin">{corpus.verifiedPages}</dd></div>
         </dl>
       </div>
 
       <div class="band__progress">
         <div class="progress-row">
           <span>
-            葉級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 葉（另 {corpus.needsReviewPages} 葉待校）
+            頁級校對進度 · 已核驗 {corpus.verifiedPages} / {corpus.pageCount} 頁（另 {corpus.needsReviewPages} 頁待校）
           </span>
           <span class="band__pct latin">{percent(corpus.verifiedPages, corpus.pageCount)}%</span>
         </div>
@@ -123,7 +123,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
       <div class="legend">
         <span><i class="legend__ok" aria-hidden="true"></i>已核驗</span>
         <span><i class="legend__todo" aria-hidden="true"></i>待校</span>
-        <span>每一格係一葉 · 撳落去直接閱讀</span>
+        <span>每一格係一頁 · 撳落去直接閱讀</span>
       </div>
     </div>
 
@@ -141,7 +141,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
               <span class="badge badge--amber issue__nodate">日期待考</span>
             )}
             <div class="issue__count">
-              {issue.pages} 葉 · {issue.articles} 篇
+              {issue.pages} 頁 · {issue.articles} 篇
             </div>
             {issue.date_note && (
               <details class="date-note">
@@ -154,7 +154,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
             )}
             {href ? (
               <a class="btn btn--solid issue__go" href={href}>
-                第一葉 <span aria-hidden="true">→</span>
+                第一頁 <span aria-hidden="true">→</span>
               </a>
             ) : (
               <span class="badge badge--amber">未開放</span>
@@ -165,7 +165,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
             <div>
               <div class="progress-row">
                 <span>
-                  已核驗 {issue.verified_pages} / {issue.pages} 葉
+                  已核驗 {issue.verified_pages} / {issue.pages} 頁
                 </span>
                 <span class="issue__pct latin">{percent(issue.verified_pages, issue.pages)}%</span>
               </div>
@@ -217,7 +217,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     }
 
     <p class="foot-note">
-      頁數、篇數、校對進度均取自上游發佈層 <code>issues.jsonl</code>；葉碼用掃描序號，永遠連續。
+      頁數、篇數、校對進度均取自上游發佈層 <code>issues.jsonl</code>；頁碼用掃描序號，永遠連續。
     </p>
     <a class="back" href="/browse/"><span aria-hidden="true">←</span> 返書目庫</a>
   </section>
@@ -511,7 +511,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
     overflow-wrap: anywhere;
   }
 
-  /* 原型「第一葉 →」中間係一個空格（約 .25em），唔係 .btn 嘅 8px gap */
+  /* 原型「第一頁 →」中間係一個空格（約 .25em），唔係 .btn 嘅 8px gap */
   .issue__go {
     align-self: flex-start;
     gap: 0.25em;

@@ -21,7 +21,7 @@ export interface MarkerBlock {
 
 export type PageBlock = ArticleBlock | MarkerBlock;
 
-/** 葉文件中的一葉；status 由上游頁級狀態傳播而來。 */
+/** 頁文件中的一頁；status 由上游頁級狀態傳播而來。 */
 export interface PageDocument {
   page: number;
   status: string;

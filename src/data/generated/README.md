@@ -2,9 +2,9 @@
 
 本目錄全部係派生數據，可由 `scripts/sync-corpus.mjs` 重建（讀上游 `JyutmanDataPipeline/data/<corpus>/*.jsonl` 發佈層）：
 
-- `manifest.json`：語料級摘要（標題照錄底本原名、年代、葉數、篇數、校對進度、掃描來源）。
-- `<corpus>/issues.json`：期號清單（日期、考證說明、葉數、篇數、已核驗與待校葉數）。
-- `<corpus>/<issue>/pages.json`：葉級頁面數據，每葉 `{page, status, blocks}`；`blocks` 由文章切分而來，`type` 為 `article`（`id` / `title` / `seq` / `text` / `text_norm`）或 `marker`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
+- `manifest.json`：語料級摘要（標題照錄底本原名、年代、頁數、篇數、校對進度、掃描來源）。
+- `<corpus>/issues.json`：期號清單（日期、考證說明、頁數、篇數、已核驗與待校頁數）。
+- `<corpus>/<issue>/pages.json`：頁級數據，每頁 `{page, status, blocks}`；`blocks` 由文章切分而來，`type` 為 `article`（`id` / `title` / `seq` / `text` / `text_norm`）或 `marker`（整段版面標記，如 ［插圖］［空白頁］［現代襯頁］）。
 - `<corpus>/<issue>/jyutping.json`：粵拼音表，`{文章 id: [[字在正文中的下標, 字, 粵拼], …]}`；來源為姊妹倉 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），下標已換算到本站正文（標記段內的字略去）。
 - `<corpus>/<issue>/translations.json`（目前只有廣東白話報）：現代粵文今譯，`{文章 id: {paragraphs: [譯文…], note_count}}`；paragraphs 與本站正文段一一對應（標記段略去），來源為姊妹倉 `Jyutman-Corpus/translations/gdvp.translations.json`。
 

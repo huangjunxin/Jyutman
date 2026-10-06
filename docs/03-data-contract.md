@@ -1,4 +1,4 @@
-> 状态：草案（2026-10-05）｜本文档随实现演进，以代码与单一事实源为准。
+> 状态：草案（2026-10-06）｜本文档随实现演进，以代码与单一事实源为准。
 
 # 数据契约
 
@@ -17,11 +17,11 @@
 ```text
 corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；注意 corpus slug ≠ 文章 ID 前缀 gdvp / cvh / rcc）
   └─ issue（期号）
-       └─ page（叶）
-            └─ article（文章；一篇 = 某一叶上的一段连续文本）
+       └─ page（页）
+            └─ article（文章；一篇 = 某一页上的一段连续文本）
 ```
 
-三层产物一一对应三个 jsonl：`issues.jsonl`（期号元数据）、`pages.jsonl`（整页全文）、`articles.jsonl`（切分后的文章）。文章是检索与展示的基本单位，叶是影像的基本单位。
+三层产物一一对应三个 jsonl：`issues.jsonl`（期号元数据）、`pages.jsonl`（整页全文）、`articles.jsonl`（切分后的文章）。文章是检索与展示的基本单位，页是影像的基本单位。
 
 ## 3. articles.jsonl
 
@@ -37,8 +37,8 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 | `corpus` | string | 语料代号 |
 | `issue` | string | 期号（在该语料内唯一） |
 | `issue_date` | string \| null | 依赖上游 `ISSUE_INFO` 表；新语料可能为 null，UI 与排序必须容忍 |
-| `page` | number | 扫描叶序号（整数，已实测确认；是 URL 与影像定位的主键，不是原书印刷叶码） |
-| `seq` | number | 该叶内的文章序号 |
+| `page` | number | 扫描页序号（整数，已实测确认；是 URL 与影像定位的主键，不是原书印刷页码） |
+| `seq` | number | 该页内的文章序号 |
 | `source_image` | string | 报纸：单页 JPG；**书本：整本 PDF**，没有单页影像，需本站自行渲染派生或链 PDF（见坑 ⑦，方案见 02 §7） |
 | `title` | string \| null | 无题文章为 null，UI 需给无题文章生成显示名（如「（无题）」+ 首句） |
 | `text` | string | 正文，含 `\n\n` 分段；**三语混排**：汉字 + 传教士罗马字 + 英文同处一个字段（见坑 ⑤） |
@@ -49,7 +49,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 
 ### 4.1 pages.jsonl
 
-整页全文 + 该叶的文章数 + 与文章一致的 `status`。
+整页全文 + 该页的文章数 + 与文章一致的 `status`。
 
 - 通读形态：阅读器可以先取整页全文再叠文章切分。
 - 字段（已对 `gd-vernacular-paper` 实测）：`corpus` / `issue` / `issue_date` / `page`（int）/ `source_filename` / `source_image` / `text` / `unclear` / `articles`（int）/ `status`。上游 schema 可能演进，同步脚本仍需对未知字段容错。
@@ -81,7 +81,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 |---|---|---|---|
 | 归一化检索文本 | 构建期产物（映射表版本化） | `src/utils/normalize.ts` | 同字简转繁映射（现收 41 字）+ 去空白，检索正确性的核心；不同的字（如 嘢 / 野）与异体字一律不归并；罗马字归一未实现 |
 | FTS5 索引 | D1 虚拟表 | `scripts/sync-corpus.mjs` → `db/import.sql` → D1 | trigram tokenizer，见 02 §6 |
-| 粤拼音表 | `src/data/generated/<corpus>/<issue>/jyutping.json`（构建期产物，提交 git） | `scripts/sync-corpus.mjs` 读姊妹仓 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），按叶拆分并把下标换算到本站正文 | 文章 id → `[字在正文中的下标, 字, 粤拼]`；阅读器据此生成 `<ruby>`，见 04 §1.2 S1 |
+| 粤拼音表 | `src/data/generated/<corpus>/<issue>/jyutping.json`（构建期产物，提交 git） | `scripts/sync-corpus.mjs` 读姊妹仓 `Jyutman-Corpus/translations/jyutping/<corpus>.jyutping.json`（tojyutping 生成），按页拆分并把下标换算到本站正文 | 文章 id → `[字在正文中的下标, 字, 粤拼]`；阅读器据此生成 `<ruby>`，见 04 §1.2 S1 |
 | corrections 表 | D1 | Workers API 接收用户提交 | 见 §7 |
 | 影像 manifest | Jyutman-Images 仓 | 同步脚本生成 | object key / 尺寸 / checksum / 来源 / 许可 / 页码映射 |
 | 书本单页派生图 | R2 | 构建期渲染 | 书本类源为 PDF，派生单页图（见 02 §7，待决策） |
@@ -106,7 +106,7 @@ corpus（语料 slug，如 gd-vernacular-paper / canton-vernacular-handbook；�
 CREATE TABLE corrections (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   article_id      TEXT NOT NULL,
-  page_id         TEXT,                       -- <corpus>/<issue>/<三位叶码>，由 articles 表推出
+  page_id         TEXT,                       -- <corpus>/<issue>/<三位页码>，由 articles 表推出
   span_start      INTEGER,                    -- 选填：所选文字在该篇正文中的码点区间 [start, end)
   span_end        INTEGER,
   fragment        TEXT NOT NULL,              -- 原文片段引用（前 20 字 + 所选 + 后 20 字）

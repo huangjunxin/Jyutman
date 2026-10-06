@@ -38,7 +38,7 @@ const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 const readHref = (slug: string, issue: string, page: number) => `/read/${slug}/${issue}/${pageParam(page)}/`;
 const searchHref = (q: string) => `/search/?q=${encodeURIComponent(q)}`;
 
-// ---- 樣張同示意圖：廣東白話報第一期（第 006、009 葉；檢索示例喺同期搵首個命中） ----
+// ---- 樣張同示意圖：廣東白話報第一期（第 006、009 頁；檢索示例喺同期搵首個命中） ----
 const GD = "gd-vernacular-paper";
 const GD_ISSUE = "issue-01";
 const gd = getCorpus(GD);
@@ -48,16 +48,16 @@ const gdTitle = corpusMeta(gd).shortTitle;
 const gdLabel = issueLabel(gd.issueCount, GD_ISSUE);
 const gdDate = gdIssue.issue_date ?? "日期待考";
 
-/** 某葉第一篇文章連篇首摘錄（截到 minChars 字之後嘅句末標點）。 */
+/** 某頁第一篇文章連篇首摘錄（截到 minChars 字之後嘅句末標點）。 */
 function sample(page: number, minChars: number) {
   const doc = getPage(GD, GD_ISSUE, page);
   const article = doc?.blocks.find((block): block is ArticleBlock => block.type === "article");
   const lead = article && leadExcerpt(article.text, minChars);
-  if (!doc || !article || !lead) throw new Error(`首頁樣張：${GD}/${GD_ISSUE} 第 ${page} 葉冇正文`);
+  if (!doc || !article || !lead) throw new Error(`首頁樣張：${GD}/${GD_ISSUE} 第 ${page} 頁冇正文`);
   return { page, status: doc.status, article, lead, href: readHref(GD, GD_ISSUE, page) };
 }
 
-// 原文樣張截頭大約 45 字：第 40 字之後嘅第一個句末標點（第 006 葉剛好 45 字）
+// 原文樣張截頭大約 45 字：第 40 字之後嘅第一個句末標點（第 006 頁剛好 45 字）
 const specimen = sample(6, 40);
 const specimenHtml = renderAnnotatedParagraph(
   specimen.lead.text,
@@ -104,7 +104,7 @@ const others = cards.filter((_, index) => index !== featureIndex);
 // 數字帶四格玻璃色固定：寶藍、琥珀、翠綠、寶石紅
 const stats = [
   { tone: "blue", value: String(totals.corpusCount), unit: "個語料", label: "Corpora · 已發佈" },
-  { tone: "amber", value: String(totals.pageCount), unit: "葉", label: "Scanned pages · 掃描葉" },
+  { tone: "amber", value: String(totals.pageCount), unit: "頁", label: "Scanned pages · 掃描頁" },
   { tone: "green", value: String(totals.articleCount), unit: "篇", label: "Articles · 篇章" },
   { tone: "ruby", value: formatWan(totals.characterCount), unit: "萬字", label: "Characters · 正文字數" },
 ] as const;
@@ -112,7 +112,7 @@ const stats = [
 
 <Base
   title="粵語文叢 · 讀返十九世紀嘅粵語"
-  description="1842 至 1907 年粵語白話文獻的閱讀平台：方言報紙、傳教士讀本與識字課本，逐葉展示底本來源與校對狀態。"
+  description="1842 至 1907 年粵語白話文獻的閱讀平台：方言報紙、傳教士讀本與識字課本，逐頁展示底本來源與校對狀態。"
   current={undefined}
   headerSearch={false}
 >
@@ -168,7 +168,7 @@ const stats = [
             <div class="specimen__id">
               <div class="specimen__source" id="specimen-title">{gdTitle} · {gdLabel}</div>
               <div class="specimen__meta">
-                <span class:list={[gdIssue.issue_date && "latin"]}>{gdDate}</span> · 第 {pageParam(specimen.page)} 葉
+                <span class:list={[gdIssue.issue_date && "latin"]}>{gdDate}</span> · 第 {pageParam(specimen.page)} 頁
               </div>
             </div>
             <div class="specimen__controls" hidden>
@@ -220,9 +220,9 @@ const stats = [
           <Eyebrow class="corpora__eyebrow" text="Corpora · 語料" />
           <h2 class="sec-head__title" id="corpora-title">語料</h2>
           <p class="sec-head__sub">
-            已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 葉 · {totals.articleCount} 篇；全站已核驗 {
+            已發佈 {totals.corpusCount} 個語料 · {totals.pageCount} 頁 · {totals.articleCount} 篇；全站已核驗 {
               totals.verifiedPages
-            } 葉（{percent(totals.verifiedPages, totals.pageCount)}%）
+            } 頁（{percent(totals.verifiedPages, totals.pageCount)}%）
           </p>
         </div>
         <a class="sec-head__link" href="/browse/">全部書目 →</a>
@@ -249,7 +249,7 @@ const stats = [
                   {feature.corpus.title}
                 </h3>
                 <p class="feature__facts">
-                  {feature.corpus.pageCount} 葉 · {feature.corpus.articleCount} 篇
+                  {feature.corpus.pageCount} 頁 · {feature.corpus.articleCount} 篇
                   {feature.translated > 0 && ` · ${feature.translated} 篇附今譯`}
                 </p>
               </div>
@@ -260,7 +260,7 @@ const stats = [
                       <span class="issue-row__label">{issue.label}</span>
                       <span class="issue-row__facts">
                         {issue.issue_date ? <span class="latin">{issue.issue_date}</span> : "日期待考"} · {issue.pages}{" "}
-                        葉 · {issue.articles} 篇
+                        頁 · {issue.articles} 篇
                       </span>
                       <span class="issue-row__progress">
                         <span class="meter issue-row__meter" style={`--pct:${issue.pct}%`} aria-hidden="true">
@@ -276,7 +276,7 @@ const stats = [
               <div class="feature__foot">
                 <div class="feature__progress">
                   <span>
-                    葉級校對進度 · 已核驗 {feature.corpus.verifiedPages} / {feature.corpus.pageCount} 葉
+                    頁級校對進度 · 已核驗 {feature.corpus.verifiedPages} / {feature.corpus.pageCount} 頁
                   </span>
                   <span class="feature__pct">{feature.pct}%</span>
                 </div>
@@ -285,7 +285,7 @@ const stats = [
                 </div>
                 <div class="feature__actions">
                   <a class="btn btn--solid feature__read" href={feature.href}>進入閱讀 →</a>
-                  <a class="btn btn--outline feature__browse" href={`/browse/${feature.corpus.slug}/`}>逐葉校對狀態</a>
+                  <a class="btn btn--outline feature__browse" href={`/browse/${feature.corpus.slug}/`}>逐頁校對狀態</a>
                 </div>
               </div>
             </Glass>
@@ -307,7 +307,7 @@ const stats = [
                   <div class="side-card__top">
                     <span class="side-card__year">{card.corpus.year ?? "年代待考"}</span>
                     <span class="side-card__kind">
-                      {card.corpus.issueCount > 1 ? `${card.corpus.issueCount} 期` : "單冊"} · {card.corpus.pageCount} 葉 ·{" "}
+                      {card.corpus.issueCount > 1 ? `${card.corpus.issueCount} 期` : "單冊"} · {card.corpus.pageCount} 頁 ·{" "}
                       {card.corpus.articleCount} 篇
                     </span>
                   </div>
@@ -320,7 +320,7 @@ const stats = [
                   <div class="side-card__foot">
                     <div class="side-card__progress">
                       <span>
-                        已核驗 {card.corpus.verifiedPages} / {card.corpus.pageCount} 葉
+                        已核驗 {card.corpus.verifiedPages} / {card.corpus.pageCount} 頁
                       </span>
                       <span class="side-card__pct">{card.pct}%</span>
                     </div>
@@ -349,17 +349,17 @@ const stats = [
           <a
             class="tile tile--source"
             href={specimen.href}
-            aria-label={`打開${gdTitle}${gdLabel}第 ${pageParam(specimen.page)} 葉`}
+            aria-label={`打開${gdTitle}${gdLabel}第 ${pageParam(specimen.page)} 頁`}
           >
             <span class="mini-card">
               <span class="mini-card__head">
-                <span class="mini-card__title">本葉來源</span>
+                <span class="mini-card__title">本頁來源</span>
                 <StatusBadge status={specimen.status} />
               </span>
               <span class="mini-card__rows">
                 <span class="mini-card__key">語料</span><span>{gd.title}</span>
                 <span class="mini-card__key">期號</span><span>{gdLabel}（{gdDate}）</span>
-                <span class="mini-card__key">葉序號</span><span class="mono">{pageParam(specimen.page)}</span>
+                <span class="mini-card__key">頁序號</span><span class="mono">{pageParam(specimen.page)}</span>
                 <span class="mini-card__key">底本</span><span>{gd.sourceLine}</span>
                 <span class="mini-card__key">授權</span><span>CC BY-SA 4.0</span>
               </span>
@@ -367,14 +367,14 @@ const stats = [
           </a>
           <div class="ordinal">其一</div>
           <h3 class="howto__h3">文本閱讀＋來源信息</h3>
-          <p class="howto__text">分段 OCR 文本配豎排閱讀，逐葉展示底本、藏館、葉碼同校對狀態。</p>
+          <p class="howto__text">分段 OCR 文本配豎排閱讀，逐頁展示底本、藏館、頁碼同校對狀態。</p>
         </div>
 
         <div class="howto__col">
           <a
             class="tile tile--vertical"
             href={vertical.href}
-            aria-label={`打開〈${vertical.article.title}〉（${gdLabel}第 ${pageParam(vertical.page)} 葉）`}
+            aria-label={`打開〈${vertical.article.title}〉（${gdLabel}第 ${pageParam(vertical.page)} 頁）`}
           >
             <span class="tile__vertical">
               <span class="tile__vtitle">{vertical.article.title}</span>
@@ -404,7 +404,7 @@ const stats = [
                     {kwic.snippet.post}
                   </span>
                   <span class="kwic__src">
-                    {gdTitle} · {gdLabel} · 第 {pageParam(kwic.page)} 葉
+                    {gdTitle} · {gdLabel} · 第 {pageParam(kwic.page)} 頁
                   </span>
                 </span>
               )

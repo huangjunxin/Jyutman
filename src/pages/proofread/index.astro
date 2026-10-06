@@ -245,7 +245,7 @@ const tiles = [
       const parts = [
         corpus === null ? "（語料未登記）" : (labels.titles[corpus] ?? corpus),
         issue === null || corpus === null ? null : (labels.issues[`${corpus}/${issue}`] ?? issue),
-        page === null || Number.isNaN(page) ? null : `第 ${pad3(page)} 葉`,
+        page === null || Number.isNaN(page) ? null : `第 ${pad3(page)} 頁`,
         item.article_id,
       ];
       const href =

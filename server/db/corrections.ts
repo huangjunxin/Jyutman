@@ -48,7 +48,7 @@ export interface QueueRow {
   title: string | null;
 }
 
-/** 由文章 id 推出葉級 page_id（<corpus>/<issue>/<三位葉碼>）；查唔到回 null。 */
+/** 由文章 id 推出頁級 page_id（<corpus>/<issue>/<三位頁碼>）；查唔到回 null。 */
 export async function findPageId(db: D1Database, articleId: string): Promise<string | null> {
   const row = await db
     .prepare("SELECT corpus, issue, page FROM articles WHERE id = ?")

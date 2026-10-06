@@ -1,6 +1,6 @@
 /**
  * 引用格式（docs/04 S7）：純文字（APA 風格一行）、BibTeX、RIS。
- * 全部由既有 generated 資料砌成；冇作者字段就唔編造（無題用「語料 + 葉碼」）。
+ * 全部由既有 generated 資料砌成；冇作者字段就唔編造（無題用「語料 + 頁碼」）。
  */
 
 export interface CitationInput {
@@ -9,7 +9,7 @@ export interface CitationInput {
   corpusTitle: string;
   issueDate: string | null;
   page: number;
-  /** 永久 URL（葉級 canonical，可含篇錨點）。 */
+  /** 永久 URL（頁級 canonical，可含篇錨點）。 */
   url: string;
 }
 
@@ -19,12 +19,12 @@ export interface Citations {
   ris: string;
 }
 
-/** 葉碼三位補零。 */
+/** 頁碼三位補零。 */
 function pageLabel(page: number): string {
-  return `第 ${String(page).padStart(3, "0")} 葉`;
+  return `第 ${String(page).padStart(3, "0")} 頁`;
 }
 
-/** 篇名：無題時用「語料 + 葉碼」，唔編造。 */
+/** 篇名：無題時用「語料 + 頁碼」，唔編造。 */
 export function citationTitle(input: CitationInput): string {
   return input.title ?? `${input.corpusTitle} ${pageLabel(input.page)}`;
 }

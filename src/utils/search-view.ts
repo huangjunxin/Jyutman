@@ -21,7 +21,7 @@ export function normalizationNotice(query: string, normalized: string): string |
   return `已將「${query.trim()}」歸一為「${normalized}」檢索；下面照樣顯示底本原字。`;
 }
 
-/** 命中連去葉級 URL，帶 ?hl= 查詢字同文章錨點。 */
+/** 命中連去頁級 URL，帶 ?hl= 查詢字同文章錨點。 */
 export function hitHref(
   hit: { corpus: string; issue: string; page: number; id?: string | null },
   query: string,

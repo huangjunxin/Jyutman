@@ -18,7 +18,7 @@ const corpora = getCorpora();
 const RIGHTS_VERIFIED = 5;
 const RIGHTS_TOTAL = 9;
 
-/** 引用示範：同首頁原文樣張同一篇（廣東白話報第一期第 006 葉）。 */
+/** 引用示範：同首頁原文樣張同一篇（廣東白話報第一期第 006 頁）。 */
 const SAMPLE = { corpus: "gd-vernacular-paper", issue: "issue-01", page: 6 };
 const sampleCorpus = getCorpus(SAMPLE.corpus);
 const sampleIssue = getIssue(SAMPLE.corpus, SAMPLE.issue);
@@ -141,27 +141,27 @@ const steps = [
       <ul class="points">
         <li>本站預設只公開 OCR 文本層；掃描影像要逐件核查藏館條款之後先會開放。</li>
         <li>研究語料庫（HKUST / EdUHK / PolyU 等）走合作授權，唔下載轉載。</li>
-        <li>展示層逐葉標明底本來源同文本授權；現時 {totals.corpusCount} 個已發佈語料每葉都可追溯到來源。</li>
+        <li>展示層逐頁標明底本來源同文本授權；現時 {totals.corpusCount} 個已發佈語料每頁都可追溯到來源。</li>
       </ul>
     </section>
 
     <section class="lf-section" id="cite">
       <div class="ordinal ordinal--lg">二</div>
       <h2 class="lf-h2">引用本站</h2>
-      <p class="lf-text">葉級 URL 係引用主鍵，路徑唔會隨校對狀態改變。</p>
-      <div class="anatomy" role="region" aria-label="葉級網址結構" tabindex="0">
+      <p class="lf-text">頁級 URL 係引用主鍵，路徑唔會隨校對狀態改變。</p>
+      <div class="anatomy" role="region" aria-label="頁級網址結構" tabindex="0">
         <p class="anatomy__row">
           <span class="anatomy__dim">jyutman.com/read/</span>
           <span class="anatomy__seg anatomy__seg--corpus"><span>{SAMPLE.corpus}</span><small>語料</small></span>
           <span class="anatomy__dim">/</span>
           <span class="anatomy__seg anatomy__seg--issue"><span>{SAMPLE.issue}</span><small>期號</small></span>
           <span class="anatomy__dim">/</span>
-          <span class="anatomy__seg anatomy__seg--page"><span>{pageParam(1)}</span><small>葉碼（掃描序號）</small></span>
+          <span class="anatomy__seg anatomy__seg--page"><span>{pageParam(1)}</span><small>頁碼（掃描序號）</small></span>
           <span class="anatomy__dim">/</span>
         </p>
       </div>
       <p class="lf-text">
-        引用時請一併標明所引葉嘅底本、期號同年份（各葉「本葉來源」欄有齊）。閱讀頁「引用」欄可以直接複製文本、BibTeX、RIS 三種格式：
+        引用時請一併標明所引頁嘅底本、期號同年份（各頁「本頁來源」欄有齊）。閱讀頁「引用」欄可以直接複製文本、BibTeX、RIS 三種格式：
       </p>
       <pre class="citation">{sampleCitation}</pre>
       <a class="try" href={sampleHref}>喺閱讀頁試下 →</a>
@@ -221,7 +221,7 @@ const steps = [
             <tr>
               <th scope="col">語料</th>
               <th scope="col">年代</th>
-              <th scope="col">葉數</th>
+              <th scope="col">頁數</th>
               <th scope="col">篇數</th>
               <th scope="col">底本來源</th>
             </tr>
@@ -411,7 +411,7 @@ const steps = [
     background: var(--blue);
   }
 
-  /* 二、葉級網址拆解：木色底，語料金黃、期號淺翠綠、葉碼紙白 */
+  /* 二、頁級網址拆解：木色底，語料金黃、期號淺翠綠、頁碼紙白 */
   .anatomy {
     margin: 6px 0 26px;
     padding: 28px;
@@ -597,7 +597,7 @@ const steps = [
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    white-space: nowrap; /* 「葉數」「篇數」唔好逐字斷行 */
+    white-space: nowrap; /* 「頁數」「篇數」唔好逐字斷行 */
     color: var(--graphite);
   }
 

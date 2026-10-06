@@ -46,7 +46,7 @@ const corpus = getCorpus(corpusSlug);
 const issue = getIssue(corpusSlug, issueSlug);
 const leaf = getPage(corpusSlug, issueSlug, pageNumber);
 if (!corpus || !issue || !leaf) {
-  throw new Error(`找唔到葉：${corpusSlug}/${issueSlug}/${pageNumber}`);
+  throw new Error(`找唔到頁：${corpusSlug}/${issueSlug}/${pageNumber}`);
 }
 
 const pages = getPages(corpusSlug, issueSlug);
@@ -60,7 +60,7 @@ const issueText = issueLabel(corpus.issueCount, issueSlug);
 const dateText = issue.issue_date ?? "日期待考";
 const badge = statusBadge(leaf.status);
 
-/** 期號切換（多期語料先有）：每期跳去首個可讀葉。 */
+/** 期號切換（多期語料先有）：每期跳去首個可讀頁。 */
 const issueLinks =
   corpus.issueCount > 1
     ? getIssues(corpusSlug).map((record) => ({
@@ -72,7 +72,7 @@ const issueLinks =
       }))
     : [];
 
-/** 期號篇目；當前篇 = 葉碼 ≤ 本葉嘅最後一條。 */
+/** 期號篇目；當前篇 = 頁碼 ≤ 本頁嘅最後一條。 */
 const toc = getIssueToc(corpusSlug, issueSlug);
 const currentToc = toc.findLastIndex((entry) => entry.page <= pageNumber);
 
@@ -130,12 +130,12 @@ const hasTranslation = views.some((view) => view.kind === "article" && view.firs
 const siteUrl = (Astro.site ?? new URL("https://jyutman.com")).href;
 const leafUrl = `${siteUrl}read/${corpusSlug}/${issueSlug}/${pageNo}/`;
 
-/** 葉名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
+/** 頁名取首篇文章題目；無題或題目同書名相同時，只用書名。 */
 const firstArticle = leaf.blocks.find((block) => block.type === "article");
 const leafTitle = firstArticle?.type === "article" ? firstArticle.title : null;
 const pageName = leafTitle !== null && leafTitle !== corpus.title ? `${leafTitle} · ${corpus.title}` : corpus.title;
 
-/** 引用本葉第一篇文章。 */
+/** 引用本頁第一篇文章。 */
 const citations =
   firstArticle?.type === "article"
     ? buildCitations({
@@ -159,7 +159,7 @@ const citeFormats = citations
 const articleJsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
-  headline: leafTitle !== null && leafTitle !== corpus.title ? leafTitle : `${corpus.title} 第 ${pageNo} 葉`,
+  headline: leafTitle !== null && leafTitle !== corpus.title ? leafTitle : `${corpus.title} 第 ${pageNo} 頁`,
   isPartOf: {
     "@type": "Book",
     name: corpus.title,
@@ -173,8 +173,8 @@ const articleJsonLd = {
 ---
 
 <Base
-  title={`${pageName} · 第 ${pageNo} 葉 · 粵語文叢`}
-  description={`${corpus.title}${issue.issue_date ? `（${issue.issue_date}）` : ""}第 ${pageNo} 葉的 OCR 文本，附底本來源、OCR 狀態與文本授權。`}
+  title={`${pageName} · 第 ${pageNo} 頁 · 粵語文叢`}
+  description={`${corpus.title}${issue.issue_date ? `（${issue.issue_date}）` : ""}第 ${pageNo} 頁的 OCR 文本，附底本來源、OCR 狀態與文本授權。`}
   current="browse"
 >
   <Fragment slot="head">
@@ -201,7 +201,7 @@ const articleJsonLd = {
         <a href="/browse/">書目庫</a><span aria-hidden="true">›</span>
         <a href={`/browse/${corpus.slug}/`}>{corpus.title}</a><span aria-hidden="true">›</span>
         <span>{issueText}（{dateText}）</span><span aria-hidden="true">›</span>
-        <span class="crumb__cur" aria-current="page">第 {pageNo} 葉</span>
+        <span class="crumb__cur" aria-current="page">第 {pageNo} 頁</span>
       </nav>
       <div class="rd-controls">
         <button type="button" class="chip chip--hl" id="hl-chip" hidden></button>
@@ -217,7 +217,7 @@ const articleJsonLd = {
               今譯
             </button>
           ) : (
-            <button type="button" class="toggle" aria-pressed="false" disabled title="本葉冇今譯">
+            <button type="button" class="toggle" aria-pressed="false" disabled title="本頁冇今譯">
               今譯
             </button>
           )
@@ -243,7 +243,7 @@ const articleJsonLd = {
       <div class="toc-head">
         <Eyebrow size="sm" text="Contents · 目錄" />
         <p class="toc-title">{corpus.title}</p>
-        <p class="toc-meta">{issueText} · {dateText} · {pages.length} 葉</p>
+        <p class="toc-meta">{issueText} · {dateText} · {pages.length} 頁</p>
         {
           issueLinks.length > 0 && (
             <nav class="issue-switch" aria-label="期號">
@@ -295,7 +295,7 @@ const articleJsonLd = {
         <h1 class="leaf-no">
           <span class="visually-hidden">{corpus.title}</span>
           <span class="leaf-no__num">{pageNo}</span>
-          <span class="leaf-no__pos">葉 · 第 {index + 1} / {pages.length} 葉</span>
+          <span class="leaf-no__pos">頁 · 第 {index + 1} / {pages.length} 頁</span>
         </h1>
         <StatusBadge status={leaf.status} size="md" label={badge.tone === "ok" ? undefined : "OCR 未校 · 歡迎報錯"} />
       </header>
@@ -363,41 +363,41 @@ const articleJsonLd = {
         {
           previous ? (
             <a class="btn btn--neutral pg pg--prev" href={readUrl(issueSlug, previous.page)} rel="prev" data-nav="prev">
-              ‹ 上一葉
+              ‹ 上一頁
             </a>
           ) : (
             <a class="btn btn--neutral pg pg--prev" role="link" aria-disabled="true">
-              ‹ 上一葉
+              ‹ 上一頁
             </a>
           )
         }
         <p class="pg-info">
-          掃描序號 <b>{pageNo}</b> · <span class="pg-pos">第 {index + 1} / {pages.length} 葉</span><br />
+          掃描序號 <b>{pageNo}</b> · <span class="pg-pos">第 {index + 1} / {pages.length} 頁</span><br />
           <span class="pg-hint">← → 鍵都可以揭頁</span>
         </p>
         {
           next ? (
             <a class="btn btn--solid pg pg--next" href={readUrl(issueSlug, next.page)} rel="next" data-nav="next">
-              下一葉 ›
+              下一頁 ›
             </a>
           ) : (
             <a class="btn btn--solid pg pg--next" role="link" aria-disabled="true">
-              下一葉 ›
+              下一頁 ›
             </a>
           )
         }
       </footer>
     </article>
 
-    <aside class="rd-side" aria-label="本葉資料">
+    <aside class="rd-side" aria-label="本頁資料">
       <Glass tone="neutral" as="section" paneClass="src-pane" aria-labelledby="src-title">
-        <h2 id="src-title">本葉來源</h2>
+        <h2 id="src-title">本頁來源</h2>
         <dl class="src-list">
           <dt>語料</dt>
           <dd><a href={`/browse/${corpus.slug}/`}>{corpus.title}</a></dd>
           <dt>期號</dt>
           <dd>{issueText}（{dateText}）</dd>
-          <dt>葉序號</dt>
+          <dt>頁序號</dt>
           <dd class="mono">{pageNo}</dd>
           <dt>OCR 狀態</dt>
           <dd>{badge.label}</dd>
@@ -1719,13 +1719,13 @@ const articleJsonLd = {
     justify-self: start;
   }
 
-  /* 原型下一葉 border:0 + 10px 18px；.btn 有 1px 透明邊，所以 padding 減 1px（比上一葉矮 2px，同原型） */
+  /* 原型下一頁 border:0 + 10px 18px；.btn 有 1px 透明邊，所以 padding 減 1px（比上一頁矮 2px，同原型） */
   .pg--next {
     justify-self: end;
     padding: 9px 17px;
   }
 
-  /* 期尾：同上一葉一樣淡到 .35，唔用報錯掣嗰種半透明底 */
+  /* 期尾：同上一頁一樣淡到 .35，唔用報錯掣嗰種半透明底 */
   .pg--next[aria-disabled="true"] {
     background: var(--blue);
     opacity: 0.35;

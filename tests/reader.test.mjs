@@ -62,7 +62,7 @@ test("isCjkDominant：漢字多過拉丁字母先豎排；純英文目錄、頁�
 
 test("markerNote：已登記標記有說明，未登記標記唔強作解釋", () => {
   assert.equal(markerNote("［插圖］"), "底本此處為插圖，影像待版權核查後開放。");
-  assert.equal(markerNote("［空白頁］"), "掃描確認為空白葉。");
+  assert.equal(markerNote("［空白頁］"), "掃描確認為空白頁。");
   assert.equal(markerNote("［現代襯頁］"), "現代掃描襯頁，非底本內容。");
   assert.equal(markerNote("［其他］"), null);
 });
@@ -74,7 +74,7 @@ test("statusBadge：verified 為已核驗，其餘按未校呈現", () => {
   assert.deepEqual(statusBadge("未來新狀態"), { label: "OCR 未校", tone: "ocr" });
 });
 
-test("pageParam：葉碼三位補零", () => {
+test("pageParam：頁碼三位補零", () => {
   assert.equal(pageParam(1), "001");
   assert.equal(pageParam(9), "009");
   assert.equal(pageParam(41), "041");

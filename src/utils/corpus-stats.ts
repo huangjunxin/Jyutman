@@ -1,11 +1,11 @@
 /**
- * 數據層統計純函數：字數、今譯篇數、首個可讀葉、期號篇目。
+ * 數據層統計純函數：字數、今譯篇數、首個可讀頁、期號篇目。
  * 只收數據做參數（corpus.ts 負責接 import.meta.glob），方便 node:test 直接測。
  */
 
 import type { PageDocument, TranslationTable } from "./types.ts";
 
-/** 「進入閱讀」跳過封面：首個有咁多字正文嘅葉先算可讀（原型規則）。 */
+/** 「進入閱讀」跳過封面：首個有咁多字正文嘅頁先算可讀（原型規則）。 */
 export const READABLE_MIN_CHARS = 40;
 
 /** 正文字數：去晒空白，按碼點計（擴展區字算一個字）。 */
@@ -15,7 +15,7 @@ export function charCount(text: string): number {
   return count;
 }
 
-/** 一批葉嘅正文總字數（只計文章塊，版面標記唔計）。 */
+/** 一批頁嘅正文總字數（只計文章塊，版面標記唔計）。 */
 export function countCharacters(pages: readonly PageDocument[]): number {
   let total = 0;
   for (const page of pages) {
@@ -29,7 +29,7 @@ export function countTranslated(tables: readonly TranslationTable[]): number {
   return tables.reduce((sum, table) => sum + Object.keys(table).length, 0);
 }
 
-/** 首個有 minChars 字以上文章塊嘅葉碼（掃描序）；冇就返回第一葉，冇葉返回 undefined。 */
+/** 首個有 minChars 字以上文章塊嘅頁碼（掃描序）；冇就返回第一頁，冇頁返回 undefined。 */
 export function firstReadablePage(
   pages: readonly PageDocument[],
   minChars = READABLE_MIN_CHARS,
@@ -40,14 +40,14 @@ export function firstReadablePage(
   return (readable ?? pages[0])?.page;
 }
 
-/** 期號篇目一條：葉碼、文章 id、篇名。 */
+/** 期號篇目一條：頁碼、文章 id、篇名。 */
 export interface TocEntry {
   page: number;
   id: string;
   title: string;
 }
 
-/** 期號篇目：按葉序、塊序列出有篇名嘅文章（篇名為 null 或空白嘅略去）。 */
+/** 期號篇目：按頁序、塊序列出有篇名嘅文章（篇名為 null 或空白嘅略去）。 */
 export function issueToc(pages: readonly PageDocument[]): TocEntry[] {
   const toc: TocEntry[] = [];
   for (const page of pages) {

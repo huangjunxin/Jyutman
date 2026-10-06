@@ -43,7 +43,7 @@ const hints = [
 
 <Base
   title="檢索 · 粵語文叢"
-  description="粵語文叢全文檢索：常用簡體字歸一到繁體之後，逐葉命中底本原文，並顯示命中上下文。"
+  description="粵語文叢全文檢索：常用簡體字歸一到繁體之後，逐頁命中底本原文，並顯示命中上下文。"
   current="search"
   noindex
 >
@@ -231,7 +231,7 @@ const hints = [
       el("span", "visually-hidden", badge.label),
       el("span", "hit__corpus", corpus?.shortTitle ?? hit.corpus),
       el("span", "", hitIssueLabel(corpus, hit.issue)),
-      el("span", "", `第 ${pageParam(hit.page)} 葉`),
+      el("span", "", `第 ${pageParam(hit.page)} 頁`),
       el("span", "", hit.title || "（無題）"),
     );
     link.append(line, meta);

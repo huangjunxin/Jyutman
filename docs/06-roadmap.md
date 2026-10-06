@@ -149,18 +149,18 @@ Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 Phase 1 进度：
 
-- 1.1 书目库页：已发布语料按 manifest 数据驱动列出（年代、叶数、篇数、校对进度）；未发布语料待进入上游发布层后自动出现，不写死常量。
-- 1.2 / 1.3 / 1.4 阅读器：分段正文、竖排与横排即时切换（状态存本机）、底部翻叶与叶级 URL 已上线；来源信息栏含语料、期号、叶序号、OCR 状态、底本来源与文本授权。
+- 1.1 书目库页：已发布语料按 manifest 数据驱动列出（年代、页数、篇数、校对进度）；未发布语料待进入上游发布层后自动出现，不写死常量。
+- 1.2 / 1.3 / 1.4 阅读器：分段正文、竖排与横排即时切换（状态存本机）、底部翻页与页级 URL 已上线；来源信息栏含语料、期号、页序号、OCR 状态、底本来源与文本授权。
 - 1.5 D1 检索已上线（2026-10-03）：生产库 `jyutman` 灌入 866 篇，trigram 主索引加 bigram / unigram 辅助表；Worker `/api/search` 按归一后长度路由（3 字及以上 trigram 短语、2 字 bigram、1 字 unigram），bm25 排序、corpus 过滤、limit 20，命中片段在服务端从原文截取；线上复核：廣東 34、白話報 16、唔 426，与 spike 真值一致。
-- 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 叶已静态生成并随 Worker 上线（`jyutman.com` 与 `jyutman.huangjunxin.workers.dev` 均可访问）。
+- 1.6 三个语料：`gd-vernacular-paper` / `canton-vernacular-handbook` / `readings-in-cantonese-colloquial` 共 689 页已静态生成并随 Worker 上线（`jyutman.com` 与 `jyutman.huangjunxin.workers.dev` 均可访问）。
 - 1.7 域名接入：`jyutman.com` 与 `*.jyutman.com` 由 Worker 路由服务，HTTPS 正常（Cloudflare SSL），apex 200；canonical 跳转与 `*.workers.dev` noindex 已落地（见 `docs/05` 第 4 节）；`www` 因 zone 内暂无 DNS 记录未配置，记录建成后由 canonical 规则自动跳转。
-- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）；同期读姊妹仓 `Jyutman-Corpus/translations/jyutping/` 音表（tojyutping 生成），按叶拆分出 `jyutping.json`。
+- 数据同步层：`scripts/sync-corpus.mjs` 生成 `src/data/generated/`（提交进 git）与 `db/import.sql`（已于 2026-10-03 灌入生产 D1；启用 trigram，另建 bigram / unigram 辅助表，单条语句控制在 32 KB 以内）；同期读姊妹仓 `Jyutman-Corpus/translations/jyutping/` 音表（tojyutping 生成），按页拆分出 `jyutping.json`。
 
 Phase 2 进度：
 
-- 2.2 粤拼 ruby 已上线（2026-10-03）：构建期把音表按正文下标对齐后全量生成 `<ruby>字<rt>粵拼</rt></ruby>`（549 叶带注音、共 101,107 处），工具条「粵拼注音」chip 开关（本机记忆，默认关），竖排之下 rt 天然落到字右侧；无音表文章不注音。单页 HTML 增幅约 3 至 5 KB（gzip 后约 1 KB），全站 dist 增约 48%。
-- 阅读体验批次 2 已上线（2026-10-03）：版面合并渲染（相邻段若前段末无句末标点即连排，仅文章块内；8974 段并成 4464 段，音表下标体系不变）、叶内文章哈希锚点（`#<article_id>`，标题行「#」锚链可复制链接，检索结果直达篇）、JSON-LD（首页 WebSite + SearchAction、书目页 Book、阅读叶 Article，字段全取自 generated JSON）。
-- 今译层（docs/04 S8）已上线（2026-10-03，廣東白話報）：构建期读姊妹仓 `translations/gdvp.translations.json`，按叶拆出 `translations.json`（264 篇有译文，5 篇纯标记文章无正文不译）；阅读器「今譯」chip 开关（本机记忆，默认关），译块与原文段按同一合并规则同步分组，标「譯 v0 · 未校訂」；cvh / rcc 无译文故不显示开关。
+- 2.2 粤拼 ruby 已上线（2026-10-03）：构建期把音表按正文下标对齐后全量生成 `<ruby>字<rt>粵拼</rt></ruby>`（549 页带注音、共 101,107 处），工具条「粵拼注音」chip 开关（本机记忆，默认关），竖排之下 rt 天然落到字右侧；无音表文章不注音。单页 HTML 增幅约 3 至 5 KB（gzip 后约 1 KB），全站 dist 增约 48%。
+- 阅读体验批次 2 已上线（2026-10-03）：版面合并渲染（相邻段若前段末无句末标点即连排，仅文章块内；8974 段并成 4464 段，音表下标体系不变）、页内文章哈希锚点（`#<article_id>`，标题行「#」锚链可复制链接，检索结果直达篇）、JSON-LD（首页 WebSite + SearchAction、书目页 Book、阅读页 Article，字段全取自 generated JSON）。
+- 今译层（docs/04 S8）已上线（2026-10-03，廣東白話報）：构建期读姊妹仓 `translations/gdvp.translations.json`，按页拆出 `translations.json`（264 篇有译文，5 篇纯标记文章无正文不译）；阅读器「今譯」chip 开关（本机记忆，默认关），译块与原文段按同一合并规则同步分组，标「譯 v0 · 未校訂」；cvh / rcc 无译文故不显示开关。
 - 批次 5（2026-10-03）：引用导出（S7 首版：纯文字 / BibTeX / RIS 三种格式 + 复制）、辭叢悬浮卡（S3 首版：桌面 hover 取词 → 新标签开 jyutjyu.com）、检索分页（`/api/search` 支持 `page` / `page_size`，返回 `total`；检索页「載入更多」+「已顯示 X / 共 Y 條」）、今译数据破折号清洗（Jyutman-Corpus 内 44 处破折号加 3 处 notes 按语境改为「，」「；」「（）」，连接号改「至」，生成档零残留；`orig` 照录底本不受此限）。
 
 Phase 3 进度（3a）：
@@ -173,8 +173,8 @@ Phase 3 进度（3a）：
 
 - 视觉系统（2026-10-06）：按 design handoff `design_handoff_jyutman_xiguan` 改用「西关满洲窗」（Xiguan）视觉系统，取代 2026-10-05 首轮改版所用的粤语辞丛 Kapok 版（木棉红 / 墨蓝 / 羊皮纸色板、大字水印）。新 token 以宝蓝、木色、纸色为主，玻璃色另有翠绿、琥珀、金黄、宝石红；语料色调改为宝蓝 / 琥珀 / 翠绿；招牌组件为灯笼框 `Glass`、木色容器 `GlassRow`、青砖墙色带、扇形气窗 `Fanlight`、窗格眉标 `Eyebrow`、四格窗花标志 `Logo`（另出 `favicon.svg`）；只出浅色、除状态圆点外无圆角、无阴影；焦点环为 2px 实色宝蓝（handoff 的半透明值对比度不足 3:1）。全部页面逐页按原型换装，页面结构与交互沿用 10-05 版，个别文案按原型调整（见 docs/04 §2.3、§3、§4）。
 - 字体（2026-10-06）：改为 Noto Serif HK（全站中文）+ Jost（拉丁字母与数字），仍经 Google Fonts 一条 css2 请求非阻塞加载（`unicode-range` 切片按需取字），不自托管；取代 10-05 版的 Chiron Sung HK、Chiron Hei HK 与 Inter（见 docs/02 §8）。
-- 页面结构（2026-10-05）：全部页面按新结构重做：首页（构建期原文样张、数字带、语料卡）、书目库与书目详情（语料封面卡、逐叶格）、阅读器（≥1080px 三栏、逐篇按 `isCjkDominant` 竖横排、`?hl=` 高亮、右栏内嵌引用卡与报错表单、`←` `→` 翻叶）、检索（KWIC 列、单选语料 pill 带篇数）、关于 / 数据开放（长文版面）、校对工作台（见 docs/04 §2.3、§3）。
-- 阅读偏好改存 `jyutman:reader-prefs`，缺省为竖排、开粤拼、开今译（此前缺省为横排、关粤拼、关今译；旧键 `jm-dir` / `jm-jyutping` / `jm-modtrans` 不再读取）；报错表单改为常驻右栏，正文选字自动带入（必须有选区才可提交），原选字浮出操作条（複製 / 查辭叢 / 回報此處）取消；引用由每篇标题行按钮的弹出层改为右栏内嵌卡（引用本叶第一篇）。
+- 页面结构（2026-10-05）：全部页面按新结构重做：首页（构建期原文样张、数字带、语料卡）、书目库与书目详情（语料封面卡、逐页格）、阅读器（≥1080px 三栏、逐篇按 `isCjkDominant` 竖横排、`?hl=` 高亮、右栏内嵌引用卡与报错表单、`←` `→` 翻页）、检索（KWIC 列、单选语料 pill 带篇数）、关于 / 数据开放（长文版面）、校对工作台（见 docs/04 §2.3、§3）。
+- 阅读偏好改存 `jyutman:reader-prefs`，缺省为竖排、开粤拼、开今译（此前缺省为横排、关粤拼、关今译；旧键 `jm-dir` / `jm-jyutping` / `jm-modtrans` 不再读取）；报错表单改为常驻右栏，正文选字自动带入（必须有选区才可提交），原选字浮出操作条（複製 / 查辭叢 / 回報此處）取消；引用由每篇标题行按钮的弹出层改为右栏内嵌卡（引用本页第一篇）。
 - 接口：`/api/search` 增加 `facets`（逐语料篇数，一条 `GROUP BY`，不受 corpus 过滤影响，`total` 由其推出）与每条结果的 `status`；`POST /api/correct` 接受选填 `span_start` / `span_end` 并入库，`GET /api/reports` 一并返回、阅读器按区间标出已回报处（见 docs/02 §6.3、docs/03 §7）。
 
 下一步行动：按上方 Phase 2 任务表推进（2.1 繁简映射扩充、2.3 历史拼式对齐），并在 Phase 2 内补 deploy workflow。

@@ -230,7 +230,7 @@ export function markerNote(marker: string): string | null {
     case "［插圖］":
       return "底本此處為插圖，影像待版權核查後開放。";
     case "［空白頁］":
-      return "掃描確認為空白葉。";
+      return "掃描確認為空白頁。";
     case "［現代襯頁］":
       return "現代掃描襯頁，非底本內容。";
     default:
@@ -255,7 +255,7 @@ export function statusBadge(status: string): StatusBadge {
   return { label: "OCR 未校", tone: "ocr" };
 }
 
-/** 葉碼在 URL 與展示中一律三位補零（掃描序號，永遠連續）。 */
+/** 頁碼在 URL 與展示中一律三位補零（掃描序號，永遠連續）。 */
 export function pageParam(page: number): string {
   return String(page).padStart(3, "0");
 }

@@ -36,7 +36,7 @@ const sections = [
 /** 按網站現況整理（閱讀頁已有粵拼、今譯 v0、引用格式、匿名報錯）。 */
 const openItems = [
   "書目庫",
-  "葉級閱讀器（分段正文、翻葉、每葉來源信息）",
+  "頁級閱讀器（分段正文、翻頁、每頁來源信息）",
   "豎排／橫排切換",
   "全庫檢索（簡體字自動轉繁體）",
   "粵拼注音",
@@ -52,7 +52,7 @@ const ISSUES_URL = "https://github.com/huangjunxin/Jyutman/issues";
 const pipeline = [
   { tone: "amber", label: "01 · 底本", big: "掃描影像", note: "圖書館特藏 · Internet Archive" },
   { tone: "green", label: "02 · 數據管道", big: "OCR 文本", note: "JyutmanDataPipeline 公開發佈層" },
-  { tone: "blue", label: "03 · 本站展示層", big: "可讀 · 可查 · 可引用", note: "閱讀器 · 檢索 · 葉級引用" },
+  { tone: "blue", label: "03 · 本站展示層", big: "可讀 · 可查 · 可引用", note: "閱讀器 · 檢索 · 頁級引用" },
 ] as const;
 ---
 
@@ -123,7 +123,7 @@ const pipeline = [
       <div class="facts">
         <div class="fact fact--wood">
           <div class="fact__big fact__big--latin">{totals.corpusCount} · {totals.pageCount} · {totals.articleCount}</div>
-          <div class="fact__label">語料 · 葉 · 篇</div>
+          <div class="fact__label">語料 · 頁 · 篇</div>
           <p>已發佈語料；其餘底本仍喺管道整理，未進入發佈層。</p>
         </div>
         <div class="fact">

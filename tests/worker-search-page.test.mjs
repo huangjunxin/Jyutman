@@ -63,7 +63,7 @@ test("GET /api/search：默認第 1 頁、page_size 20，LIMIT/OFFSET 正確", a
   const count = db.calls.find((call) => call.sql.includes("GROUP BY a.corpus"));
   assert.ok(count, "另有 GROUP BY 查詢取逐語料篇數");
   assert.ok(count.sql.includes("WHERE articles_unigram_fts MATCH ?"), "計數用同一個索引");
-  assert.equal(body.results[0].status, "verified", "命中帶葉級 status");
+  assert.equal(body.results[0].status, "verified", "命中帶頁級 status");
   assert.deepEqual(body.facets, { "gd-vernacular-paper": 426 });
 });
 

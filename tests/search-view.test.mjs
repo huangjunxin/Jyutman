@@ -27,7 +27,7 @@ test("normalizationNotice：只喺歸一後唔同先提示；去空白唔算", (
   assert.equal(normalizationNotice("x", ""), null);
 });
 
-test("hitHref：三位補零葉碼、?hl= 編碼、文章錨點", () => {
+test("hitHref：三位補零頁碼、?hl= 編碼、文章錨點", () => {
   assert.equal(
     hitHref({ corpus: "gd-vernacular-paper", issue: "issue-01", page: 3, id: "gdvp-01-003-01" }, "广东"),
     "/read/gd-vernacular-paper/issue-01/003/?hl=%E5%B9%BF%E4%B8%9C#gdvp-01-003-01",

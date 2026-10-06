@@ -10,7 +10,7 @@
   color-scheme: light;
 
   /* 玻璃色：由西關大屋滿洲窗相片取色 */
-  --blue: #2733b0; /* 寶藍：主色、連結、當前狀態、粵拼、葉碼；廣東白話報 */
+  --blue: #2733b0; /* 寶藍：主色、連結、當前狀態、粵拼、頁碼；廣東白話報 */
   --blue-hover: #1f2990; /* 實色掣 hover */
   --green: #0b7a31; /* 翠綠：已核驗、今譯；Readings in Cantonese Colloquial。只做色塊、進度條同大字（≥24px，或粗體 ≥18.66px） */
   --green-glass: #14a83f; /* 淺翠綠：眉標窗格、氣窗 */
@@ -639,7 +639,7 @@ mark.hl {
   --jo: 1px;
 }
 
-/* 中性：閱讀頁側欄（本葉來源、引用、報錯）；4px 木框、寶藍角珠、細號抹角 */
+/* 中性：閱讀頁側欄（本頁來源、引用、報錯）；4px 木框、寶藍角珠、細號抹角 */
 .glass--neutral {
   --glass: var(--glass-neutral);
   --hair: var(--hair-neutral);
@@ -965,7 +965,7 @@ mark.hl {
   border-color: var(--blue);
 }
 
-/* 中性（上一葉等次要掣） */
+/* 中性（上一頁等次要掣） */
 .btn--neutral {
   padding: 10px 18px;
   border-color: var(--line-20);
@@ -1249,7 +1249,7 @@ mark.hl {
   background: var(--green);
 }
 
-/* ---- 進度條、逐葉格 -------------------------------------------------------- */
+/* ---- 進度條、逐頁格 -------------------------------------------------------- */
 
 /* <div class="meter" style="--pct:36.3%"><i></i></div>；--h 高度（預設 8px）；
    填色預設跟 .tone-* 嘅 --tone-fill（冇就寶藍），--meter-fill／--meter-track 可覆寫 */
@@ -1271,7 +1271,7 @@ mark.hl {
   --meter-fill: var(--tone-on-fill);
 }
 
-/* 逐葉格（components/LeafGrid.astro）：每格一葉 <a>，13×13、gap 3px */
+/* 逐頁格（components/LeafGrid.astro）：每格一頁 <a>，13×13、gap 3px */
 .leaf-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1383,7 +1383,7 @@ mark.hl {
   font-family: var(--latin);
 }
 
-/* slug、篇章 ID、引用、葉序號 */
+/* slug、篇章 ID、引用、頁序號 */
 .mono {
   font-family: var(--mono);
 }
