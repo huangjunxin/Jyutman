@@ -28,7 +28,7 @@ const hints = [
   {
     tone: "amber",
     title: "簡體",
-    text: "簡體字會自動轉做底本嘅繁體字，例如「广东」都搵到「廣東」。",
+    text: "常用簡體字會自動轉做底本嘅繁體字，例如「广东」都搵到「廣東」。",
     chips: ["广东"],
     simp: true,
   },
@@ -43,7 +43,7 @@ const hints = [
 
 <Base
   title="檢索 · 粵語文叢"
-  description="粵語文叢全文檢索：簡體字歸一到繁體之後，逐葉命中底本原文，並顯示命中上下文。"
+  description="粵語文叢全文檢索：常用簡體字歸一到繁體之後，逐葉命中底本原文，並顯示命中上下文。"
   current="search"
   noindex
 >
@@ -571,10 +571,13 @@ const hints = [
 
   .more__btn {
     padding: 10px 22px;
+  }
+
+  .more__btn:not([aria-disabled="true"]) {
     border-color: var(--blue-a35);
   }
 
-  .more__btn:hover {
+  .more__btn:not([aria-disabled="true"]):hover {
     background: var(--blue-a08);
     border-color: var(--blue);
   }
