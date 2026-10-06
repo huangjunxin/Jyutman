@@ -1,4 +1,6 @@
 ---
+import Glass from "../components/Glass.astro";
+import GlassRow from "../components/GlassRow.astro";
 import Icon from "../components/Icon.astro";
 import Longform from "../components/Longform.astro";
 import PageHero from "../components/PageHero.astro";
@@ -47,11 +49,12 @@ const sections = [
 const REPO = "https://github.com/huangjunxin";
 const ISSUES_URL = `${REPO}/Jyutman/issues`;
 
+/** 頁頭授權卡（連去各倉）；第四張「公有領域」唔係連結，寫喺模板。 */
 const licences = [
-  { tone: "ink", label: "站點代碼", value: "MIT", size: "xl", repo: "Jyutman" },
-  { tone: "kapok", label: "文本數據", value: "CC BY-SA 4.0", size: "lg", repo: "Jyutman-Corpus" },
+  { tone: "amber", label: "站點代碼", value: "MIT", size: "xl", repo: "Jyutman" },
+  { tone: "blue", label: "文本數據", value: "CC BY-SA 4.0", size: "lg", repo: "Jyutman-Corpus" },
   { tone: "green", label: "影像清單同來源登記", value: "見倉庫說明", size: "md", repo: "Jyutman-Images" },
-];
+] as const;
 
 const steps = [
   { title: "收到通知", note: "經 GitHub Issues 提出" },
@@ -67,16 +70,22 @@ const steps = [
 >
   <PageHero
     eyebrow="Open data · 數據開放"
-    mark="開"
     lead="站點代碼、文本數據、影像清單三者分開發佈，各自有清楚嘅授權；底本全部屬公有領域，但來源義務唔會因此消失。"
   >
     <Fragment slot="title">數據開放</Fragment>
-    <ul class="licences">
+    <GlassRow as="ul" class="licences">
       {
         licences.map((card) => (
-          <li>
-            <a class={`licence lift tone-block tone-${card.tone}`} href={`${REPO}/${card.repo}`} target="_blank" rel="noopener">
-              <span class="corner" aria-hidden="true" />
+          <li class="licences__slot">
+            <Glass
+              tone={card.tone}
+              flush
+              href={`${REPO}/${card.repo}`}
+              target="_blank"
+              rel="noopener"
+              class="licence"
+              paneClass="licence__pane"
+            >
               <span class="licence__label">{card.label}</span>
               <span class={`licence__value licence__value--${card.size}`}>{card.value}</span>
               <span class="licence__foot">
@@ -84,16 +93,18 @@ const steps = [
                 <Icon name="arrow-up-right" size={16} />
                 <span class="visually-hidden">（新分頁開啟）</span>
               </span>
-            </a>
+            </Glass>
           </li>
         ))
       }
-      <li class="licence licence--public">
-        <span class="licence__label">底本文獻 · 1842 至 1907 年出版物</span>
-        <span class="licence__value licence__value--lg">公有領域</span>
-        <span class="licence__foot">圖書館特藏 · Internet Archive</span>
+      <li class="licences__slot">
+        <Glass tone="ruby" flush class="licence" paneClass="licence__pane">
+          <span class="licence__label">底本文獻 · 1842 至 1907 年出版物</span>
+          <span class="licence__value licence__value--lg">公有領域</span>
+          <span class="licence__foot licence__foot--plain">圖書館特藏 · Internet Archive</span>
+        </Glass>
       </li>
-    </ul>
+    </GlassRow>
   </PageHero>
 
   <Longform sections={sections}>
@@ -101,12 +112,12 @@ const steps = [
       <div class="ordinal ordinal--lg">一</div>
       <h2 class="lf-h2">版權登記摘要</h2>
       <p class="lf-text">
-        語料逐件登記底本年份、藏本、來源連結同版權判定，登記表放喺 <code>Jyutman-Corpus</code> 倉 <code>rights/</code> 目錄（主表
-        <code>0.3-rights-registry.csv</code>、說明 <code>0.3-rights-summary.md</code>）。
+        語料逐件登記底本年份、藏本、來源連結同版權判定，登記表放喺 <code>Jyutman-Corpus</code> 倉 <code>rights/</code>{" "}
+        目錄（主表 <code>0.3-rights-registry.csv</code>、說明 <code>0.3-rights-summary.md</code>）。
       </p>
       <div class="rights">
         <div>
-          <p class="rights__label">首版登記結果</p>
+          <p class="rights__label label">首版登記結果</p>
           <p class="rights__count">
             <span class="rights__num">{RIGHTS_VERIFIED}</span>
             <span class="rights__total">/ {RIGHTS_TOTAL}</span>
@@ -173,7 +184,7 @@ const steps = [
         {
           ["全量數據下載", "開放 API", "DOI"].map((item) => (
             <li class="avail__card">
-              <span class="badge badge--gold">未有</span>
+              <span class="badge badge--amber">未有</span>
               <span class="avail__title">{item}</span>
             </li>
           ))
@@ -240,69 +251,54 @@ const steps = [
 </Base>
 
 <style>
-  /* 頁頭四張授權卡 */
+  /* 頁頭四張大號授權卡：共用木色容器（6px）；琥珀／寶藍／翠綠三張連去倉庫，寶石紅唔係連結 */
   .licences {
-    margin: 48px 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 16px;
+    margin-top: 48px;
   }
 
-  .licences > li {
+  .licences__slot {
+    flex: 1 1 200px;
+    min-height: 240px;
     display: flex;
   }
 
   .licence {
     flex: 1;
-    min-height: 240px;
-    padding: 26px;
+  }
+
+  /* 卡唔係 .glass-row 直接子項，焦點框自己轉淺色先睇得見（木色底） */
+  .licence:focus-visible {
+    outline-color: var(--on-dark-72);
+  }
+
+  .licence__pane {
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-
-  .licence .corner {
-    --corner-size: 90px;
-    --corner-offset: -36px;
-  }
-
-  .tone-ink .corner {
-    --corner-color: rgba(255, 255, 255, 0.06);
-  }
-
-  .licence--public {
-    background: var(--surface-highest);
-    color: var(--ink);
+    padding: 24px;
   }
 
   .licence__label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.16em;
-    color: var(--on-dark-88);
-  }
-
-  .licence--public .licence__label {
     color: var(--graphite);
   }
 
   .licence__value {
-    font-family: var(--font-serif);
     line-height: 1.05;
   }
 
   .licence__value--xl {
-    font-size: 64px;
+    font-size: 48px;
   }
 
   .licence__value--lg {
-    font-size: 44px;
+    font-size: 36px;
   }
 
   .licence__value--md {
-    font-size: 36px;
+    font-size: 30px;
   }
 
   .licence__foot {
@@ -311,15 +307,15 @@ const steps = [
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
   }
 
-  .licence--public .licence__foot {
+  .licence__foot--plain {
     color: var(--graphite);
   }
 
-  /* 一、版權登記摘要 */
+  /* 一、版權登記摘要：已核翠綠實心、待核琥珀虛線 */
   .rights {
     margin: 10px 0 28px;
     padding: 24px 28px;
@@ -327,16 +323,11 @@ const steps = [
     flex-wrap: wrap;
     align-items: center;
     gap: 20px 40px;
-    background: var(--surface-low);
+    background: var(--surface);
   }
 
   .rights__label {
     margin: 0;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--graphite);
   }
 
   .rights__count {
@@ -344,19 +335,18 @@ const steps = [
     display: flex;
     align-items: baseline;
     gap: 10px;
-    font-size: 15px;
-    color: var(--ink);
+    font-size: 17px;
   }
 
   .rights__num {
-    font-family: var(--font-serif);
-    font-size: 64px;
+    font-family: var(--latin);
+    font-size: 48px;
+    font-weight: 300;
     line-height: 1;
-    color: var(--archive-green);
+    color: var(--green);
   }
 
   .rights__total {
-    font-family: var(--font-serif);
     font-size: 28px;
     color: var(--graphite);
   }
@@ -370,7 +360,7 @@ const steps = [
   .rights__block {
     width: 30px;
     height: 44px;
-    background: var(--archive-green);
+    background: var(--green);
   }
 
   .rights__legend {
@@ -380,8 +370,7 @@ const steps = [
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 13px;
-    color: var(--ink);
+    font-size: 15px;
   }
 
   .rights__legend li {
@@ -394,13 +383,13 @@ const steps = [
     flex: none;
     width: 10px;
     height: 10px;
-    background: var(--archive-green);
+    background: var(--green);
   }
 
   .rights__block--todo,
   .rights__swatch--todo {
     background: transparent;
-    border: 1.5px dashed var(--muted-gold);
+    border: 1.5px dashed var(--amber-text);
   }
 
   .points {
@@ -410,9 +399,7 @@ const steps = [
     display: flex;
     flex-direction: column;
     gap: 12px;
-    font-size: 16px;
     line-height: 1.8;
-    color: var(--ink);
   }
 
   .points li {
@@ -426,15 +413,15 @@ const steps = [
     width: 8px;
     height: 8px;
     margin-top: 11px;
-    background: var(--kapok);
+    background: var(--blue);
   }
 
-  /* 二、網址拆解圖 */
+  /* 二、葉級網址拆解：木色底，語料金黃、期號淺翠綠、葉碼紙白 */
   .anatomy {
     margin: 6px 0 26px;
     padding: 28px;
-    background: var(--ink);
-    color: var(--parchment);
+    background: var(--wood);
+    color: var(--on-dark);
     overflow-x: auto;
   }
 
@@ -442,14 +429,14 @@ const steps = [
     margin: 0;
     display: flex;
     align-items: flex-start;
-    font-family: var(--font-mono);
+    font-family: var(--mono);
     font-size: clamp(14px, 1.7vw, 20px);
     line-height: 1.4;
     white-space: nowrap;
   }
 
   .anatomy__dim {
-    color: rgba(251, 249, 244, 0.62);
+    color: color-mix(in srgb, var(--on-dark) 62%, transparent);
   }
 
   .anatomy__seg {
@@ -464,43 +451,43 @@ const steps = [
   }
 
   .anatomy__seg small {
-    font-family: var(--font-sans);
-    font-size: 12px;
+    font-family: var(--serif);
+    font-size: 14px;
     color: var(--seg);
   }
 
   .anatomy__seg--corpus {
-    --seg: var(--kapok-on-dark);
+    --seg: var(--gold);
   }
 
   .anatomy__seg--issue {
-    --seg: var(--archive-green-light);
+    --seg: var(--green-glass);
   }
 
   .anatomy__seg--page {
-    --seg: var(--parchment);
+    --seg: var(--on-dark);
   }
 
   .citation {
     margin: 0;
     padding: 16px 20px;
-    background: var(--card);
+    background: var(--paper);
     border: 1px solid var(--line-10);
-    font-size: 13px;
+    font-family: var(--mono);
+    font-size: 15px;
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-all;
-    color: var(--ink);
   }
 
   .try {
     display: inline-block;
     margin-top: 12px;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
   }
 
-  /* 三、可取得／未有 */
+  /* 三、已可取得（紙面、翠綠頂邊）／未有（淺底、琥珀虛線） */
   .avail {
     margin: 0;
     padding: 0;
@@ -517,33 +504,27 @@ const steps = [
   .avail__card {
     flex: 1;
     padding: 20px 22px;
-    background: var(--surface-low);
-    border: 1px dashed rgba(114, 91, 53, 0.5);
-    color: var(--ink);
+    background: var(--surface);
+    border: 1px dashed var(--amber-a50);
+    color: var(--wood);
   }
 
   .avail__card--ok {
-    background: var(--card);
+    background: var(--paper);
     border: 1px solid var(--line-10);
-    border-top: 4px solid var(--archive-green);
+    border-top: 4px solid var(--green);
     transition: background-color 200ms;
   }
 
   .avail__card--ok:hover {
-    background: var(--surface-low);
+    background: var(--surface);
     text-decoration: none;
-  }
-
-  .avail .badge {
-    font-weight: 700;
   }
 
   .avail__title {
     display: block;
     margin-top: 12px;
-    font-family: var(--font-serif);
     font-size: 22px;
-    line-height: 1.75;
   }
 
   .avail__repo {
@@ -551,9 +532,9 @@ const steps = [
     display: flex;
     align-items: center;
     gap: 6px;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--kapok);
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--blue);
   }
 
   /* 四、下架三步 */
@@ -570,51 +551,51 @@ const steps = [
     display: flex;
     flex-direction: column;
     padding: 22px;
-    background: var(--surface-low);
+    background: var(--surface);
   }
 
   .steps__num {
-    font-family: var(--font-serif);
-    font-size: 40px;
+    font-family: var(--latin);
+    font-size: 34px;
+    font-weight: 300;
     line-height: 1;
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .steps__title {
     margin-top: 10px;
-    font-family: var(--font-serif);
     font-size: 21px;
   }
 
   .steps__note {
     margin-top: 4px;
-    font-size: 14px;
+    font-size: 16px;
     color: var(--graphite);
   }
 
+  /* 原型 13px 24px 冇邊框；.btn 有 1px 透明邊，所以減 1px */
   .issues {
     gap: 10px;
-    padding: 12px 24px;
+    padding: 12px 23px;
   }
 
   /* 五、已發佈語料表 */
   .table-wrap {
     overflow-x: auto;
-    border-top: 2px solid var(--ink);
+    border-top: 2px solid var(--wood);
   }
 
   table {
     width: 100%;
     min-width: 640px;
     border-collapse: collapse;
-    font-size: 15px;
-    color: var(--ink);
+    font-size: 17px;
   }
 
   th {
     padding: 12px 16px 12px 0;
     text-align: left;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -637,23 +618,22 @@ const steps = [
 
   td.source {
     padding-right: 0;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--graphite);
   }
 
   td.year {
-    font-family: var(--font-serif);
-    font-size: 18px;
+    font-family: var(--latin);
+    font-size: 19px;
   }
 
   .corpus-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: 19px;
     line-height: 1.3;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .corpus-link__bar {
