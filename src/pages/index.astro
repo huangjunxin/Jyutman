@@ -559,6 +559,12 @@ const stats = [
     letter-spacing: 0.06em;
   }
 
+  /* 豎排有粵拼：同閱讀頁一致（行高 1.9、字距 0.3em，2026-10-06 維護者要求）；橫排同關粵拼照舊 2.3／0.06em */
+  .specimen[data-layout="vertical"]:not(.no-jp) .specimen__text {
+    line-height: 1.9;
+    letter-spacing: 0.3em;
+  }
+
   .specimen[data-layout="horizontal"] .specimen__text {
     writing-mode: horizontal-tb;
     width: 100%;
@@ -581,6 +587,10 @@ const stats = [
     font-weight: 600;
     letter-spacing: 0.03em;
     color: var(--blue);
+  }
+
+  .specimen[data-layout="vertical"] .specimen__para :global(rt) {
+    padding-block-end: 4px;
   }
 
   .specimen.no-jp .specimen__para :global(rt) {
