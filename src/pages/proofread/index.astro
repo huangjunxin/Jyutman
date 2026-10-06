@@ -632,8 +632,7 @@ const tiles = [
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      /* 冇 row-gap：空嘅導出訊息喺窄螢幕換行時唔好撐高 */
-      gap: 0 24px;
+      gap: 8px 24px;
       margin: 20px 0 4px;
       font-size: 15px;
       color: var(--graphite);
@@ -643,6 +642,11 @@ const tiles = [
     .meta__msg {
       font-weight: 600;
       color: var(--green-text);
+    }
+
+    /* 空嘅 live region 抽出 flex 排版：唔開新行、唔食 row-gap，但仍留喺無障礙樹 */
+    .meta__msg:empty {
+      position: absolute;
     }
 
     .state {
