@@ -1,8 +1,11 @@
 ---
 /**
- * 檢索頁：墨藍色帶頁頭 + 客戶端查 /api/search（KWIC 列、語料篩選 pill、逐頁追加）。
- * 靜態頁，q / corpus 由客戶端讀 URL；後端只支援漢字同英文全文檢索，冇粵拼檢索。
+ * 檢索頁：青磚牆上一個大號燈籠框（眉標、H1、檢索框、三欄提示），下面客戶端查 /api/search
+ * （KWIC 列、語料篩選 pill、逐頁追加）。靜態頁，q / corpus 由客戶端讀 URL；
+ * 後端只支援漢字同英文全文檢索，冇粵拼檢索；歸一只做同一個字嘅簡繁轉換。
  */
+import Eyebrow from "../../components/Eyebrow.astro";
+import Glass from "../../components/Glass.astro";
 import SearchBar from "../../components/SearchBar.astro";
 import Base from "../../layouts/Base.astro";
 import { corpusMeta } from "../../utils/corpus-meta.ts";
@@ -15,7 +18,27 @@ const corpora = getCorpora().map((corpus, index) => ({
   issueCount: corpus.issueCount,
   year: corpus.year,
 }));
-const examples = ["廣東", "唔係", "广东"];
+const hints = [
+  {
+    tone: "blue",
+    title: "漢字",
+    text: "直接輸入字詞，按底本原字配對。",
+    chips: ["廣東", "唔係"],
+  },
+  {
+    tone: "amber",
+    title: "簡體",
+    text: "簡體字會自動轉做底本嘅繁體字，例如「广东」都搵到「廣東」。",
+    chips: ["广东"],
+    simp: true,
+  },
+  {
+    tone: "green",
+    title: "English",
+    text: "兩本英文課本嘅講解可以全文檢索。",
+    chips: ["tone"],
+  },
+];
 ---
 
 <Base
@@ -24,46 +47,42 @@ const examples = ["廣東", "唔係", "广东"];
   current="search"
   noindex
 >
-  <section class="band watermark-host">
-    <div class="watermark band__wm" aria-hidden="true">檢</div>
-    <div class="wrap band__inner">
-      <p class="eyebrow eyebrow--on-dark">Search · 檢索</p>
-      <h1 class="band__title">檢索</h1>
-      <SearchBar variant="band" inputId="search-q" />
-      <p class="band__help">
-        漢字、簡體字都得：輸入「广东」，都搵到底本嘅「廣東」。英文課本嘅講解亦可以全文檢索。歸一只發生喺檢索層，展示永遠保留原字。
-      </p>
-      <ul class="band__chips" aria-label="示例">
-        {
-          examples.map((word) => (
-            <li>
-              <a class="chip chip--on-dark" href={searchHref(word)}>
-                {word}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
+  <section class="brick top">
+    <div class="wrap top__inner">
+      <Glass class="window" paneClass="window__pane">
+        <Eyebrow text="Search · 檢索" />
+        <h1 class="title">檢索</h1>
+        <SearchBar variant="band" inputId="search-q" />
+        <div class="hints">
+          {
+            hints.map((hint) => (
+              <div class="hint">
+                <h2 class="hint__title">
+                  <span class={`hint__glass tone-${hint.tone}`} aria-hidden="true" />
+                  {hint.title}
+                </h2>
+                <p class="hint__text">{hint.text}</p>
+                <ul class="hint__chips" aria-label={`${hint.title}示例`}>
+                  {hint.chips.map((word) => (
+                    <li>
+                      <a class="chip chip--sm" href={searchHref(word)}>
+                        {word}
+                        {hint.simp && <span class="chip__simp">簡</span>}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </div>
+        <p class="footnote">歸一只發生喺檢索層，展示永遠保留原字。</p>
+      </Glass>
     </div>
   </section>
 
   <section class="wrap results" id="search-root" data-corpora={JSON.stringify(corpora)}>
     <p class="visually-hidden" role="status" id="search-live"></p>
-
-    <div class="hints" id="search-idle">
-      <div class="hint">
-        <h2 class="hint__title">漢字</h2>
-        <p>直接輸入，例如「唔係」「廣東」。</p>
-      </div>
-      <div class="hint">
-        <h2 class="hint__title">簡體</h2>
-        <p>「广东」會歸一做「廣東」。只會轉換同一個字嘅簡繁寫法，配對底本原字。</p>
-      </div>
-      <div class="hint">
-        <h2 class="hint__title">English</h2>
-        <p>兩本英文課本嘅講解都可以全文檢索，例如 tone。</p>
-      </div>
-    </div>
 
     <div id="search-results" hidden>
       <div class="res-head">
@@ -80,15 +99,14 @@ const examples = ["廣東", "唔係", "广东"];
         <p class="empty__hint">試下用簡體字，或者短啲嘅詞。</p>
       </div>
       <div class="more" id="search-more-wrap" hidden>
-        <button type="button" class="btn btn--outline" id="search-more"></button>
+        <button type="button" class="btn btn--outline more__btn" id="search-more"></button>
       </div>
     </div>
 
     <p class="loading" id="search-loading" aria-hidden="true" hidden>載入緊…</p>
     <script is:inline>
-      // 有 q 就喺首次繪畫前收起提示卡、顯示載入緊，免得閃一下；冇 JS 照睇到提示卡。
+      // 有 q 就喺首次繪畫前顯示載入緊，免得閃一下。
       if ((new URLSearchParams(location.search).get("q") ?? "").trim()) {
-        document.getElementById("search-idle").hidden = true;
         document.getElementById("search-loading").hidden = false;
       }
     </script>
@@ -144,7 +162,6 @@ const examples = ["廣東", "唔係", "广东"];
   const corpusBySlug = new Map(corpora.map((corpus) => [corpus.slug, corpus]));
 
   const live = byId("search-live");
-  const idle = byId("search-idle");
   const results = byId("search-results");
   const heading = byId("search-heading");
   const totalNode = byId("search-total");
@@ -301,7 +318,6 @@ const examples = ["廣東", "唔係", "广东"];
     moreWrap.hidden = true;
     error.hidden = true;
     results.hidden = !keepHead || q === "";
-    idle.hidden = q !== "";
     loading.hidden = q === "";
     live.textContent = q === "" ? "" : "載入緊…";
     if (q !== "") await loadNext(mine, true);
@@ -333,83 +349,92 @@ const examples = ["廣東", "唔係", "广东"];
 </script>
 
 <style>
-  /* 墨藍色帶頁頭 */
-  .band {
-    background: var(--ink);
-    color: var(--parchment);
+  /* 青磚牆頂部：一個大號燈籠框（寶藍帶、金黃角珠、獨立木框，最闊 880px） */
+  .top {
+    color: var(--wood);
   }
 
-  .band__wm {
-    --wm-size: min(40vw, 520px);
-    --wm-color: rgba(241, 160, 140, 0.08);
-    --wm-right: -2vw;
-    --wm-bottom: -14vw;
+  .top__inner {
+    padding-top: clamp(28px, 2.8vw, 36px);
+    padding-bottom: clamp(40px, 5vw, 56px);
   }
 
-  .band__inner {
-    position: relative;
-    padding-top: clamp(40px, 5vw, 72px);
-    padding-bottom: clamp(40px, 5vw, 60px);
+  .window {
+    max-width: 880px;
   }
 
-  .band .eyebrow {
+  .window__pane {
+    padding: clamp(24px, 3vw, 34px);
+  }
+
+  .title {
+    margin: 12px 0 22px;
+    font-size: clamp(36px, 4vw, 52px);
+    line-height: 1.15;
+  }
+
+  /* 三欄提示 */
+  .hints {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px 28px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line-14);
+  }
+
+  .hint {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .hint__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+  }
+
+  .hint__glass {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    background: var(--tone);
+    outline: 2px solid var(--wood);
+  }
+
+  .hint__text {
     margin: 0;
-  }
-
-  .band__title {
-    margin: 12px 0 28px;
-    font-size: clamp(44px, 6vw, 80px);
-    line-height: 1;
-    color: var(--parchment);
-  }
-
-  .band__help {
-    margin: 16px 0 0;
-    max-width: 46em;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.7;
-    color: var(--on-dark-78);
+    color: var(--graphite);
   }
 
-  .band__chips {
+  .hint__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin: 16px 0 0;
+    gap: 6px;
+    margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  /* li 用 flex，免得 inline-flex chip 喺行框入面多出 1px */
+  .hint__chips > li {
+    display: flex;
+  }
+
+  .footnote {
+    margin: 14px 0 0;
+    font-size: 14px;
+    color: var(--graphite);
   }
 
   /* 結果區 */
   .results {
     padding-top: 32px;
     padding-bottom: 96px;
-  }
-
-  .hints {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-  }
-
-  .hints[hidden],
-  .more[hidden] {
-    display: none;
-  }
-
-  .hint {
-    padding: 22px;
-    background: var(--surface-low);
-  }
-
-  .hint__title {
-    font-size: 22px;
-  }
-
-  .hint p {
-    margin: 8px 0 0;
-    font-size: 14px;
-    color: var(--graphite);
   }
 
   .res-head {
@@ -419,7 +444,7 @@ const examples = ["廣東", "唔係", "广东"];
     justify-content: space-between;
     gap: 16px 32px;
     padding-bottom: 20px;
-    border-bottom: 2px solid var(--ink);
+    border-bottom: 2px solid var(--wood);
   }
 
   .res-head > div:first-child {
@@ -433,18 +458,19 @@ const examples = ["廣東", "唔係", "广东"];
   }
 
   .res-head__q {
-    font-size: clamp(28px, 3vw, 40px);
+    font-size: clamp(26px, 2.6vw, 32px);
+    font-weight: 400;
     line-height: 1.2;
   }
 
   .res-head__meta {
     margin: 6px 0 0;
-    font-size: 15px;
+    font-size: 17px;
     color: var(--graphite);
   }
 
   .res-head__meta b {
-    color: var(--kapok);
+    color: var(--blue);
   }
 
   .pills {
@@ -456,9 +482,9 @@ const examples = ["廣東", "唔係", "广东"];
   .notice {
     margin: 16px 0 0;
     padding: 12px 16px;
-    background: rgba(114, 91, 53, 0.1);
-    color: var(--muted-gold);
-    font-size: 14px;
+    background: var(--amber-a10);
+    color: var(--amber-text);
+    font-size: 16px;
   }
 
   .kwic {
@@ -472,12 +498,12 @@ const examples = ["廣東", "唔係", "广东"];
     display: block;
     padding: 16px 8px;
     border-bottom: 1px solid var(--line-08);
-    color: var(--ink);
+    color: var(--wood);
     transition: background-color 200ms;
   }
 
   .kwic :global(.hit:hover) {
-    background: var(--surface-low);
+    background: var(--surface);
     text-decoration: none;
   }
 
@@ -486,8 +512,7 @@ const examples = ["廣東", "唔係", "广东"];
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: baseline;
     gap: 2px;
-    font-family: var(--font-serif);
-    font-size: clamp(17px, 1.6vw, 21px);
+    font-size: clamp(18px, 1.6vw, 22px);
     line-height: 1.6;
     color: var(--graphite);
   }
@@ -511,10 +536,9 @@ const examples = ["廣東", "唔係", "广东"];
     flex: none;
   }
 
+  /* 命中字：金黃淺底寶藍字（global mark） */
   .kwic :global(.hit__kw) {
     padding: 0 6px;
-    background: var(--kapok);
-    color: #fff;
   }
 
   .kwic :global(.hit__post) {
@@ -530,19 +554,29 @@ const examples = ["廣東", "唔係", "广东"];
     justify-content: center;
     gap: 4px 12px;
     margin-top: 6px;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--graphite);
   }
 
   .kwic :global(.hit__corpus) {
     font-weight: 600;
-    color: var(--ink);
+    color: var(--wood);
   }
 
   .more {
     display: flex;
     justify-content: center;
     margin-top: 28px;
+  }
+
+  .more__btn {
+    padding: 10px 22px;
+    border-color: var(--blue-a35);
+  }
+
+  .more__btn:hover {
+    background: var(--blue-a08);
+    border-color: var(--blue);
   }
 
   .empty {
@@ -552,7 +586,6 @@ const examples = ["廣東", "唔係", "广东"];
 
   .empty__title {
     margin: 0;
-    font-family: var(--font-serif);
     font-size: 24px;
   }
 
@@ -565,7 +598,6 @@ const examples = ["廣東", "唔係", "广东"];
     margin: 0;
     padding: 64px 0;
     text-align: center;
-    font-family: var(--font-serif);
     font-size: 24px;
     color: var(--graphite);
   }
@@ -573,7 +605,7 @@ const examples = ["廣東", "唔係", "广东"];
   .error {
     margin: 16px 0 0;
     text-align: center;
-    font-size: 13px;
-    color: var(--kapok);
+    font-size: 14px;
+    color: var(--ruby);
   }
 </style>
