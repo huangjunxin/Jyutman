@@ -115,4 +115,59 @@ const { sections } = Astro.props;
   .longform__body :global(.lf-text code) {
     overflow-wrap: anywhere;
   }
+
+  @media (max-width: 1079px) {
+    .longform {
+      gap: 28px;
+      padding-top: 32px;
+      padding-bottom: 64px;
+    }
+
+    .longform__nav {
+      flex: 1 1 100%;
+      min-width: 0;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line-12);
+    }
+
+    .longform__label {
+      flex: 1 0 100%;
+      margin: 0 0 4px;
+    }
+
+    .longform__nav a {
+      border-top: 0;
+      padding: 6px 0;
+      gap: 6px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .longform__num {
+      width: auto;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .longform__body {
+      gap: 44px;
+    }
+
+    .longform__body :global(.lf-section) {
+      scroll-margin-top: 16px;
+    }
+
+    .longform__body :global(.lf-h2) {
+      font-size: clamp(24px, 6.5vw, 28px);
+      margin: 12px 0 14px;
+    }
+
+    .longform__body :global(.lf-text) {
+      font-size: 17px;
+      line-height: 1.8;
+    }
+  }
 </style>

@@ -192,6 +192,18 @@ const stats = [
             <a class="specimen__more" href={specimen.href}>讀全文 →</a>
           </div>
         </figure>
+        <script is:inline>
+          // 手機端（≤767px）樣張預設橫排，首次繪畫前同步，免得先豎再閃。
+          (function () {
+            if (!window.matchMedia || !window.matchMedia("(max-width: 767px)").matches) return;
+            var fig = document.querySelector("[data-specimen]");
+            if (!fig) return;
+            fig.dataset.layout = "horizontal";
+            fig.querySelectorAll("[data-layout-set]").forEach(function (btn) {
+              btn.setAttribute("aria-pressed", String(btn.dataset.layoutSet === "horizontal"));
+            });
+          })();
+        </script>
       </Fanlight>
     </div>
   </section>
@@ -548,6 +560,12 @@ const stats = [
     overflow: hidden;
   }
 
+  .specimen[data-layout="horizontal"] .specimen__body {
+    height: auto;
+    min-height: 330px;
+    overflow: visible;
+  }
+
   .specimen__text {
     writing-mode: vertical-rl;
     max-width: 100%;
@@ -558,6 +576,10 @@ const stats = [
     letter-spacing: 0.06em;
   }
 
+  .specimen[data-layout="vertical"] .specimen__text {
+    overflow-x: auto;
+  }
+
   /* 豎排有粵拼：字距 0.3em（同閱讀頁，2026-10-06 維護者要求）；行高保持 2.3，同關粵拼一致，開關粵拼時行唔會郁 */
   .specimen[data-layout="vertical"]:not(.no-jp) .specimen__text {
     letter-spacing: 0.3em;
@@ -566,6 +588,8 @@ const stats = [
   .specimen[data-layout="horizontal"] .specimen__text {
     writing-mode: horizontal-tb;
     width: 100%;
+    max-height: none;
+    overflow: visible;
   }
 
   .specimen__title {
@@ -575,11 +599,16 @@ const stats = [
     letter-spacing: 0.12em;
   }
 
+  .specimen[data-layout="horizontal"] .specimen__title {
+    margin-bottom: 8px;
+  }
+
   .specimen__para {
     margin: 0;
   }
 
   .specimen__para :global(rt) {
+    padding-inline: 0.3em;
     font-family: var(--latin);
     font-size: 11px;
     font-weight: 600;
@@ -588,7 +617,6 @@ const stats = [
   }
 
   .specimen[data-layout="vertical"] .specimen__para :global(rt) {
-    padding-inline: 0.3em;
     padding-block-end: 4px;
   }
 
@@ -619,19 +647,13 @@ const stats = [
   }
 
   /* ---- 1b 數字帶：青磚牆上開四扇細號燈籠框 ---- */
-  /* 四張固定 1／2／4 欄，唔好 auto-fit（790 至 1066px 會變 3+1） */
+  /* 四張固定 2／4 欄（手機同平板 2×2，桌面 ≥1080px 四欄），唔好 auto-fit（790 至 1066px 會變 3+1） */
   .stats__grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
     padding-top: 44px;
     padding-bottom: 44px;
-  }
-
-  @media (min-width: 560px) {
-    .stats__grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
   }
 
   @media (min-width: 1080px) {
@@ -810,22 +832,6 @@ const stats = [
   .issue-row__meter {
     --h: 5px;
     width: 72px;
-  }
-
-  /* 窄卡（約 500px 以下視口）：進度落去第二行，日期唔使逐字斷 */
-  @container (max-width: 360px) {
-    .issue-row {
-      grid-template-columns: 76px minmax(0, 1fr);
-      row-gap: 6px;
-    }
-
-    .issue-row__label {
-      grid-row: span 2;
-    }
-
-    .issue-row__progress {
-      grid-column: 2;
-    }
   }
 
   .feature__foot {
@@ -1124,5 +1130,223 @@ const stats = [
     margin-top: 6px;
     font-size: 14px;
     color: var(--graphite);
+  }
+
+  /* ---- 移動端收斂 ---- */
+
+  @media (max-width: 767px) {
+    .hero__inner {
+      padding-top: 28px;
+      padding-bottom: 40px;
+      gap: 32px;
+    }
+
+    .hero__main {
+      margin-top: 0;
+    }
+
+    .hero__title {
+      margin-top: 16px;
+      font-size: clamp(38px, 10.5vw, 52px);
+      line-height: 1.15;
+    }
+
+    .hero__lede {
+      margin-top: 16px;
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .hero__search {
+      margin-top: 24px;
+    }
+
+    .hero__try {
+      margin-top: 14px;
+      font-size: 15px;
+      gap: 8px;
+    }
+
+    .hero__aside {
+      flex-basis: 100%;
+      width: 100%;
+    }
+
+    .specimen__head {
+      padding: 10px 14px;
+      gap: 8px;
+    }
+
+    .specimen__source {
+      font-size: 16px;
+    }
+
+    .specimen__body {
+      height: 280px;
+      padding: 16px;
+    }
+
+    .specimen[data-layout="horizontal"] .specimen__body {
+      height: auto;
+      min-height: 0;
+    }
+
+    .specimen[data-layout="vertical"] .specimen__text {
+      font-size: 22px;
+      line-height: 2.1;
+    }
+
+    .specimen[data-layout="horizontal"] .specimen__text {
+      font-size: 20px;
+      line-height: 2.2;
+    }
+
+    .specimen__title {
+      font-size: 22px;
+    }
+
+    .specimen__foot {
+      padding: 10px 14px;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .corpora {
+      padding: 44px 0 56px;
+    }
+
+    .sec-head {
+      margin-bottom: 20px;
+      gap: 12px 24px;
+    }
+
+    .feature__pane {
+      padding: 20px 18px;
+      gap: 18px;
+    }
+
+    .feature__year {
+      font-size: 46px;
+    }
+
+    .feature__title {
+      font-size: clamp(28px, 7.5vw, 34px);
+    }
+
+    .issue-row {
+      padding: 10px 2px;
+      gap: 10px;
+    }
+
+    .issue-row__label {
+      font-size: 17px;
+    }
+
+    .issue-row__facts {
+      font-size: 14px;
+    }
+
+    .feature__actions .btn {
+      flex: 1 1 auto;
+      padding: 10px 16px;
+      font-size: 16px;
+    }
+
+    .side-card__pane {
+      padding: 20px 18px;
+      gap: 12px;
+    }
+
+    .side-card__year {
+      font-size: 42px;
+    }
+
+    .side-card__title {
+      font-size: 21px;
+    }
+
+    .feature__pct,
+    .side-card__pct {
+      font-size: 28px;
+    }
+
+    .howto {
+      padding: 48px 0;
+    }
+
+    .howto__grid {
+      margin-top: 28px;
+      gap: 36px;
+    }
+
+    .howto__col {
+      row-gap: 12px;
+    }
+
+    .howto__h3 {
+      font-size: 23px;
+    }
+
+    .tile {
+      min-height: 0;
+      padding: 18px;
+    }
+
+    .tile--vertical {
+      overflow-x: auto;
+    }
+
+    .tile__vertical {
+      max-width: 100%;
+      height: 210px;
+      font-size: 19px;
+    }
+  }
+
+  @media (max-width: 559px) {
+    .stats__grid {
+      gap: 12px;
+      padding-block: 28px;
+    }
+
+    .stat {
+      padding: 15px 15px 14px;
+    }
+
+    .stat__figure {
+      flex-wrap: wrap;
+      gap: 4px 6px;
+    }
+
+    .stat__value {
+      font-size: 34px;
+    }
+
+    .stat__unit {
+      font-size: 15px;
+    }
+
+    .stat__label {
+      margin-top: 6px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      line-height: 1.4;
+    }
+  }
+
+  /* 窄卡（約 500px 以下視口）：進度落去第二行，日期唔使逐字斷（擺喺 639px 之後，row-gap 唔會俾 gap 蓋過） */
+  @container (max-width: 360px) {
+    .issue-row {
+      grid-template-columns: 64px minmax(0, 1fr);
+      row-gap: 4px;
+    }
+
+    .issue-row__label {
+      grid-row: span 2;
+    }
+
+    .issue-row__progress {
+      grid-column: 2;
+    }
   }
 </style>

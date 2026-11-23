@@ -532,6 +532,10 @@ const steps = [
     color: var(--blue);
   }
 
+  .avail__repo :global(.icon) {
+    flex: none;
+  }
+
   /* 四、下架三步 */
   .steps {
     margin: 4px 0 24px;
@@ -634,5 +638,86 @@ const steps = [
     width: 8px;
     height: 30px;
     background: var(--tone);
+  }
+
+  @media (max-width: 639px) {
+    .licences {
+      margin-top: 28px;
+    }
+
+    .licences__slot {
+      min-height: 0;
+      flex-basis: 100%;
+    }
+
+    .licence__pane {
+      padding: 16px 18px;
+      gap: 8px;
+    }
+
+    .licence__value--xl {
+      font-size: 34px;
+    }
+
+    .licence__value--lg {
+      font-size: 28px;
+    }
+
+    .licence__value--md {
+      font-size: 24px;
+    }
+
+    .rights {
+      padding: 18px 16px;
+      gap: 14px 24px;
+    }
+
+    .rights__num {
+      font-size: 38px;
+    }
+
+    .rights__blocks {
+      gap: 6px;
+    }
+
+    .rights__block {
+      width: 22px;
+      height: 32px;
+    }
+
+    .anatomy {
+      padding: 18px 16px;
+    }
+
+    .citation {
+      padding: 14px 16px;
+      font-size: 14px;
+    }
+
+    .avail {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .avail__card {
+      padding: 14px;
+    }
+
+    .avail__title {
+      font-size: 18px;
+      margin-top: 8px;
+    }
+
+    .avail__repo {
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .steps li {
+      padding: 16px;
+    }
+
+    table {
+      font-size: 15px;
+    }
   }
 </style>

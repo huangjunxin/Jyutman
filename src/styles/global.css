@@ -353,13 +353,6 @@ mark.hl {
   transition: color 200ms;
 }
 
-/* 360px 以下四個連結（連當前方塊）擠唔落，收窄左右 padding，唔好逐字斷行 */
-@media (max-width: 359px) {
-  .site-nav a {
-    padding-inline: 8px;
-  }
-}
-
 .site-nav a:hover {
   color: var(--blue);
   text-decoration: none;
@@ -379,7 +372,7 @@ mark.hl {
   outline: 2px solid var(--wood);
 }
 
-/* 精簡檢索框（首頁唔顯示） */
+/* 精簡檢索框（首頁、檢索頁唔顯示） */
 .header-search {
   display: flex;
   align-items: center;
@@ -414,6 +407,67 @@ mark.hl {
   background: transparent;
   color: var(--wood);
   font-size: 16px;
+}
+
+/* 平板端：收窄精簡檢索框同導覽水平間距，避免撐破或意外換行 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .site-header__inner {
+    gap: 4px 16px;
+  }
+
+  .site-nav a {
+    padding: 0 10px;
+  }
+
+  .header-search {
+    flex: 0 1 180px;
+    width: 180px;
+  }
+}
+
+/* 手機端：頁首唔黏頂、收埋副標、導覽全寬單行等距、檢索框佔滿全寬 */
+@media (max-width: 767px) {
+  .site-header {
+    position: static;
+  }
+
+  .site-header__inner {
+    min-height: 0;
+    gap: 0 12px;
+  }
+
+  .brand {
+    padding: 10px 0;
+    gap: 10px;
+  }
+
+  .brand__name {
+    font-size: 20px;
+  }
+
+  .brand__sub {
+    display: none;
+  }
+
+  .site-nav {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    border-top: 1px solid var(--line-08);
+  }
+
+  .site-nav a {
+    min-height: 44px;
+    padding: 0 4px;
+    gap: 6px;
+    font-size: 16px;
+  }
+
+  .header-search {
+    width: 100%;
+    height: 42px;
+    margin: 0 0 10px;
+  }
 }
 
 /* ---- 頁尾 ------------------------------------------------------------------ */
@@ -483,6 +537,23 @@ mark.hl {
   letter-spacing: 0.04em;
 }
 
+@media (max-width: 639px) {
+  .site-footer__main {
+    padding-top: 36px;
+    padding-bottom: 24px;
+    gap: 24px;
+  }
+
+  .foot-brand__name {
+    font-size: 21px;
+  }
+
+  .foot-nav {
+    gap: 10px 20px;
+    font-size: 16px;
+  }
+}
+
 /* ---- 標誌：四格窗花（components/Logo.astro）--------------------------------- */
 
 /* 頁首：格 22px、gap 3px、padding 3px、木色框，字 13px/700 */
@@ -530,6 +601,17 @@ mark.hl {
   font-size: 16px;
   line-height: 28px;
   outline: 1px solid var(--on-dark-25);
+}
+
+@media (max-width: 767px) {
+  .logo:not(.logo--lg) {
+    grid-template-columns: repeat(2, 18px);
+    grid-auto-rows: 18px;
+    gap: 2px;
+    padding: 2px;
+    font-size: 11px;
+    line-height: 18px;
+  }
 }
 
 /* ---- 語料色調（corpusMeta().tone → class="tone-<tone>"）---------------------- */
@@ -618,6 +700,21 @@ mark.hl {
     linear-gradient(var(--jewel), var(--jewel)) right var(--jo) bottom var(--jo) / var(--jz) var(--jz) no-repeat,
     var(--wood);
   color: var(--wood);
+}
+
+/* 窄屏手機：預設大號燈籠框收斂為細號幾何參數；擺喺 --sm／--flush／--neutral 之前，避免覆蓋 flush 無木框同 neutral 4px 框 */
+@media (max-width: 639px) {
+  .glass {
+    --frame: 5px;
+    --jo: 6px;
+    --jz: 5px;
+    --c: 16px;
+    --band: 7px;
+    --ci: 11.9px;
+    --hi: 6px;
+    --ho: 8.4px;
+    --hn: 7.5px;
+  }
 }
 
 /* 細號（S）：數字帶、管道卡 */
@@ -1349,6 +1446,7 @@ mark.hl {
 }
 
 .searchbox__go {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1359,6 +1457,7 @@ mark.hl {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.16em;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color 200ms;
 }
@@ -1370,6 +1469,28 @@ mark.hl {
 .searchbox__go:focus-visible {
   outline-offset: -4px;
   outline-color: #fff;
+}
+
+@media (max-width: 639px) {
+  .searchbox {
+    height: 52px;
+  }
+
+  .searchbox__icon {
+    padding: 0 2px 0 12px;
+  }
+
+  .searchbox input[type="search"] {
+    padding: 0 8px;
+    font-size: 16px;
+  }
+
+  .searchbox__go {
+    gap: 6px;
+    padding: 0 16px;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+  }
 }
 
 /* ---- 工具 class ------------------------------------------------------------ */

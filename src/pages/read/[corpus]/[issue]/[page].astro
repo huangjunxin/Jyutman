@@ -180,16 +180,19 @@ const articleJsonLd = {
   <Fragment slot="head">
     <script is:inline>
       // 閱讀偏好喺首次渲染之前落 class（rd-h 橫排、rd-nojp 唔注音、rd-notr 唔出今譯），冇閃爍。
+      // 未儲存顯式 layout 偏好時，窄屏手機（≤767px）預設橫排、桌面端預設豎排。
       (function () {
+        var prefs = {};
         try {
-          var prefs = JSON.parse(window.localStorage.getItem("jyutman:reader-prefs") || "{}") || {};
-          var list = document.documentElement.classList;
-          if (prefs.layout === "horizontal") list.add("rd-h");
-          if (prefs.jp === false) list.add("rd-nojp");
-          if (prefs.tr === false) list.add("rd-notr");
+          prefs = JSON.parse(window.localStorage.getItem("jyutman:reader-prefs") || "{}") || {};
         } catch (error) {
-          /* 本機儲存唔可用：用預設（豎排、開粵拼、開今譯） */
+          /* 本機儲存唔可用：仍按端寬決定預設行款 */
         }
+        var list = document.documentElement.classList;
+        var isMobile = Boolean(window.matchMedia && window.matchMedia("(max-width: 767px)").matches);
+        if (prefs.layout === "horizontal" || (prefs.layout !== "vertical" && isMobile)) list.add("rd-h");
+        if (prefs.jp === false) list.add("rd-nojp");
+        if (prefs.tr === false) list.add("rd-notr");
       })();
     </script>
     <JsonLd data={articleJsonLd} />
@@ -372,7 +375,7 @@ const articleJsonLd = {
           )
         }
         <p class="pg-info">
-          掃描序號 <b>{pageNo}</b> · <span class="pg-pos">第 {index + 1} / {pages.length} 頁</span><br />
+          掃描序號 <b>{pageNo}</b> · <span class="pg-pos">第 {index + 1} / {pages.length} 頁</span>
           <span class="pg-hint">← → 鍵都可以揭頁</span>
         </p>
         {
@@ -505,6 +508,8 @@ const articleJsonLd = {
       clipText,
       fragmentAround,
       highlightRanges,
+      MOBILE_LAYOUT_QUERY,
+      resolveReaderLayout,
       selectionSpan,
       type SelectionPiece,
     } from "../../../../utils/reader-view.ts";
@@ -567,6 +572,20 @@ const articleJsonLd = {
 
     /* ---- 閱讀偏好：行款、粵拼、今譯（存 localStorage） ---- */
 
+    type ReaderLayout = "vertical" | "horizontal";
+
+    const readSavedLayout = (): ReaderLayout | null => {
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem("jyutman:reader-prefs") ?? "{}") as { layout?: unknown };
+        return parsed?.layout === "horizontal" || parsed?.layout === "vertical" ? parsed.layout : null;
+      } catch {
+        return null;
+      }
+    };
+
+    let chosenLayout: ReaderLayout | null = readSavedLayout();
+    const mobileMedia = typeof window.matchMedia === "function" ? window.matchMedia(MOBILE_LAYOUT_QUERY) : null;
+
     const syncControls = (): void => {
       const horizontal = root.classList.contains("rd-h");
       for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-layout]")) {
@@ -579,22 +598,29 @@ const articleJsonLd = {
 
     const savePrefs = (): void => {
       try {
-        window.localStorage.setItem(
-          "jyutman:reader-prefs",
-          JSON.stringify({
-            layout: root.classList.contains("rd-h") ? "horizontal" : "vertical",
-            jp: !root.classList.contains("rd-nojp"),
-            tr: !root.classList.contains("rd-notr"),
-          }),
-        );
+        const payload: { layout?: ReaderLayout; jp: boolean; tr: boolean } = {
+          jp: !root.classList.contains("rd-nojp"),
+          tr: !root.classList.contains("rd-notr"),
+        };
+        if (chosenLayout !== null) payload.layout = chosenLayout;
+        window.localStorage.setItem("jyutman:reader-prefs", JSON.stringify(payload));
       } catch {
         /* 本機儲存唔可用：切換只作用於今次瀏覽 */
       }
     };
 
+    root.classList.toggle("rd-h", resolveReaderLayout(chosenLayout, mobileMedia?.matches ?? false) === "horizontal");
+    mobileMedia?.addEventListener?.("change", (event) => {
+      if (chosenLayout !== null) return;
+      root.classList.toggle("rd-h", resolveReaderLayout(null, event.matches) === "horizontal");
+      syncControls();
+    });
+
     for (const button of document.querySelectorAll<HTMLButtonElement>("#rd-toolbar [data-layout]")) {
       button.addEventListener("click", () => {
-        root.classList.toggle("rd-h", button.dataset.layout === "horizontal");
+        const layout: ReaderLayout = button.dataset.layout === "horizontal" ? "horizontal" : "vertical";
+        chosenLayout = layout;
+        root.classList.toggle("rd-h", layout === "horizontal");
         syncControls();
         savePrefs();
       });
@@ -630,6 +656,7 @@ const articleJsonLd = {
       const open = tocAside?.classList.toggle("is-open") ?? false;
       tocToggle.setAttribute("aria-expanded", String(open));
       tocToggle.textContent = open ? "收埋目錄" : (tocToggle.dataset.closedLabel ?? "展開目錄");
+      if (open) tocCurrent?.scrollIntoView({ block: "nearest" });
     });
 
     /* ---- ← → 揭頁（同一期之內） ---- */
@@ -1430,6 +1457,9 @@ const articleJsonLd = {
 
     .rd-toc.is-open .toc-list {
       display: block;
+      max-height: 55svh;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--line-12);
     }
   }
 
@@ -1755,18 +1785,13 @@ const articleJsonLd = {
   }
 
   .pg-hint {
+    display: block;
     font-size: 13px;
   }
 
-  /* 窄螢幕：中間說明擺上面成行，兩粒掣喺下面左右分開，唔使逼到一字一行 */
-  @media (max-width: 519px) {
-    .card-foot {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .pg-info {
-      grid-column: 1 / -1;
-      grid-row: 1;
+  @media (hover: none), (max-width: 767px) {
+    .pg-hint {
+      display: none;
     }
   }
 
@@ -2039,5 +2064,235 @@ const articleJsonLd = {
     margin: 8px 0 0;
     font-size: 13px;
     color: var(--graphite);
+  }
+
+  /* ---- 手機端收斂（≤767px）：壓縮首屏正文前高度、收細卡框與正文字級、加大觸控熱區 ---- */
+
+  @media (max-width: 767px) {
+    .rd-toolbar__inner {
+      padding: 8px var(--gutter);
+      gap: 8px 12px;
+    }
+
+    .crumb {
+      font-size: 14px;
+      gap: 4px 6px;
+    }
+
+    .rd-controls {
+      gap: 6px;
+    }
+
+    /* 視覺隱藏「行款」標籤，保留 aria-labelledby 畀讀屏 */
+    #rd-layout-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .rd-controls :global(.seg > button),
+    .rd-controls :global(.toggle) {
+      padding: 5px 10px;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .rd-grid {
+      padding: 14px var(--gutter) 64px;
+      gap: 16px;
+    }
+
+    .art {
+      margin-bottom: 32px;
+      scroll-margin-top: 16px;
+    }
+
+    .toc-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      padding-bottom: 12px;
+    }
+
+    .toc-head :global(.eyebrow),
+    .toc-head .toc-title {
+      display: none;
+    }
+
+    .toc-meta {
+      order: 1;
+      font-size: 14px;
+    }
+
+    .toc-toggle {
+      order: 2;
+      margin-top: 0;
+      padding: 5px 12px;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .issue-switch {
+      order: 3;
+      flex: 1 0 100%;
+      margin-top: 2px;
+      gap: 4px;
+    }
+
+    .issue-switch a {
+      padding: 5px 0;
+    }
+
+    .issue-switch__num {
+      font-size: 16px;
+    }
+
+    .issue-switch__date {
+      font-size: 11px;
+    }
+
+    .rd-card {
+      border-width: 4px;
+    }
+
+    .card-head {
+      padding: 14px 16px;
+      gap: 8px 12px;
+      align-items: center;
+    }
+
+    .leaf-no {
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .leaf-no__num {
+      font-size: 34px;
+    }
+
+    .card-head :global(.badge--md) {
+      padding: 2px 10px;
+      font-size: 14px;
+      --dot: 7px;
+    }
+
+    .card-body {
+      padding: 18px 16px 8px;
+    }
+
+    .art-head {
+      margin-bottom: 16px;
+      gap: 4px 10px;
+    }
+
+    .art-title {
+      font-size: clamp(22px, 5.5vw, 26px);
+    }
+
+    .art-flow {
+      font-size: 19px;
+      line-height: 2.3;
+    }
+
+    .art--latin .art-flow {
+      font-size: 17px;
+      line-height: 1.9;
+    }
+
+    :global(html.rd-nojp) .art-flow {
+      line-height: 1.85;
+    }
+
+    :global(html.rd-nojp) .art--latin .art-flow {
+      line-height: 1.7;
+    }
+
+    :global(html:not(.rd-h)) .art--cjk .art-flow {
+      height: clamp(320px, 58svh, 500px);
+      font-size: 22px;
+      line-height: 1.95;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tr {
+      padding: 14px 16px;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .tr-inline {
+      padding: 12px 14px;
+    }
+
+    .tr-whole {
+      margin-top: 20px;
+    }
+
+    .tr-tag {
+      letter-spacing: 0.12em;
+    }
+
+    .ph {
+      min-height: 130px;
+      padding: 18px;
+      margin-bottom: 28px;
+    }
+
+    .ph__text {
+      font-size: 19px;
+    }
+
+    .src-pane {
+      padding: 18px;
+    }
+
+    .src-list {
+      font-size: 15px;
+      gap: 8px 12px;
+    }
+
+    .rp-pane {
+      padding: 18px;
+    }
+
+    .rp-type {
+      padding: 6px 12px;
+    }
+
+    .rp-submit {
+      min-height: 44px;
+    }
+
+    .cite-tabs [role="tab"] {
+      padding: 10px 12px;
+    }
+  }
+
+  /* 窄螢幕：中間說明擺上面成行，兩粒掣喺下面左右分開，唔使逼到一字一行 */
+  @media (max-width: 519px) {
+    .card-foot {
+      grid-template-columns: 1fr 1fr;
+      padding: 14px 16px;
+      gap: 10px;
+    }
+
+    .pg-info {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .pg {
+      min-height: 44px;
+      padding: 8px 16px;
+      font-size: 16px;
+    }
   }
 </style>

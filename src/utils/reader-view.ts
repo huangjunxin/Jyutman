@@ -10,6 +10,15 @@ import { normalizeWithMap } from "./search-planner.ts";
 /** 報錯問題類型：閱讀頁 chips 同 POST /api/correct 校驗共用（server/routes/corrections.ts 轉出）。 */
 export const CORRECTION_TYPES = ["錯字", "缺字", "標點分段", "今譯疑問", "其他"] as const;
 
+/** 手機端預設橫排嘅媒體查詢：未儲存顯式行款偏好時，此寬度以下預設橫排、以上預設豎排。 */
+export const MOBILE_LAYOUT_QUERY = "(max-width: 767px)";
+
+/** 按已儲存嘅行款偏好同螢幕寬度決定實際行款；冇顯式儲存（或非法值）時，手機端橫排、桌面端豎排。 */
+export function resolveReaderLayout(saved: unknown, isMobile: boolean): "vertical" | "horizontal" {
+  if (saved === "horizontal" || saved === "vertical") return saved;
+  return isMobile ? "horizontal" : "vertical";
+}
+
 /**
  * 連排段落 HTML：逐片按各自正文下標注音、按規則連接，
  * 每片包一層 <span data-o="正文下標">，瀏覽器端揀字時可以換算返正文碼點區間。

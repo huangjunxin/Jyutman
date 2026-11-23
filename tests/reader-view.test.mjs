@@ -7,8 +7,10 @@ import {
   CORRECTION_TYPES,
   fragmentAround,
   highlightRanges,
+  MOBILE_LAYOUT_QUERY,
   renderParagraphSegments,
   renderTranslation,
+  resolveReaderLayout,
   selectionSpan,
 } from "../src/utils/reader-view.ts";
 
@@ -84,4 +86,21 @@ test("clipText：按 UTF-16 長度截，唔切代理對", () => {
   assert.equal(clipText("聖藥呢", 2), "聖藥");
   assert.equal(clipText("a𠝹", 2), "a", "擴展區字放唔落就停");
   assert.equal(clipText("短", 40), "短");
+});
+
+test("resolveReaderLayout：未設定偏好時手機橫排、桌面豎排；顯式偏好覆蓋端側預設", () => {
+  assert.equal(MOBILE_LAYOUT_QUERY, "(max-width: 767px)");
+  // 未設定 / null / 非法值
+  assert.equal(resolveReaderLayout(undefined, true), "horizontal");
+  assert.equal(resolveReaderLayout(undefined, false), "vertical");
+  assert.equal(resolveReaderLayout(null, true), "horizontal");
+  assert.equal(resolveReaderLayout(null, false), "vertical");
+  assert.equal(resolveReaderLayout("", true), "horizontal");
+  assert.equal(resolveReaderLayout("auto", false), "vertical");
+  assert.equal(resolveReaderLayout(123, true), "horizontal");
+  // 顯式偏好覆蓋端側預設
+  assert.equal(resolveReaderLayout("vertical", true), "vertical", "手機端顯式揀豎排");
+  assert.equal(resolveReaderLayout("horizontal", false), "horizontal", "桌面端顯式揀橫排");
+  assert.equal(resolveReaderLayout("horizontal", true), "horizontal");
+  assert.equal(resolveReaderLayout("vertical", false), "vertical");
 });

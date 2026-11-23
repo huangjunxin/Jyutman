@@ -133,3 +133,12 @@ test("⑭ API 路由齊全：search / correct / reports / queue / adjudicate", (
     assert.match(serverIndex, new RegExp(route.replace(/\//gu, "\\/"), "u"), `要有 ${route}`);
   }
 });
+
+test("⑮ 移動端適配：手機端預設橫排接線、檢索頁唔重複掛頁首檢索框、觸控隱藏鍵盤提示", () => {
+  assert.match(readPage, /matchMedia\("\(max-width: 767px\)"\)/u, "閱讀頁內聯腳本用 767px 媒體查詢避免閃爍");
+  assert.match(readPage, /MOBILE_LAYOUT_QUERY/u, "閱讀頁主腳本共用 MOBILE_LAYOUT_QUERY");
+  assert.match(readPage, /resolveReaderLayout/u, "閱讀頁主腳本用 resolveReaderLayout 決定行款");
+  assert.match(readPage, /@media \(hover: none\), \(max-width: 767px\)/u, "觸控與手機隱藏鍵盤揭頁提示");
+  assert.match(indexPage, /matchMedia\("\(max-width: 767px\)"\)/u, "首頁原文樣張手機端預設橫排");
+  assert.match(searchPage, /headerSearch=\{false\}/u, "檢索頁唔重複顯示頁首精簡檢索框");
+});

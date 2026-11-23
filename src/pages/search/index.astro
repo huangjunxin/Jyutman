@@ -45,6 +45,7 @@ const hints = [
   title="檢索 · 粵語文叢"
   description="粵語文叢全文檢索：常用簡體字歸一到繁體之後，逐頁命中底本原文，並顯示命中上下文。"
   current="search"
+  headerSearch={false}
   noindex
 >
   <section class="brick top">
@@ -612,5 +613,110 @@ const hints = [
     text-align: center;
     font-size: 14px;
     color: var(--ruby);
+  }
+
+  /* ---- 移動端收斂：收細窗格與提示間距；KWIC 改自然換行流式左對齊，大幅增加可見上下文 ---- */
+
+  @media (max-width: 639px) {
+    .top__inner {
+      padding-top: 20px;
+      padding-bottom: 28px;
+    }
+
+    .window__pane {
+      padding: 18px 16px;
+    }
+
+    .title {
+      margin: 8px 0 14px;
+      font-size: 32px;
+    }
+
+    .hints {
+      gap: 12px;
+      margin-top: 14px;
+      padding-top: 14px;
+    }
+
+    .hint {
+      gap: 4px;
+    }
+
+    .hint__title {
+      font-size: 15px;
+    }
+
+    .hint__text {
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .footnote {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .results {
+      padding-top: 24px;
+      padding-bottom: 64px;
+    }
+
+    .res-head {
+      padding-bottom: 14px;
+      gap: 12px;
+    }
+
+    .res-head__meta {
+      font-size: 15px;
+    }
+
+    .pills {
+      gap: 6px;
+    }
+
+    .pills :global(.chip--outline) {
+      padding: 4px 10px;
+      font-size: 14px;
+    }
+
+    .kwic :global(.hit) {
+      padding: 14px 4px;
+    }
+
+    .kwic :global(.hit__line) {
+      display: block;
+      font-size: 17px;
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+    }
+
+    .kwic :global(.hit__line--plain) {
+      overflow: visible;
+      white-space: normal;
+      text-align: left;
+    }
+
+    .kwic :global(.hit__pre) {
+      display: inline;
+      overflow: visible;
+      white-space: normal;
+    }
+
+    .kwic :global(.hit__kw) {
+      padding: 1px 4px;
+      margin-inline: 1px;
+    }
+
+    .kwic :global(.hit__post) {
+      display: inline;
+      overflow: visible;
+      white-space: normal;
+    }
+
+    .kwic :global(.hit__meta) {
+      justify-content: flex-start;
+      gap: 4px 10px;
+      font-size: 13px;
+    }
   }
 </style>

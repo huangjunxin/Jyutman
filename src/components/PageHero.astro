@@ -51,4 +51,21 @@ const { eyebrow, lead } = Astro.props;
     color: var(--graphite);
     text-wrap: pretty;
   }
+
+  @media (max-width: 639px) {
+    .page-hero__inner {
+      padding-top: 28px;
+      padding-bottom: 32px;
+    }
+
+    .page-hero__title {
+      font-size: clamp(34px, 9vw, 44px);
+    }
+
+    .page-hero__lead {
+      margin-top: 16px;
+      font-size: 17px;
+      line-height: 1.7;
+    }
+  }
 </style>
