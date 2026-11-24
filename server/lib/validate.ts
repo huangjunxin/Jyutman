@@ -23,9 +23,11 @@ export function readText(value: unknown, rule: TextRule): FieldResult<string> {
   return { ok: true, value: text };
 }
 
-/** 選填文字：空字串或未提供一律當 null。 */
+/** 選填文字：未提供、null 或純空白一律當 null。 */
 export function readOptionalText(value: unknown, rule: TextRule): FieldResult<string | null> {
-  if (value === undefined || value === null || value === "") return { ok: true, value: null };
+  if (value === undefined || value === null) return { ok: true, value: null };
+  if (typeof value !== "string") return { ok: false, error: `${rule.label}唔係文字` };
+  if (value.trim() === "") return { ok: true, value: null };
   return readText(value, rule);
 }
 

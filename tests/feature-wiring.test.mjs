@@ -15,6 +15,7 @@ const browsePage = read("src/pages/browse/[corpus].astro");
 const proofreadPage = read("src/pages/proofread/index.astro");
 const baseLayout = read("src/layouts/Base.astro");
 const searchBar = read("src/components/SearchBar.astro");
+const astroConfig = read("astro.config.mjs");
 const robots = read("public/robots.txt");
 const readerUtil = read("src/utils/reader.ts");
 const searchView = read("src/utils/search-view.ts");
@@ -141,4 +142,12 @@ test("⑮ 移動端適配：手機端預設橫排接線、檢索頁唔重複掛�
   assert.match(readPage, /@media \(hover: none\), \(max-width: 767px\)/u, "觸控與手機隱藏鍵盤揭頁提示");
   assert.match(indexPage, /matchMedia\("\(max-width: 767px\)"\)/u, "首頁原文樣張手機端預設橫排");
   assert.match(searchPage, /headerSearch=\{false\}/u, "檢索頁唔重複顯示頁首精簡檢索框");
+});
+
+test("⑯ 字典浮卡、錨點高亮、報錯對位同無障礙／sitemap 接線", () => {
+  assert.match(readPage, /isPointInDictKeepZone/u, "字典浮卡使用保持區判定，滑鼠可以移入卡片撳連結");
+  assert.match(readPage, /findHashArticle/u, "檢索 ?hl= 高亮顧及 #article_id 錨點目標");
+  assert.match(readPage, /findReportRanges/u, "無 span 上報依 fragment 對位，避免篇名／今譯報錯誤標正文");
+  assert.match(indexPage, /<Eyebrow id="howto-title"/u, "首頁 howto 區段有對應 id，無懸空 aria-labelledby");
+  assert.match(astroConfig, /!page\.includes\("\/search"\)/u, "sitemap 排除 noindex 嘅檢索頁");
 });

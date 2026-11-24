@@ -95,6 +95,57 @@ export function fragmentAround(before: string, text: string, after: string, radi
   return [...before].slice(-radius).join("") + text + [...after].slice(0, radius).join("");
 }
 
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+export interface BoxRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * 字典浮卡滑鼠保持區判定：
+ * - 浮卡未彈出（cardRect 為 null）時：滑鼠喺點擊點 10px 曼哈頓距離之內先繼續等 300ms；
+ * - 浮卡已顯示（cardRect 非空）時：連接點擊點（±12px）同浮卡（±16px）嘅外包矩形之內都保持顯示，
+ *   令用戶可以從所點字平滑移入浮卡撳連結，離開過渡帶或浮卡即收起。
+ */
+export function isPointInDictKeepZone(
+  point: Point2D,
+  anchor: Point2D,
+  cardRect: BoxRect | null,
+  { preOpenRadius = 10, anchorPad = 12, cardPad = 16 } = {},
+): boolean {
+  if (cardRect === null) {
+    return Math.abs(point.x - anchor.x) + Math.abs(point.y - anchor.y) <= preOpenRadius;
+  }
+  const left = Math.min(anchor.x - anchorPad, cardRect.left - cardPad);
+  const right = Math.max(anchor.x + anchorPad, cardRect.right + cardPad);
+  const top = Math.min(anchor.y - anchorPad, cardRect.top - cardPad);
+  const bottom = Math.max(anchor.y + anchorPad, cardRect.bottom + cardPad);
+  return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+}
+
+/**
+ * 按上下文 fragment 與所選文字 selectedText 喺目標區塊全文 text 內定位 UTF-16 高亮區間。
+ * 用於無 span_start/span_end 嘅上報（篇名、今譯或舊正文上報）：有 fragment 時須先對中 fragment，
+ * 再喺其區間內定位 selectedText，避免誤標其他區域碰巧相同嘅字；僅當 fragment 為空時退回搵第一處。
+ */
+export function findReportRanges(text: string, selectedText: string, fragment: string): [number, number][] {
+  if (text === "" || selectedText === "") return [];
+  if (fragment.trim() === "") return highlightRanges(text, selectedText).slice(0, 1);
+  for (const [fragStart, fragEnd] of highlightRanges(text, fragment)) {
+    const inner = highlightRanges(text.slice(fragStart, fragEnd), selectedText);
+    if (inner.length > 0) {
+      return [[fragStart + inner[0][0], fragStart + inner[0][1]]];
+    }
+  }
+  return [];
+}
+
 /** 按 UTF-16 長度上限截字（同服務端 .length 校驗一致），唔會切開代理對。 */
 export function clipText(text: string, max: number): string {
   let out = "";

@@ -5,8 +5,10 @@ import { mergeParagraphSpans, splitParagraphSpans } from "../src/utils/reader.ts
 import {
   clipText,
   CORRECTION_TYPES,
+  findReportRanges,
   fragmentAround,
   highlightRanges,
+  isPointInDictKeepZone,
   MOBILE_LAYOUT_QUERY,
   renderParagraphSegments,
   renderTranslation,
@@ -103,4 +105,40 @@ test("resolveReaderLayout：未設定偏好時手機橫排、桌面豎排；顯�
   assert.equal(resolveReaderLayout("horizontal", false), "horizontal", "桌面端顯式揀橫排");
   assert.equal(resolveReaderLayout("horizontal", true), "horizontal");
   assert.equal(resolveReaderLayout("vertical", false), "vertical");
+});
+
+test("isPointInDictKeepZone：未彈卡只容許 10px 內；開卡後容許從字移入浮卡", () => {
+  const anchor = { x: 500, y: 400 };
+  // 未打開（cardRect === null）：10px 曼哈頓距離
+  assert.equal(isPointInDictKeepZone({ x: 505, y: 405 }, anchor, null), true);
+  assert.equal(isPointInDictKeepZone({ x: 506, y: 405 }, anchor, null), false);
+
+  // 已打開（浮卡喺字上方）：由字移動進入浮卡連結位置要保留，移出浮卡同點擊點遠處先關閉
+  const cardAbove = { left: 400, top: 260, right: 600, bottom: 376 };
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 380 }, anchor, cardAbove), true, "跨越字同卡之間空隙");
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 310 }, anchor, cardAbove), true, "喺浮卡連結上");
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 420 }, anchor, cardAbove), false, "向下離開點擊點");
+  assert.equal(isPointInDictKeepZone({ x: 370, y: 310 }, anchor, cardAbove), false, "向左離開浮卡");
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 240 }, anchor, cardAbove), false, "向上離開浮卡");
+
+  // 浮卡喺字下方（靠近螢幕頂時）
+  const cardBelow = { left: 400, top: 420, right: 600, bottom: 530 };
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 470 }, anchor, cardBelow), true, "向下移入浮卡");
+  assert.equal(isPointInDictKeepZone({ x: 500, y: 380 }, anchor, cardBelow), false, "向上離開點擊點");
+});
+
+test("findReportRanges：靠上下文 fragment 精準落位，唔誤標其他區同字", () => {
+  const title = "白話報係中國人嘅聖藥";
+  const body = "乜野叫做聖藥呢。白話報就係喇。";
+  // 篇名上報：只命中篇名，唔會誤標正文入面同字「聖藥」
+  assert.deepEqual(findReportRanges(title, "聖藥", title), [[8, 10]]);
+  assert.deepEqual(findReportRanges(body, "聖藥", title), []);
+
+  // 正文重複詞靠 fragment 區分第二處
+  const repeated = "係官嚟播。係滿清嘅官嚟播。";
+  assert.deepEqual(findReportRanges(repeated, "官嚟播", "滿清嘅官嚟播。"), [[9, 12]]);
+
+  // 簡繁／空白容錯；僅當 fragment 為空先退回第一處
+  assert.deepEqual(findReportRanges(body, "聖藥", ""), [[4, 6]]);
+  assert.deepEqual(findReportRanges(body, "", title), []);
 });

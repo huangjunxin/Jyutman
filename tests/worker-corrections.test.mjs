@@ -107,6 +107,18 @@ test("POST /api/correct：span_start / span_end 寫入區間欄位", async () =>
   assert.equal((await post("/api/correct", { ...validPayload, span_start: null, span_end: null }, makeEnv(nulls))).status, 200);
 });
 
+test("POST /api/correct：選填建議純空白當未填（null），非字串一律 400", async () => {
+  const ip = { "cf-connecting-ip": "203.0.113.10" };
+  const blankSuggDb = createDb();
+  const blankSugg = await post("/api/correct", { ...validPayload, suggestion: "   " }, makeEnv(blankSuggDb), ip);
+  assert.equal(blankSugg.status, 200);
+  const blankInsert = blankSuggDb.calls.find((call) => call.sql.includes("INSERT INTO corrections"));
+  assert.equal(blankInsert.params[6], null);
+
+  const nonStringSugg = await post("/api/correct", { ...validPayload, suggestion: 123 }, makeEnv(createDb()), ip);
+  assert.equal(nonStringSugg.status, 400);
+});
+
 test("POST /api/correct：區間唔合法一律 400，唔寫入", async () => {
   const db = createDb();
   const env = makeEnv(db);

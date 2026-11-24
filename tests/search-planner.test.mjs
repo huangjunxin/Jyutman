@@ -114,4 +114,9 @@ test("locateAndSlice：找不到命中時退化為段首，highlight 為 null", 
     post: null,
   });
   assert.deepEqual(locateAndSlice("", "廣東"), { pre: "", highlight: null, post: null });
+  assert.deepEqual(locateAndSlice("𠝹".repeat(5), "廣東", 3), {
+    pre: "𠝹𠝹𠝹…",
+    highlight: null,
+    post: null,
+  }, "找不到命中截頭時按碼點計，唔會切斷增補平面代理對");
 });

@@ -506,8 +506,10 @@ const articleJsonLd = {
     import { wordAround } from "../../../../utils/reader.ts";
     import {
       clipText,
+      findReportRanges,
       fragmentAround,
       highlightRanges,
+      isPointInDictKeepZone,
       MOBILE_LAYOUT_QUERY,
       resolveReaderLayout,
       selectionSpan,
@@ -758,6 +760,17 @@ const articleJsonLd = {
     const hl = params.get("hl")?.trim() ?? "";
     const hlChip = document.getElementById("hl-chip");
 
+    const findHashArticle = (): HTMLElement | null => {
+      const rawHash = window.location.hash.slice(1);
+      if (rawHash === "") return null;
+      try {
+        const candidate = document.getElementById(decodeURIComponent(rawHash));
+        return candidate !== null && candidate.matches("[data-article]") ? candidate : null;
+      } catch {
+        return null;
+      }
+    };
+
     if (hl !== "" && body !== null && hlChip !== null) {
       const marks: HTMLElement[] = [];
       for (const unit of body.querySelectorAll(".art-title, .art-flow")) {
@@ -774,7 +787,9 @@ const articleJsonLd = {
       hlChip.textContent = `標示「${hl}」 ✕`;
       hlChip.setAttribute("aria-label", `清除標示「${hl}」`);
       hlChip.hidden = false;
-      marks[0]?.scrollIntoView({ block: "center", inline: "center" });
+      const targetArticle = findHashArticle();
+      const focusMark = targetArticle !== null ? marks.find((mark) => targetArticle.contains(mark)) : marks[0];
+      focusMark?.scrollIntoView({ block: "center", inline: "center" });
 
       hlChip.addEventListener("click", () => {
         for (const mark of document.querySelectorAll("mark.hl")) {
@@ -803,14 +818,25 @@ const articleJsonLd = {
       end: number;
     }
 
+    type ReportTarget = "body" | "title" | "tr";
+
     interface StoredReport {
       id?: number | null;
       article_id?: string;
       selected_text?: string;
+      fragment?: string;
+      paragraph_index?: number | null;
       span_start?: unknown;
       span_end?: unknown;
       type?: string;
+      target?: ReportTarget;
       created_at?: string;
+    }
+
+    interface ReportMeta {
+      fragment?: string;
+      paragraphIndex?: number | null;
+      target?: ReportTarget;
     }
 
     const STORE_KEY = "jm-reports";
@@ -838,17 +864,41 @@ const articleJsonLd = {
         ? { start: entry.span_start, end: entry.span_end }
         : null;
 
+    const wrapReported = (nodes: Text[], ranges: [number, number][], key: string, type: string): boolean => {
+      if (ranges.length === 0) return false;
+      if (marked.has(key)) return true;
+      marked.add(key);
+      wrapRanges(nodes, ranges, () => {
+        const element = document.createElement("span");
+        element.className = "reported";
+        element.title = `已回報（${type}）· 待審`;
+        return element;
+      });
+      return true;
+    };
+
     /**
      * 標返已回報嘅字，逐個文字節點包 .reported（琥珀淡底、虛線）。
-     * 有正文碼點區間就照區間標（同 capture() 一樣逐片換算）；舊上報冇區間先搵字（唔計空白）。
+     * 有正文碼點區間就照區間標（同 capture() 一樣逐片換算）；
+     * 冇區間（篇名、今譯或舊正文上報）按 fragment 喺對應區塊對位，避免誤標別處碰巧相同嘅字。
      */
-    const markReported = (articleId: string, text: string, type: string, span: Span | null): void => {
-      const key = `${articleId}\u0000${span === null ? text : `${span.start}:${span.end}`}`;
-      const flow = document.getElementById(articleId)?.querySelector(".art-flow");
-      if ((span === null && text === "") || marked.has(key) || flow == null) return;
-      let nodes: Text[] = [];
-      let ranges: [number, number][] = [];
+    const markReported = (
+      articleId: string,
+      text: string,
+      type: string,
+      span: Span | null,
+      meta?: ReportMeta,
+    ): void => {
+      const article = document.getElementById(articleId);
+      if (article == null || !article.matches("[data-article]")) return;
+      const flow = article.querySelector(".art-flow");
+
       if (span !== null) {
+        if (flow == null) return;
+        const key = `${articleId}\u0000span:${span.start}:${span.end}`;
+        if (marked.has(key)) return;
+        const nodes: Text[] = [];
+        const ranges: [number, number][] = [];
         let base = 0;
         for (const segment of flow.querySelectorAll<HTMLElement>(".para [data-o]")) {
           let offset = Number(segment.dataset.o);
@@ -865,24 +915,75 @@ const articleJsonLd = {
             offset += chars.length;
           }
         }
-      } else {
-        nodes = textNodes(flow, "rt, .tr");
-        ranges = highlightRanges(nodes.map((node) => node.data).join(""), text).slice(0, 1);
+        wrapReported(nodes, ranges, key, type);
+        return;
       }
-      if (ranges.length === 0) return;
-      marked.add(key);
-      wrapRanges(nodes, ranges, () => {
-        const element = document.createElement("span");
-        element.className = "reported";
-        element.title = `已回報（${type}）· 待審`;
-        return element;
-      });
+
+      if (text === "") return;
+      const fragment = meta?.fragment ?? "";
+
+      const markTitle = (): boolean => {
+        const titleEl = article.querySelector(".art-title");
+        if (titleEl == null) return false;
+        const nodes = textNodes(titleEl, "rt");
+        const ranges = findReportRanges(nodes.map((node) => node.data).join(""), text, fragment);
+        if (ranges.length === 0) return false;
+        return wrapReported(nodes, ranges, `${articleId}\u0000title:${ranges[0][0]}:${ranges[0][1]}`, type);
+      };
+
+      const markTr = (): boolean => {
+        const pi = typeof meta?.paragraphIndex === "number" ? meta.paragraphIndex : null;
+        const scoped =
+          pi !== null ? [...article.querySelectorAll<HTMLElement>(`.tr p[data-pi="${pi}"]`)] : [];
+        const candidates = scoped.length > 0 ? scoped : [...article.querySelectorAll<HTMLElement>(".tr p")];
+        let matched = false;
+        for (const para of candidates) {
+          const nodes = textNodes(para, "rt");
+          const ranges = findReportRanges(nodes.map((node) => node.data).join(""), text, fragment);
+          if (ranges.length === 0) continue;
+          const variant = para.closest(".tr-whole") !== null ? "whole" : "inline";
+          const key = `${articleId}\u0000tr:${para.dataset.pi ?? ""}:${variant}:${ranges[0][0]}:${ranges[0][1]}`;
+          if (wrapReported(nodes, ranges, key, type)) matched = true;
+        }
+        return matched;
+      };
+
+      const markFlow = (): boolean => {
+        if (flow == null) return false;
+        const nodes = textNodes(flow, "rt, .tr");
+        const ranges = findReportRanges(nodes.map((node) => node.data).join(""), text, fragment);
+        if (ranges.length === 0) return false;
+        return wrapReported(nodes, ranges, `${articleId}\u0000flow:${ranges[0][0]}:${ranges[0][1]}`, type);
+      };
+
+      if (meta?.target === "title") {
+        markTitle();
+        return;
+      }
+      if (meta?.target === "tr") {
+        markTr();
+        return;
+      }
+      if (meta?.target === "body") {
+        markFlow();
+        return;
+      }
+      if (type === "今譯疑問") {
+        if (!markTr() && !markTitle()) markFlow();
+        return;
+      }
+      if (!markTitle() && !markTr()) markFlow();
     };
 
     const markAll = (entries: StoredReport[]): void => {
       for (const entry of entries) {
         if (typeof entry?.article_id === "string" && typeof entry?.selected_text === "string") {
-          markReported(entry.article_id, entry.selected_text, entry.type ?? "已回報", spanOf(entry));
+          markReported(entry.article_id, entry.selected_text, entry.type ?? "已回報", spanOf(entry), {
+            fragment: typeof entry.fragment === "string" ? entry.fragment : undefined,
+            paragraphIndex: typeof entry.paragraph_index === "number" ? entry.paragraph_index : null,
+            target:
+              entry.target === "body" || entry.target === "title" || entry.target === "tr" ? entry.target : undefined,
+          });
         }
       }
     };
@@ -902,6 +1003,8 @@ const articleJsonLd = {
             reports.map((report) => ({
               article_id: article.id,
               selected_text: typeof report.selected_text === "string" ? report.selected_text : "",
+              fragment: typeof report.fragment === "string" ? report.fragment : "",
+              paragraph_index: typeof report.paragraph_index === "number" ? report.paragraph_index : null,
               span_start: report.span_start,
               span_end: report.span_end,
               type: typeof report.type === "string" ? report.type : "已回報",
@@ -923,6 +1026,7 @@ const articleJsonLd = {
       articleId: string;
       paragraphIndex: number;
       span: Span | null;
+      target: ReportTarget;
     }
 
     const form = document.getElementById("rp-form");
@@ -943,49 +1047,62 @@ const articleJsonLd = {
       const end = elementOf(range.endContainer);
       if (start === null || end === null || !body.contains(start) || !body.contains(end)) return null;
       if (start.closest("rt") !== null && end.closest("rt") !== null) return null;
+      if (start.closest(".art-anchor, .tr-head") !== null && end.closest(".art-anchor, .tr-head") !== null) return null;
       const article = start.closest<HTMLElement>("[data-article]");
       if (article === null || article !== end.closest("[data-article]")) return null;
-      // 跨段選區會掃過段與段之間嘅今譯（豎排、關今譯時仍喺 DOM）：由今譯起揀先計譯文。
-      const raw = flatText(range.cloneContents(), start.closest(".tr") === null ? "rt, .tr" : "rt");
+      // 跨段選區會掃過段與段之間嘅今譯（豎排、關今譯時仍喺 DOM）：由今譯起揀先計譯文；同時剔走錨鏈與譯頭。
+      const inTr = start.closest(".tr") !== null;
+      const inTitle = !inTr && start.closest(".art-title") !== null && end.closest(".art-title") !== null;
+      const skip = inTr ? "rt, .tr-head" : "rt, .tr, .art-anchor";
+      const raw = flatText(range.cloneContents(), skip);
       const text = raw.trim();
       if (text === "") return null;
 
       const pieces: SelectionPiece[] = [];
-      for (const segment of article.querySelectorAll<HTMLElement>(".para [data-o]")) {
-        if (!range.intersectsNode(segment)) continue;
-        let offset = Number(segment.dataset.o);
-        for (const node of textNodes(segment, "rt")) {
-          if (range.intersectsNode(node)) {
-            const from = node === range.startContainer ? range.startOffset : 0;
-            const to = node === range.endContainer ? range.endOffset : node.data.length;
-            pieces.push({ start: offset + [...node.data.slice(0, from)].length, text: node.data.slice(from, to) });
+      if (!inTr) {
+        for (const segment of article.querySelectorAll<HTMLElement>(".para [data-o]")) {
+          if (!range.intersectsNode(segment)) continue;
+          let offset = Number(segment.dataset.o);
+          for (const node of textNodes(segment, "rt")) {
+            if (range.intersectsNode(node)) {
+              const from = node === range.startContainer ? range.startOffset : 0;
+              const to = node === range.endContainer ? range.endOffset : node.data.length;
+              pieces.push({ start: offset + [...node.data.slice(0, from)].length, text: node.data.slice(from, to) });
+            }
+            offset += [...node.data].length;
           }
-          offset += [...node.data].length;
         }
       }
+      const span = inTr ? null : selectionSpan(pieces);
+      const target: ReportTarget = inTr ? "tr" : span !== null ? "body" : inTitle ? "title" : "body";
 
-      // 前後文：由選區頭尾向所在段量出去，唔靠搜尋（重複字唔會走位）。
-      const hosts = ".para, .tr p, .art-title";
+      // 前後文：由選區頭尾向所在同層段量出去，唔靠搜尋（重複字唔會走位），亦唔跨層撈到今譯或錨鏈。
+      const hosts = inTr ? ".tr p" : inTitle ? ".art-title" : ".para, .art-title";
       const startHost = start.closest(hosts);
-      const endHost = end.closest(hosts) ?? startHost;
+      const endCandidate = end.closest(hosts);
+      const endHost =
+        endCandidate !== null && (inTr || endCandidate.closest(".tr") === null) ? endCandidate : startHost;
       let before = "";
       let after = "";
-      if (startHost !== null && endHost !== null) {
+      if (startHost !== null && startHost.contains(range.startContainer)) {
         const pre = document.createRange();
         pre.setStart(startHost, 0);
         pre.setEnd(range.startContainer, range.startOffset);
+        before = flatText(pre.cloneContents(), skip);
+      }
+      if (endHost !== null && endHost.contains(range.endContainer)) {
         const post = document.createRange();
         post.setStart(range.endContainer, range.endOffset);
         post.setEnd(endHost, endHost.childNodes.length);
-        before = flatText(pre.cloneContents());
-        after = flatText(post.cloneContents());
+        after = flatText(post.cloneContents(), skip);
       }
       return {
         text,
         fragment: fragmentAround(before, raw, after).replace(/\s+/gu, " ").trim(),
         articleId: article.id,
         paragraphIndex: Number(start.closest<HTMLElement>("[data-pi]")?.dataset.pi ?? 0),
-        span: selectionSpan(pieces),
+        span,
+        target,
       };
     };
 
@@ -1013,7 +1130,15 @@ const articleJsonLd = {
     const onSelection = (): void => {
       const next = capture();
       if (next === null) return;
-      if (picked?.text === next.text && picked.articleId === next.articleId && picked.span?.start === next.span?.start) {
+      if (
+        picked?.text === next.text &&
+        picked.articleId === next.articleId &&
+        picked.span?.start === next.span?.start &&
+        picked.span?.end === next.span?.end &&
+        picked.paragraphIndex === next.paragraphIndex &&
+        picked.fragment === next.fragment &&
+        picked.target === next.target
+      ) {
         return;
       }
       picked = next;
@@ -1080,13 +1205,20 @@ const articleJsonLd = {
           id: typeof result.id === "number" ? result.id : null,
           article_id: payload.article_id,
           selected_text: payload.selected_text,
+          fragment: payload.fragment,
+          paragraph_index: payload.paragraph_index,
           span_start: payload.span_start,
           span_end: payload.span_end,
           type,
+          target: report.target,
           created_at: new Date().toISOString(),
         });
         writeStore(entries);
-        markReported(payload.article_id, payload.selected_text, type, report.span);
+        markReported(payload.article_id, payload.selected_text, type, report.span, {
+          fragment: payload.fragment,
+          paragraphIndex: payload.paragraph_index,
+          target: report.target,
+        });
         // 清返類型同建議：之後再揀字唔會帶住上一單嘅內容。
         form.reset();
         form.hidden = true;
@@ -1136,7 +1268,10 @@ const articleJsonLd = {
     const wordAtPoint = (x: number, y: number): { word: string; rect: DOMRect } | null => {
       const caretDocument = document as unknown as {
         caretRangeFromPoint?: (x: number, y: number) => Range | null;
-        caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+        caretPositionFromPoint?: (
+          x: number,
+          y: number,
+        ) => { offsetNode: Node; offset: number; getClientRect?: () => DOMRect } | null;
       };
       let node: Node | null = null;
       let offset = 0;
@@ -1151,6 +1286,18 @@ const articleJsonLd = {
         if (position !== null) {
           node = position.offsetNode;
           offset = position.offset;
+          rect = position.getClientRect?.() ?? null;
+          if (
+            (!rect || (rect.width === 0 && rect.height === 0)) &&
+            node.nodeType === Node.TEXT_NODE &&
+            node.textContent
+          ) {
+            const charRange = document.createRange();
+            const at = Math.min(offset, Math.max(0, node.textContent.length - 1));
+            charRange.setStart(node, at);
+            charRange.setEnd(node, Math.min(at + 1, node.textContent.length));
+            rect = charRange.getBoundingClientRect();
+          }
         }
       }
       if (node === null || node.nodeType !== Node.TEXT_NODE) return null;
@@ -1212,7 +1359,8 @@ const articleJsonLd = {
       "mousemove",
       (event) => {
         if (dictPoint === null) return;
-        if (Math.abs(event.clientX - dictPoint.x) + Math.abs(event.clientY - dictPoint.y) > 10) hideDict();
+        const cardRect = dictCard !== null && !dictCard.hidden ? dictCard.getBoundingClientRect() : null;
+        if (!isPointInDictKeepZone({ x: event.clientX, y: event.clientY }, dictPoint, cardRect)) hideDict();
       },
       true,
     );

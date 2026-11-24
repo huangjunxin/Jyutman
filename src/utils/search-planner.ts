@@ -170,8 +170,9 @@ export function locateAndSlice(
   const { normalized, starts, ends } = normalizeWithMap(text);
   const position = findFoldIndex(normalized, queryNorm);
   if (position < 0) {
-    const head = collapse(text.slice(0, radius));
-    return { pre: text.length > radius ? `${head}…` : head, highlight: null, post: null };
+    const chars = [...text];
+    const head = collapse(chars.slice(0, radius).join(""));
+    return { pre: chars.length > radius ? `${head}…` : head, highlight: null, post: null };
   }
   const queryLength = [...queryNorm].length;
   const start = Math.max(0, position - radius);

@@ -4,7 +4,9 @@
  * 首頁 hero 加 class="eyebrow--hero"（襯線、唔大寫、.16em、gap 14px，年份包 <span class="latin">）。
  * 文字用 text，或者用 slot 放有標記嘅內容（例如年份包 <span class="latin">）。樣式見 global.css 嘅 .eyebrow。
  */
-interface Props {
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends Omit<HTMLAttributes<"p">, "class"> {
   text?: string;
   cells?: 3 | 4;
   /** sm：側欄細版（14px 字、7px 格）。 */
